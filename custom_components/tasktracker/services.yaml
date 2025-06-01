@@ -1,0 +1,187 @@
+# TaskTracker Integration Services
+
+complete_task:
+  fields:
+    task_id:
+      required: true
+      example: 123
+      selector:
+        number:
+          min: 1
+    username:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+    notes:
+      required: false
+      example: "Task completed successfully"
+      selector:
+        text:
+          multiline: true
+
+complete_task_by_name:
+  fields:
+    name:
+      required: true
+      example: "Take out trash"
+      selector:
+        text:
+    username:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+    notes:
+      required: false
+      example: "Completed during evening routine"
+      selector:
+        text:
+          multiline: true
+
+create_leftover:
+  fields:
+    name:
+      required: true
+      example: "Pizza leftovers"
+      selector:
+        text:
+    assigned_to:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+    shelf_life_days:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 30
+    days_ago:
+      required: false
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 30
+
+create_adhoc_task:
+  fields:
+    name:
+      required: true
+      example: "Fix leaky faucet"
+      selector:
+        text:
+    username:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+    duration_minutes:
+      required: false
+      example: 30
+      selector:
+        number:
+          min: 5
+          max: 480
+          unit_of_measurement: "minutes"
+    priority:
+      required: false
+      example: 2
+      selector:
+        select:
+          options:
+            - label: "High (1)"
+              value: 1
+            - label: "Medium (2)"
+              value: 2
+            - label: "Low (3)"
+              value: 3
+            - label: "Very Low (4)"
+              value: 4
+            - label: "Minimal (5)"
+              value: 5
+
+query_task:
+  fields:
+    name:
+      required: true
+      example: "Leftover pizza"
+      selector:
+        text:
+    question_type:
+      required: false
+      example: "safe_to_eat"
+      selector:
+        select:
+          options:
+            - "safe_to_eat"
+            - "how_old"
+            - "notes"
+            - "general"
+
+get_recommended_tasks:
+  fields:
+    username:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+    available_minutes:
+      required: false
+      example: 60
+      selector:
+        number:
+          min: 5
+          max: 480
+          unit_of_measurement: "minutes"
+
+get_available_tasks:
+  fields:
+    username:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+    available_minutes:
+      required: false
+      example: 60
+      selector:
+        number:
+          min: 5
+          max: 480
+          unit_of_measurement: "minutes"
+    upcoming_days:
+      required: false
+      example: 7
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: "days"
+
+get_recent_completions:
+  fields:
+    username:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+    days:
+      required: false
+      example: 7
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: "days"
+    limit:
+      required: false
+      example: 10
+      selector:
+        number:
+          min: 1
+          max: 100
+
+list_leftovers:

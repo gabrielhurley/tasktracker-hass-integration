@@ -1,0 +1,221 @@
+{
+    "title": "TaskTracker",
+    "config": {
+        "step": {
+            "user": {
+                "title": "TaskTracker API Configuration",
+                "description": "Configure your TaskTracker API connection",
+                "data": {
+                    "host": "Host URL",
+                    "api_key": "API Key"
+                }
+            },
+            "users": {
+                "title": "User Mapping Configuration",
+                "description": "Map Home Assistant users to TaskTracker usernames\n\nCurrently configured users:\n{configured_users}",
+                "data": {
+                    "ha_user_selection": "Home Assistant User",
+                    "ha_user_id": "Manual HA User ID (if not in dropdown)",
+                    "tasktracker_username": "TaskTracker Username",
+                    "add_another_user": "Add another user mapping"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect to TaskTracker API"
+        },
+        "abort": {
+            "already_configured": "TaskTracker is already configured"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "TaskTracker Configuration",
+                "description": "Configure your TaskTracker integration settings.\n\nCurrent user mappings:\n{current_users}\n\nNote: API key is redacted for security. Leave unchanged to keep current key, or enter a new key to update.",
+                "data": {
+                    "host": "Host URL",
+                    "api_key": "API Key",
+                    "action": "Configuration Action"
+                }
+            },
+            "manage_users": {
+                "title": "Manage User Mappings",
+                "description": "Add or remove mappings between Home Assistant users and TaskTracker usernames.",
+                "data": {
+                    "current_mappings": "Current User Mappings",
+                    "action": "User Management Action"
+                }
+            },
+            "add_user": {
+                "title": "Add User Mapping",
+                "description": "Map a Home Assistant user to a TaskTracker username.",
+                "data": {
+                    "ha_user_id": "Home Assistant User",
+                    "tasktracker_username": "TaskTracker Username"
+                }
+            },
+            "remove_user": {
+                "title": "Remove User Mapping",
+                "description": "Select a user mapping to remove.",
+                "data": {
+                    "user_to_remove": "User Mapping to Remove"
+                }
+            }
+        },
+        "error": {
+            "ha_user_already_mapped": "This Home Assistant user is already mapped to a TaskTracker username",
+            "tasktracker_user_already_mapped": "This TaskTracker username is already mapped to a Home Assistant user"
+        }
+    },
+    "services": {
+        "complete_task": {
+            "name": "Complete Task",
+            "description": "Complete a task by its ID.",
+            "fields": {
+                "task_id": {
+                    "name": "Task ID",
+                    "description": "The unique ID of the task to complete."
+                },
+                "username": {
+                    "name": "Username",
+                    "description": "TaskTracker username. If not provided, will attempt to determine from user context."
+                },
+                "notes": {
+                    "name": "Completion Notes",
+                    "description": "Optional notes to add when completing the task."
+                }
+            }
+        },
+        "complete_task_by_name": {
+            "name": "Complete Task by Name",
+            "description": "Complete a task by its name using fuzzy matching across all task types.",
+            "fields": {
+                "name": {
+                    "name": "Task Name",
+                    "description": "The name of the task to complete (supports fuzzy matching)."
+                },
+                "username": {
+                    "name": "Username",
+                    "description": "TaskTracker username. If not provided, will attempt to determine from user context."
+                },
+                "notes": {
+                    "name": "Completion Notes",
+                    "description": "Optional notes to add when completing the task."
+                }
+            }
+        },
+        "create_leftover": {
+            "name": "Create Leftover",
+            "description": "Create a new leftover item to track.",
+            "fields": {
+                "name": {
+                    "name": "Item Name",
+                    "description": "The name of the leftover item."
+                },
+                "assigned_to": {
+                    "name": "Assigned To",
+                    "description": "Username of the person responsible for this leftover."
+                },
+                "shelf_life_days": {
+                    "name": "Shelf Life (Days)",
+                    "description": "How many days this item is good for."
+                },
+                "days_ago": {
+                    "name": "Created Days Ago",
+                    "description": "How many days ago this leftover was created."
+                }
+            }
+        },
+        "create_adhoc_task": {
+            "name": "Create Ad-hoc Task",
+            "description": "Create a new one-time task.",
+            "fields": {
+                "name": {
+                    "name": "Task Name",
+                    "description": "The name of the task to create."
+                },
+                "username": {
+                    "name": "Username",
+                    "description": "TaskTracker username. If not provided, will attempt to determine from user context."
+                },
+                "duration_minutes": {
+                    "name": "Duration (Minutes)",
+                    "description": "Estimated time to complete the task in minutes."
+                },
+                "priority": {
+                    "name": "Priority",
+                    "description": "Task priority level (1=High, 5=Minimal)."
+                }
+            }
+        },
+        "query_task": {
+            "name": "Query Task",
+            "description": "Query information about a task or leftover item.",
+            "fields": {
+                "name": {
+                    "name": "Item Name",
+                    "description": "The name of the task or leftover to query."
+                },
+                "question_type": {
+                    "name": "Question Type",
+                    "description": "Type of question to ask about the item."
+                }
+            }
+        },
+        "get_recommended_tasks": {
+            "name": "Get Recommended Tasks",
+            "description": "Get tasks recommended for a user based on available time.",
+            "fields": {
+                "username": {
+                    "name": "Username",
+                    "description": "TaskTracker username. If not provided, will attempt to determine from user context."
+                },
+                "available_minutes": {
+                    "name": "Available Time (Minutes)",
+                    "description": "How many minutes are available for tasks."
+                }
+            }
+        },
+        "get_available_tasks": {
+            "name": "Get Available Tasks",
+            "description": "Get all available tasks with optional filtering.",
+            "fields": {
+                "username": {
+                    "name": "Username",
+                    "description": "Filter tasks for a specific user."
+                },
+                "available_minutes": {
+                    "name": "Available Time (Minutes)",
+                    "description": "Filter tasks by available time."
+                },
+                "upcoming_days": {
+                    "name": "Upcoming Days",
+                    "description": "Number of days to look ahead for scheduled tasks."
+                }
+            }
+        },
+        "get_recent_completions": {
+            "name": "Get Recent Completions",
+            "description": "Get recently completed tasks.",
+            "fields": {
+                "username": {
+                    "name": "Username",
+                    "description": "Filter completions for a specific user."
+                },
+                "days": {
+                    "name": "Number of Days",
+                    "description": "How many days back to search for completions."
+                },
+                "limit": {
+                    "name": "Result Limit",
+                    "description": "Maximum number of results to return."
+                }
+            }
+        },
+        "list_leftovers": {
+            "name": "List Leftovers",
+            "description": "Get a list of all leftover items that need attention."
+        }
+    }
+}

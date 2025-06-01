@@ -1,0 +1,11 @@
+---
+description:
+globs: *.js
+alwaysApply: false
+---
+Use this rule when generating HTML or CSS for user interfaces.
+
+- Generate clean, minimalist user interfaces.
+- Prefer solutions that provide greater information density.
+- Never use emojis or unicode characters unless specifically instructed to do so.
+- Use colors sparingly.
