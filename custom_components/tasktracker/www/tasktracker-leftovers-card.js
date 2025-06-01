@@ -20,6 +20,8 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     this._refreshing = false;
     this._error = null;
     this._refreshInterval = null;
+    this._default_refresh_interval = 300;
+    this._default_max_items = 20;
   }
 
   static getConfigElement() {
@@ -30,8 +32,8 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     return {
       categorize_by_safety: true,
       show_disposal_actions: true,
-      refresh_interval: 60,
-      max_items: 20,
+      refresh_interval: this._default_refresh_interval,
+      max_items: this._default_max_items,
       show_age: true
     };
   }
@@ -40,8 +42,8 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     this._config = {
       categorize_by_safety: config.categorize_by_safety !== false,
       show_disposal_actions: config.show_disposal_actions !== false,
-      refresh_interval: config.refresh_interval || 60, // seconds
-      max_items: config.max_items || 20,
+      refresh_interval: config.refresh_interval || this._default_refresh_interval, // seconds
+      max_items: config.max_items || this._default_max_items,
       show_age: config.show_age !== false,
       ...config
     };
@@ -161,12 +163,16 @@ class TaskTrackerLeftoversCard extends HTMLElement {
 
   async _disposeLeftover(leftover) {
     try {
-      await this._hass.callService('tasktracker', 'complete_task_by_name', {
+      const response = await this._hass.callService('tasktracker', 'complete_task_by_name', {
         name: leftover.name,
         notes: `Disposed via leftovers card`
-      });
+      }, {}, true, true);
 
-      this._showSuccess(`Leftover "${leftover.name}" disposed successfully`);
+      if (response && response.response) {
+        this._showSuccess(`Leftover "${leftover.name}" disposed successfully`);
+      } else {
+        this._showError(`Failed to dispose leftover: ${response.error || 'Unknown error'}`);
+      }
 
       // Refresh leftovers after disposal
       setTimeout(() => {
@@ -782,14 +788,20 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('tasktracker-leftovers-card', TaskTrackerLeftoversCard);
-customElements.define('tasktracker-leftovers-card-editor', TaskTrackerLeftoversCardEditor);
+if (!customElements.get('tasktracker-leftovers-card')) {
+  customElements.define('tasktracker-leftovers-card', TaskTrackerLeftoversCard);
+}
+if (!customElements.get('tasktracker-leftovers-card-editor')) {
+  customElements.define('tasktracker-leftovers-card-editor', TaskTrackerLeftoversCardEditor);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'tasktracker-leftovers-card',
-  name: 'TaskTracker Leftovers',
-  description: 'Display and manage leftover food items with expiration tracking',
-  preview: true,
-  documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
-});
+if (!window.customCards.find(card => card.type === 'tasktracker-leftovers-card')) {
+  window.customCards.push({
+    type: 'tasktracker-leftovers-card',
+    name: 'TaskTracker Leftovers',
+    description: 'Display and manage leftover food items with expiration tracking',
+    preview: true,
+    documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
+  });
+}

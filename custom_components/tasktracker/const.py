@@ -68,10 +68,3 @@ ENDPOINT_ALL_TASKS: Final = "/api/tasks/"
 
 # Default values
 DEFAULT_SCAN_INTERVAL: Final = 300  # 5 minutes
-
-# Card types for frontend registration
-CARD_TYPE_RECOMMENDED_TASKS: Final = "tasktracker-recommended-tasks-card"
-CARD_TYPE_LEFTOVERS: Final = "tasktracker-leftovers-card"
-CARD_TYPE_RECENT_TASKS: Final = "tasktracker-recent-tasks-card"
-CARD_TYPE_AVAILABLE_TASKS: Final = "tasktracker-available-tasks-card"
-CARD_TYPE_COMPLETE_TASK: Final = "tasktracker-complete-task-card"

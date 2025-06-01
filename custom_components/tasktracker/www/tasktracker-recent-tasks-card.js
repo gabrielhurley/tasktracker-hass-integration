@@ -20,6 +20,9 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     this._refreshing = false;
     this._error = null;
     this._refreshInterval = null;
+    this._default_days = 7;
+    this._default_limit = 10;
+    this._default_refresh_interval = 300;
   }
 
   static getConfigElement() {
@@ -28,10 +31,10 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      days: 7,
-      limit: 10,
+      days: this._default_days,
+      limit: this._default_limit,
       show_notes: true,
-      refresh_interval: 60,
+      refresh_interval: this._default_refresh_interval,
       user_filter_mode: 'all', // 'all', 'current', 'explicit'
       explicit_user: null
     };
@@ -39,10 +42,10 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
 
   setConfig(config) {
     this._config = {
-      days: config.days || 7,
-      limit: config.limit || 10,
+      days: config.days || this._default_days,
+      limit: config.limit || this._default_limit,
       show_notes: config.show_notes !== false,
-      refresh_interval: config.refresh_interval || 60, // seconds
+      refresh_interval: config.refresh_interval || this._default_refresh_interval, // seconds
       user_filter_mode: config.user_filter_mode || 'all',
       explicit_user: config.explicit_user || null,
       // Legacy support for old 'user' config
@@ -689,14 +692,20 @@ class TaskTrackerRecentTasksCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('tasktracker-recent-tasks-card', TaskTrackerRecentTasksCard);
-customElements.define('tasktracker-recent-tasks-card-editor', TaskTrackerRecentTasksCardEditor);
+if (!customElements.get('tasktracker-recent-tasks-card')) {
+  customElements.define('tasktracker-recent-tasks-card', TaskTrackerRecentTasksCard);
+}
+if (!customElements.get('tasktracker-recent-tasks-card-editor')) {
+  customElements.define('tasktracker-recent-tasks-card-editor', TaskTrackerRecentTasksCardEditor);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'tasktracker-recent-tasks-card',
-  name: 'TaskTracker Recent Tasks',
-  description: 'Display recent task completion history with notes',
-  preview: true,
-  documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
-});
+if (!window.customCards.find(card => card.type === 'tasktracker-recent-tasks-card')) {
+  window.customCards.push({
+    type: 'tasktracker-recent-tasks-card',
+    name: 'TaskTracker Recent Tasks',
+    description: 'Display recent task completion history with notes',
+    preview: true,
+    documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
+  });
+}

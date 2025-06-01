@@ -20,6 +20,9 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     this._refreshing = false;
     this._error = null;
     this._refreshInterval = null;
+    this._default_upcoming_days = 1;
+    this._default_refresh_interval = 300;
+    this._default_max_tasks = 20;
   }
 
   static getConfigElement() {
@@ -28,11 +31,11 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      upcoming_days: 1,
+      upcoming_days: this._default_upcoming_days,
       highlight_overdue: true,
       show_completion_actions: true,
-      refresh_interval: 60,
-      max_tasks: 20,
+      refresh_interval: this._default_refresh_interval,
+      max_tasks: this._default_max_tasks,
       user_filter_mode: 'all', // 'all', 'current', 'explicit'
       explicit_user: null
     };
@@ -40,11 +43,11 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
 
   setConfig(config) {
     this._config = {
-      upcoming_days: config.upcoming_days || 1,
+      upcoming_days: config.upcoming_days || this._default_upcoming_days,
       highlight_overdue: config.highlight_overdue !== false,
       show_completion_actions: config.show_completion_actions !== false,
-      refresh_interval: config.refresh_interval || 60, // seconds
-      max_tasks: config.max_tasks || 20,
+      refresh_interval: config.refresh_interval || this._default_refresh_interval, // seconds
+      max_tasks: config.max_tasks || this._default_max_tasks,
       user_filter_mode: config.user_filter_mode || 'all',
       explicit_user: config.explicit_user || null,
       // Legacy support for old 'user' config
@@ -201,12 +204,16 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
 
   async _completeTask(task) {
     try {
-      await this._hass.callService('tasktracker', 'complete_task_by_name', {
+      const response = await this._hass.callService('tasktracker', 'complete_task_by_name', {
         name: task.name,
         notes: `Completed via available tasks card`
-      });
+      }, {}, true, true);
 
-      this._showSuccess(`Task "${task.name}" completed successfully`);
+      if (response && response.response) {
+        this._showSuccess(`Task "${task.name}" completed successfully`);
+      } else {
+        this._showError(`Failed to complete task: ${response.error || 'Unknown error'}`);
+      }
 
       // Refresh tasks after completion
       setTimeout(() => {
@@ -873,14 +880,20 @@ class TaskTrackerAvailableTasksCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('tasktracker-available-tasks-card', TaskTrackerAvailableTasksCard);
-customElements.define('tasktracker-available-tasks-card-editor', TaskTrackerAvailableTasksCardEditor);
+if (!customElements.get('tasktracker-available-tasks-card')) {
+  customElements.define('tasktracker-available-tasks-card', TaskTrackerAvailableTasksCard);
+}
+if (!customElements.get('tasktracker-available-tasks-card-editor')) {
+  customElements.define('tasktracker-available-tasks-card-editor', TaskTrackerAvailableTasksCardEditor);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'tasktracker-available-tasks-card',
-  name: 'TaskTracker Available Tasks',
-  description: 'Display available and overdue tasks with completion actions',
-  preview: true,
-  documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
-});
+if (!window.customCards.find(card => card.type === 'tasktracker-available-tasks-card')) {
+  window.customCards.push({
+    type: 'tasktracker-available-tasks-card',
+    name: 'TaskTracker Available Tasks',
+    description: 'Display available and overdue tasks with completion actions',
+    preview: true,
+    documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
+  });
+}

@@ -9,218 +9,218 @@
  */
 
 class TaskTrackerCompleteTaskCard extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        this._config = {};
-        this._hass = null;
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._config = {};
+    this._hass = null;
+    this._allTasks = [];
+    this._availableUsers = [];
+    this._loading = false;
+    this._error = null;
+    this._completing = false;
+  }
+
+  static getConfigElement() {
+    return document.createElement('tasktracker-complete-task-card-editor');
+  }
+
+  static getStubConfig() {
+    return {
+      show_task_details: true,
+      default_user_mode: 'current', // 'current', 'explicit', 'none'
+      default_user: null
+    };
+  }
+
+  setConfig(config) {
+    this._config = {
+      show_task_details: config.show_task_details !== false,
+      default_user_mode: config.default_user_mode || 'current',
+      default_user: config.default_user || null,
+      ...config
+    };
+
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._fetchInitialData();
+  }
+
+  connectedCallback() {
+    this._render();
+  }
+
+  async _fetchInitialData() {
+    await Promise.all([
+      this._fetchAllTasks(),
+      this._loadAvailableUsers()
+    ]);
+  }
+
+  async _fetchAllTasks() {
+    this._loading = true;
+    this._error = null;
+    this._render();
+
+    try {
+      const response = await this._hass.callService('tasktracker', 'get_all_tasks', { thin: true }, {}, true, true);
+
+      if (response && response.response && response.response.tasks) {
+        this._allTasks = response.response.tasks.sort((a, b) => a.name.localeCompare(b.name));
+      } else {
         this._allTasks = [];
-        this._availableUsers = [];
-        this._loading = false;
-        this._error = null;
-        this._completing = false;
+      }
+
+      this._loading = false;
+      this._render();
+    } catch (error) {
+      console.error('Failed to fetch all tasks:', error);
+      this._error = `Failed to fetch tasks: ${error.message}`;
+      this._allTasks = [];
+      this._loading = false;
+      this._render();
     }
+  }
 
-    static getConfigElement() {
-        return document.createElement('tasktracker-complete-task-card-editor');
+  async _loadAvailableUsers() {
+    try {
+      const response = await this._hass.callService('tasktracker', 'get_available_users', {}, {}, true, true);
+
+      if (response && response.response && response.response.users) {
+        this._availableUsers = response.response.users;
+      } else {
+        // Fallback to hardcoded users if service fails
+        this._availableUsers = ['gabriel', 'katie', 'admin'];
+      }
+    } catch (error) {
+      console.error('Failed to fetch available users:', error);
+      // Fallback to hardcoded users if service fails
+      this._availableUsers = ['gabriel', 'katie', 'admin'];
     }
+  }
 
-    static getStubConfig() {
-        return {
-            show_task_details: true,
-            default_user_mode: 'current', // 'current', 'explicit', 'none'
-            default_user: null
-        };
-    }
+  _getCurrentUsername() {
+    switch (this._config.default_user_mode) {
+      case 'explicit':
+        return this._config.default_user;
 
-    setConfig(config) {
-        this._config = {
-            show_task_details: config.show_task_details !== false,
-            default_user_mode: config.default_user_mode || 'current',
-            default_user: config.default_user || null,
-            ...config
-        };
+      case 'current':
+        // Try to detect current user
+        if (this._hass && this._hass.user && this._hass.user.name) {
+          // Convert to lowercase and check if it matches any available user
+          const currentUserName = this._hass.user.name.toLowerCase();
 
-        this._render();
-    }
+          // First try exact match
+          if (this._availableUsers.includes(currentUserName)) {
+            return currentUserName;
+          }
 
-    set hass(hass) {
-        this._hass = hass;
-        this._fetchInitialData();
-    }
-
-    connectedCallback() {
-        this._render();
-    }
-
-    async _fetchInitialData() {
-        await Promise.all([
-            this._fetchAllTasks(),
-            this._loadAvailableUsers()
-        ]);
-    }
-
-    async _fetchAllTasks() {
-        this._loading = true;
-        this._error = null;
-        this._render();
-
-        try {
-            const response = await this._hass.callService('tasktracker', 'get_all_tasks', { thin: true }, {}, true, true);
-
-            if (response && response.response && response.response.tasks) {
-                this._allTasks = response.response.tasks.sort((a, b) => a.name.localeCompare(b.name));
-            } else {
-                this._allTasks = [];
-            }
-
-            this._loading = false;
-            this._render();
-        } catch (error) {
-            console.error('Failed to fetch all tasks:', error);
-            this._error = `Failed to fetch tasks: ${error.message}`;
-            this._allTasks = [];
-            this._loading = false;
-            this._render();
+          // Try case-insensitive match
+          const matchedUser = this._availableUsers.find(user =>
+            user.toLowerCase() === currentUserName
+          );
+          if (matchedUser) {
+            return matchedUser;
+          }
         }
+        return null;
+
+      default:
+        return null;
+    }
+  }
+
+  async _completeTask() {
+    const taskSelect = this.shadowRoot.querySelector('#task-select');
+    const usernameSelect = this.shadowRoot.querySelector('#username-select');
+    const notesField = this.shadowRoot.querySelector('#notes-field');
+
+    const selectedTask = taskSelect.value;
+    const selectedUsername = usernameSelect.value;
+    const notes = notesField.value.trim();
+
+    if (!selectedTask) {
+      this._showError('Please select a task');
+      return;
     }
 
-    async _loadAvailableUsers() {
-        try {
-            const response = await this._hass.callService('tasktracker', 'get_available_users', {}, {}, true, true);
-
-            if (response && response.response && response.response.users) {
-                this._availableUsers = response.response.users;
-            } else {
-                // Fallback to hardcoded users if service fails
-                this._availableUsers = ['gabriel', 'katie', 'admin'];
-            }
-        } catch (error) {
-            console.error('Failed to fetch available users:', error);
-            // Fallback to hardcoded users if service fails
-            this._availableUsers = ['gabriel', 'katie', 'admin'];
-        }
+    if (!selectedUsername) {
+      this._showError('Please select a username');
+      return;
     }
 
-    _getCurrentUsername() {
-        switch (this._config.default_user_mode) {
-            case 'explicit':
-                return this._config.default_user;
+    this._completing = true;
+    this._render();
 
-            case 'current':
-                // Try to detect current user
-                if (this._hass && this._hass.user && this._hass.user.name) {
-                    // Convert to lowercase and check if it matches any available user
-                    const currentUserName = this._hass.user.name.toLowerCase();
+    try {
+      const serviceData = {
+        name: selectedTask,
+        username: selectedUsername
+      };
 
-                    // First try exact match
-                    if (this._availableUsers.includes(currentUserName)) {
-                        return currentUserName;
-                    }
+      if (notes) {
+        serviceData.notes = notes;
+      }
 
-                    // Try case-insensitive match
-                    const matchedUser = this._availableUsers.find(user =>
-                        user.toLowerCase() === currentUserName
-                    );
-                    if (matchedUser) {
-                        return matchedUser;
-                    }
-                }
-                return null;
+      await this._hass.callService('tasktracker', 'complete_task_by_name', serviceData);
 
-            default:
-                return null;
-        }
+      this._showSuccess(`Task "${selectedTask}" completed successfully`);
+
+      // Reset form
+      taskSelect.value = '';
+      usernameSelect.value = this._getCurrentUsername() || '';
+      notesField.value = '';
+
+      this._completing = false;
+      this._render();
+
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      this._showError(`Failed to complete task: ${error.message}`);
+      this._completing = false;
+      this._render();
+    }
+  }
+
+  _getSelectedTask() {
+    const taskSelect = this.shadowRoot.querySelector('#task-select');
+    if (!taskSelect || !taskSelect.value) return null;
+
+    return this._allTasks.find(task => task.name === taskSelect.value);
+  }
+
+  _formatTaskDetails(task) {
+    if (!task) return '';
+
+    const details = [];
+
+    if (task.priority) {
+      const priorityMap = { 1: 'High', 2: 'Medium', 3: 'Low' };
+      details.push(`Priority: ${priorityMap[task.priority] || task.priority}`);
     }
 
-    async _completeTask() {
-        const taskSelect = this.shadowRoot.querySelector('#task-select');
-        const usernameSelect = this.shadowRoot.querySelector('#username-select');
-        const notesField = this.shadowRoot.querySelector('#notes-field');
-
-        const selectedTask = taskSelect.value;
-        const selectedUsername = usernameSelect.value;
-        const notes = notesField.value.trim();
-
-        if (!selectedTask) {
-            this._showError('Please select a task');
-            return;
-        }
-
-        if (!selectedUsername) {
-            this._showError('Please select a username');
-            return;
-        }
-
-        this._completing = true;
-        this._render();
-
-        try {
-            const serviceData = {
-                name: selectedTask,
-                username: selectedUsername
-            };
-
-            if (notes) {
-                serviceData.notes = notes;
-            }
-
-            await this._hass.callService('tasktracker', 'complete_task_by_name', serviceData);
-
-            this._showSuccess(`Task "${selectedTask}" completed successfully`);
-
-            // Reset form
-            taskSelect.value = '';
-            usernameSelect.value = this._getCurrentUsername() || '';
-            notesField.value = '';
-
-            this._completing = false;
-            this._render();
-
-        } catch (error) {
-            console.error('Failed to complete task:', error);
-            this._showError(`Failed to complete task: ${error.message}`);
-            this._completing = false;
-            this._render();
-        }
+    if (task.duration_minutes) {
+      const duration = task.duration_minutes < 60
+        ? `${task.duration_minutes}m`
+        : `${Math.floor(task.duration_minutes / 60)}h ${task.duration_minutes % 60 > 0 ? task.duration_minutes % 60 + 'm' : ''}`;
+      details.push(`Duration: ${duration}`);
     }
 
-    _getSelectedTask() {
-        const taskSelect = this.shadowRoot.querySelector('#task-select');
-        if (!taskSelect || !taskSelect.value) return null;
-
-        return this._allTasks.find(task => task.name === taskSelect.value);
+    if (task.due_date) {
+      const dueDate = new Date(task.due_date);
+      details.push(`Due: ${dueDate.toLocaleDateString()}`);
     }
 
-    _formatTaskDetails(task) {
-        if (!task) return '';
+    return details.join(' | ');
+  }
 
-        const details = [];
-
-        if (task.priority) {
-            const priorityMap = { 1: 'High', 2: 'Medium', 3: 'Low' };
-            details.push(`Priority: ${priorityMap[task.priority] || task.priority}`);
-        }
-
-        if (task.duration_minutes) {
-            const duration = task.duration_minutes < 60
-                ? `${task.duration_minutes}m`
-                : `${Math.floor(task.duration_minutes / 60)}h ${task.duration_minutes % 60 > 0 ? task.duration_minutes % 60 + 'm' : ''}`;
-            details.push(`Duration: ${duration}`);
-        }
-
-        if (task.due_date) {
-            const dueDate = new Date(task.due_date);
-            details.push(`Due: ${dueDate.toLocaleDateString()}`);
-        }
-
-        return details.join(' | ');
-    }
-
-    _showSuccess(message) {
-        const toast = document.createElement('div');
-        toast.textContent = message;
-        toast.style.cssText = `
+  _showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
@@ -234,19 +234,19 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
       font-size: 0.9em;
     `;
 
-        document.body.appendChild(toast);
+    document.body.appendChild(toast);
 
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 3000);
-    }
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 3000);
+  }
 
-    _showError(message) {
-        const toast = document.createElement('div');
-        toast.textContent = message;
-        toast.style.cssText = `
+  _showError(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
@@ -260,19 +260,19 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
       font-size: 0.9em;
     `;
 
-        document.body.appendChild(toast);
+    document.body.appendChild(toast);
 
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 5000);
-    }
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 5000);
+  }
 
-    _render() {
-        const selectedTask = this._getSelectedTask();
+  _render() {
+    const selectedTask = this._getSelectedTask();
 
-        this.shadowRoot.innerHTML = `
+    this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
@@ -420,39 +420,39 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
       </div>
     `;
 
-        // Add event listeners
-        const taskSelect = this.shadowRoot.querySelector('#task-select');
-        if (taskSelect) {
-            taskSelect.addEventListener('change', () => this._render());
-        }
-
-        const completeBtn = this.shadowRoot.querySelector('.complete-btn');
-        if (completeBtn) {
-            completeBtn.addEventListener('click', () => this._completeTask());
-        }
-
-        // Set default username
-        const usernameSelect = this.shadowRoot.querySelector('#username-select');
-        if (usernameSelect) {
-            const defaultUser = this._getCurrentUsername();
-            if (defaultUser && this._availableUsers.includes(defaultUser)) {
-                usernameSelect.value = defaultUser;
-            }
-        }
+    // Add event listeners
+    const taskSelect = this.shadowRoot.querySelector('#task-select');
+    if (taskSelect) {
+      taskSelect.addEventListener('change', () => this._render());
     }
 
-    _renderContent() {
-        if (this._loading) {
-            return '<div class="loading">Loading tasks...</div>';
-        }
+    const completeBtn = this.shadowRoot.querySelector('.complete-btn');
+    if (completeBtn) {
+      completeBtn.addEventListener('click', () => this._completeTask());
+    }
 
-        if (this._error) {
-            return `<div class="error">${this._error}</div>`;
-        }
+    // Set default username
+    const usernameSelect = this.shadowRoot.querySelector('#username-select');
+    if (usernameSelect) {
+      const defaultUser = this._getCurrentUsername();
+      if (defaultUser && this._availableUsers.includes(defaultUser)) {
+        usernameSelect.value = defaultUser;
+      }
+    }
+  }
 
-        const selectedTask = this._getSelectedTask();
+  _renderContent() {
+    if (this._loading) {
+      return '<div class="loading">Loading tasks...</div>';
+    }
 
-        return `
+    if (this._error) {
+      return `<div class="error">${this._error}</div>`;
+    }
+
+    const selectedTask = this._getSelectedTask();
+
+    return `
       <div class="form-group">
         <label class="form-label" for="task-select">Task Name</label>
         <select id="task-select" class="form-control" ${this._completing ? 'disabled' : ''}>
@@ -492,41 +492,41 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         ${this._completing ? 'Completing...' : 'Complete Task'}
       </button>
     `;
-    }
+  }
 
-    getCardSize() {
-        return 3;
-    }
+  getCardSize() {
+    return 3;
+  }
 }
 
 class TaskTrackerCompleteTaskCardEditor extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        this._config = {};
-        this._hass = null;
-    }
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._config = {};
+    this._hass = null;
+  }
 
-    setConfig(config) {
-        this._config = { ...TaskTrackerCompleteTaskCard.getStubConfig(), ...config };
-        this._render();
-    }
+  setConfig(config) {
+    this._config = { ...TaskTrackerCompleteTaskCard.getStubConfig(), ...config };
+    this._render();
+  }
 
-    set hass(hass) {
-        this._hass = hass;
-    }
+  set hass(hass) {
+    this._hass = hass;
+  }
 
-    configChanged(newConfig) {
-        const event = new Event('config-changed', {
-            bubbles: true,
-            composed: true,
-        });
-        event.detail = { config: newConfig };
-        this.dispatchEvent(event);
-    }
+  configChanged(newConfig) {
+    const event = new Event('config-changed', {
+      bubbles: true,
+      composed: true,
+    });
+    event.detail = { config: newConfig };
+    this.dispatchEvent(event);
+  }
 
-    _render() {
-        this.shadowRoot.innerHTML = `
+  _render() {
+    this.shadowRoot.innerHTML = `
       <style>
         .card-config {
           display: flex;
@@ -633,62 +633,68 @@ class TaskTrackerCompleteTaskCardEditor extends HTMLElement {
       </div>
     `;
 
-        // Add event listeners
-        this.shadowRoot.querySelectorAll('input, select').forEach(input => {
-            input.addEventListener('change', this._valueChanged.bind(this));
-            if (input.type === 'text') {
-                input.addEventListener('input', this._valueChanged.bind(this));
-            }
-        });
+    // Add event listeners
+    this.shadowRoot.querySelectorAll('input, select').forEach(input => {
+      input.addEventListener('change', this._valueChanged.bind(this));
+      if (input.type === 'text') {
+        input.addEventListener('input', this._valueChanged.bind(this));
+      }
+    });
+  }
+
+  _valueChanged(ev) {
+    if (!this._config || !this._hass) {
+      return;
     }
 
-    _valueChanged(ev) {
-        if (!this._config || !this._hass) {
-            return;
-        }
+    const target = ev.target;
+    const configKey = target.dataset.configKey;
 
-        const target = ev.target;
-        const configKey = target.dataset.configKey;
-
-        if (!configKey) {
-            return;
-        }
-
-        let value;
-        if (target.type === 'checkbox') {
-            value = target.checked;
-        } else {
-            value = target.value || null;
-        }
-
-        // Handle empty string for optional fields
-        if (configKey === 'default_user' && value === '') {
-            value = null;
-        }
-
-        // Update config
-        this._config = {
-            ...this._config,
-            [configKey]: value
-        };
-
-        // If default_user_mode changed, re-render to show/hide default user field
-        if (configKey === 'default_user_mode') {
-            this._render();
-        }
-
-        this.configChanged(this._config);
+    if (!configKey) {
+      return;
     }
+
+    let value;
+    if (target.type === 'checkbox') {
+      value = target.checked;
+    } else {
+      value = target.value || null;
+    }
+
+    // Handle empty string for optional fields
+    if (configKey === 'default_user' && value === '') {
+      value = null;
+    }
+
+    // Update config
+    this._config = {
+      ...this._config,
+      [configKey]: value
+    };
+
+    // If default_user_mode changed, re-render to show/hide default user field
+    if (configKey === 'default_user_mode') {
+      this._render();
+    }
+
+    this.configChanged(this._config);
+  }
 }
 
-customElements.define('tasktracker-complete-task-card', TaskTrackerCompleteTaskCard);
-customElements.define('tasktracker-complete-task-card-editor', TaskTrackerCompleteTaskCardEditor);
+if (!customElements.get('tasktracker-complete-task-card')) {
+  customElements.define('tasktracker-complete-task-card', TaskTrackerCompleteTaskCard);
+}
+if (!customElements.get('tasktracker-complete-task-card-editor')) {
+  customElements.define('tasktracker-complete-task-card-editor', TaskTrackerCompleteTaskCardEditor);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
+if (!window.customCards.find(card => card.type === 'tasktracker-complete-task-card')) {
+  window.customCards.push({
     type: 'tasktracker-complete-task-card',
     name: 'TaskTracker Complete Task',
     description: 'Form to complete arbitrary tasks with task and user selection',
     preview: true,
     documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
-});
+  });
+}

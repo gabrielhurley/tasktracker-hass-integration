@@ -21,6 +21,9 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     this._refreshing = false;
     this._error = null;
     this._refreshInterval = null;
+    this._default_minutes = 60;
+    this._default_refresh_interval = 300;
+    this._default_max_tasks = 3;
   }
 
   static getConfigElement() {
@@ -30,10 +33,10 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   static getStubConfig() {
     return {
       user: null,
-      default_minutes: 60,
+      default_minutes: this._default_minutes,
       show_completion_notes: true,
-      refresh_interval: 30,
-      max_tasks: 3,
+      refresh_interval: this._default_refresh_interval,
+      max_tasks: this._default_max_tasks,
       user_filter_mode: 'explicit', // 'current', 'explicit'
       explicit_user: null
     };
@@ -42,10 +45,10 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   setConfig(config) {
     this._config = {
       user: config.user || null, // Legacy support
-      default_minutes: config.default_minutes || 60,
+      default_minutes: config.default_minutes || this._default_minutes,
       show_completion_notes: config.show_completion_notes !== false,
-      refresh_interval: config.refresh_interval || 30, // seconds
-      max_tasks: config.max_tasks || 3,
+      refresh_interval: config.refresh_interval || this._default_refresh_interval, // seconds
+      max_tasks: config.max_tasks || this._default_max_tasks,
       user_filter_mode: config.user_filter_mode || 'explicit',
       explicit_user: config.explicit_user || null,
       ...config
@@ -373,13 +376,17 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     }
 
     try {
-      await this._hass.callService('tasktracker', 'complete_task_by_name', {
+      const response = await this._hass.callService('tasktracker', 'complete_task_by_name', {
         name: task.name,
         username: username,
         notes: notes || undefined
-      });
+      }, {}, true, true);
 
-      this._showSuccess(`Task "${task.name}" completed successfully`);
+      if (response && response.response) {
+        this._showSuccess(`Task "${task.name}" completed successfully`);
+      } else {
+        this._showError(`Failed to complete task: ${response.error || 'Unknown error'}`);
+      }
 
       // Refresh tasks after completion
       setTimeout(() => {
@@ -422,6 +429,38 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       return dateString;
     }
   }
+
+  _formatDueDate(dueDateString) {
+    try {
+      const dueDate = new Date(dueDateString);
+      const now = new Date();
+      const diffMs = dueDate - now;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+      if (diffMs < 0) {
+        // Overdue
+        const overdueDays = Math.abs(diffDays);
+        if (overdueDays === 0) {
+          return 'Today';
+        } else if (overdueDays === 1) {
+          return '1 day ago';
+        } else {
+          return `${overdueDays} days ago`;
+        }
+      } else if (diffDays === 0) {
+        // Due today
+        return diffHours > 0 ? `${diffHours}h` : 'Now';
+      } else if (diffDays === 1) {
+        return 'Tomorrow';
+      } else {
+        return `${diffDays} days`;
+      }
+    } catch {
+      return 'Unknown';
+    }
+  }
+
 
   _showSuccess(message) {
     const toast = document.createElement('div');
@@ -763,8 +802,8 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     const metadataParts = [];
     metadataParts.push(priority);
     metadataParts.push(duration);
-    if (task.last_completed) {
-      metadataParts.push(`Last: ${this._formatDate(task.last_completed).split(' ')[0]}`);
+    if (task.due_date) {
+      metadataParts.push(`${this._formatDueDate(task.due_date)}`);
     }
 
     return `
@@ -1038,14 +1077,20 @@ class TaskTrackerRecommendedTasksCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('tasktracker-recommended-tasks-card', TaskTrackerRecommendedTasksCard);
-customElements.define('tasktracker-recommended-tasks-card-editor', TaskTrackerRecommendedTasksCardEditor);
+if (!customElements.get('tasktracker-recommended-tasks-card')) {
+  customElements.define('tasktracker-recommended-tasks-card', TaskTrackerRecommendedTasksCard);
+}
+if (!customElements.get('tasktracker-recommended-tasks-card-editor')) {
+  customElements.define('tasktracker-recommended-tasks-card-editor', TaskTrackerRecommendedTasksCardEditor);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'tasktracker-recommended-tasks-card',
-  name: 'TaskTracker Recommended Tasks',
-  description: 'Display recommended tasks with time filtering and completion',
-  preview: true,
-  documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
-});
+if (!window.customCards.find(card => card.type === 'tasktracker-recommended-tasks-card')) {
+  window.customCards.push({
+    type: 'tasktracker-recommended-tasks-card',
+    name: 'TaskTracker Recommended Tasks',
+    description: 'Display recommended tasks with time filtering and completion',
+    preview: true,
+    documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
+  });
+}
