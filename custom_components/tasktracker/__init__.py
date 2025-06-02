@@ -20,8 +20,8 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.util import executor
 
 from .api import TaskTrackerAPI
 from .const import DOMAIN
@@ -37,6 +37,9 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = []  # We'll add platforms here if needed
+
+# Integration can only be set up via config entry
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def _setup_voice_sentences(hass: HomeAssistant) -> bool:
@@ -78,7 +81,7 @@ async def _setup_voice_sentences(hass: HomeAssistant) -> bool:
                 if source_content == target_content:
                     _LOGGER.debug("TaskTracker sentences file is already up to date")
                     return True
-                else:
+                else:  # noqa: RET505
                     _LOGGER.info("Updating TaskTracker sentences file")
             except Exception as e:  # noqa: BLE001
                 _LOGGER.warning("Could not compare sentence files: %s", e)
@@ -148,7 +151,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.debug(
                     "Automatic voice setup failed. See VOICE_SETUP.md for manual instructions."  # noqa: E501
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             _LOGGER.debug("Voice setup skipped due to error: %s", e)
 
         # Set up platforms if we add any entities later

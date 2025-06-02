@@ -4,10 +4,9 @@ complete_task:
   fields:
     task_id:
       required: true
-      example: 123
+      example: "123"
       selector:
-        number:
-          min: 1
+        text:
     assigned_to:
       required: false
       example: "john_doe"
@@ -88,20 +87,16 @@ create_adhoc_task:
           unit_of_measurement: "minutes"
     priority:
       required: false
-      example: 2
+      example: "2"
       selector:
         select:
           options:
             - label: "High (1)"
-              value: 1
+              value: "1"
             - label: "Medium (2)"
-              value: 2
+              value: "2"
             - label: "Low (3)"
-              value: 3
-            - label: "Very Low (4)"
-              value: 4
-            - label: "Minimal (5)"
-              value: 5
+              value: "3"
 
 query_task:
   fields:

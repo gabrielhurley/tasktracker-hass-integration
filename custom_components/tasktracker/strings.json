@@ -145,7 +145,7 @@
                 },
                 "priority": {
                     "name": "Priority",
-                    "description": "Task priority level (1=High, 5=Minimal)."
+                    "description": "Task priority level (1=High, 2=Medium, 3=Low)."
                 }
             }
         },
