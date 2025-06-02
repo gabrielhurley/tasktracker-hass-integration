@@ -212,7 +212,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       // Refresh tasks after completion
       setTimeout(() => {
         this._fetchAvailableTasks();
-      }, 1000);
+      }, 100);
 
     } catch (error) {
       console.error('Failed to complete task:', error);

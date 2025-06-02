@@ -188,7 +188,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       // Refresh leftovers after disposal
       setTimeout(() => {
         this._fetchLeftovers();
-      }, 1000);
+      }, 100);
 
     } catch (error) {
       console.error('Failed to dispose leftover:', error);

@@ -71,8 +71,8 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     try {
       const response = await this._hass.callService('tasktracker', 'get_all_tasks', { thin: true }, {}, true, true);
 
-      if (response && response.response && response.response.data && response.response.data.tasks) {
-        this._allTasks = response.response.data.tasks.sort((a, b) => a.name.localeCompare(b.name));
+      if (response && response.response && response.response.data && response.response.data.items) {
+        this._allTasks = response.response.data.items.sort((a, b) => a.name.localeCompare(b.name));
       } else {
         this._allTasks = [];
       }

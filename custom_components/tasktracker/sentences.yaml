@@ -45,9 +45,9 @@ intents:
   GetTaskDetails:
     data:
       - sentences:
-          - "What does {task_name} entail"
-          - "Tell me more about {task_name}"
-          - "What are the details of {task_name}"
+          - "What does [the task] {task_name} entail"
+          - "Tell me more about [the task] {task_name}"
+          - "What are the details of [the task] {task_name}"
         slots:
           task_name:
             required: true

@@ -1,63 +1,173 @@
-"""Test intent files for TaskTracker."""
-
-import os
-from pathlib import Path
+"""Test TaskTracker intent handlers."""
 
 import pytest
-import yaml
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from custom_components.tasktracker.intents import (
+    AddLeftoverIntentHandler,
+    CompleteTaskIntentHandler,
+    AddAdHocTaskIntentHandler,
+    QueryTaskStatusIntentHandler,
+    GetRecommendedTasksForPersonIntentHandler,
+    async_register_intents,
+    INTENT_HANDLERS,
+)
+from custom_components.tasktracker.const import DOMAIN
 
 
-def test_intent_files_exist() -> None:
-    """Test that all intent files exist."""
-    intents_dir = "custom_components/tasktracker/intents"
-    expected_files = [
-        "CompleteTask.yaml",
-        "AddLeftover.yaml",
-        "AddAdHocTask.yaml",
-        "QueryTaskStatus.yaml",
-        "GetTaskDetails.yaml",
-        "GetRecommendedTasksForPersonAndTime.yaml",
-        "GetRecommendedTasksForPerson.yaml",
-    ]
-
-    for file in expected_files:
-        assert Path(intents_dir, file).exists(), f"Intent file {file} does not exist"
+@pytest.fixture
+def mock_hass():
+    """Mock Home Assistant."""
+    hass = MagicMock()
+    hass.data = {
+        DOMAIN: {
+            "test_entry": {
+                "api": AsyncMock(),
+                "config": {},
+            }
+        }
+    }
+    return hass
 
 
-def test_sentence_file_exists() -> None:
-    """Test that sentence file exists."""
-    sentences_file = "custom_components/tasktracker/sentences.yaml"
-    assert Path(sentences_file).exists(), "Sentence file does not exist"
+@pytest.fixture
+def mock_intent_obj():
+    """Mock intent object."""
+    intent_obj = MagicMock()
+    intent_obj.language = "en"
+    intent_obj.slots = {}
+    return intent_obj
 
 
-def test_intent_files_valid_yaml() -> None:
-    """Test that all intent files contain valid YAML."""
-    intents_dir = "custom_components/tasktracker/intents"
+class TestIntentHandlers:
+    """Test individual intent handlers."""
 
-    for filename in Path(intents_dir).glob("*.yaml"):
-        with filename.open("r", encoding="utf-8") as f:
-            try:
-                yaml.safe_load(f)
-            except yaml.YAMLError as e:
-                pytest.fail(f"Invalid YAML in {filename}: {e}")
+    async def test_add_leftover_intent_missing_name(self, mock_hass, mock_intent_obj):
+        """Test AddLeftover intent with missing leftover name."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        mock_intent_obj.slots = {}
+
+        response = await handler.async_handle(mock_intent_obj)
+
+        # Check that response contains expected message
+        assert hasattr(response, "speech")
+
+    async def test_add_leftover_intent_success(self, mock_hass, mock_intent_obj):
+        """Test AddLeftover intent with successful creation."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        mock_intent_obj.slots = {
+            "leftover_name": {"value": "pizza"},
+            "leftover_assigned_to": {"value": "john"},
+            "leftover_shelf_life": {"value": "3"},
+        }
+
+        # Mock successful API response
+        api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+        api_mock.create_leftover.return_value = {
+            "success": True,
+            "spoken_response": "Pizza leftover added successfully",
+        }
+
+        response = await handler.async_handle(mock_intent_obj)
+
+        # Verify API was called correctly
+        api_mock.create_leftover.assert_called_once_with(
+            name="pizza",
+            assigned_to="john",
+            shelf_life_days=3,
+            days_ago=None,
+        )
+        assert hasattr(response, "speech")
+
+    async def test_complete_task_intent_missing_name(self, mock_hass, mock_intent_obj):
+        """Test CompleteTask intent with missing task name."""
+        handler = CompleteTaskIntentHandler(mock_hass)
+        mock_intent_obj.slots = {}
+
+        response = await handler.async_handle(mock_intent_obj)
+
+        assert hasattr(response, "speech")
+
+    async def test_complete_task_intent_success(self, mock_hass, mock_intent_obj):
+        """Test CompleteTask intent with successful completion."""
+        handler = CompleteTaskIntentHandler(mock_hass)
+        mock_intent_obj.slots = {
+            "task_name": {"value": "clean kitchen"},
+            "task_completed_by": {"value": "jane"},
+        }
+
+        # Mock successful API response
+        api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+        api_mock.complete_task_by_name.return_value = {
+            "success": True,
+            "spoken_response": "Task clean kitchen completed successfully",
+        }
+
+        response = await handler.async_handle(mock_intent_obj)
+
+        api_mock.complete_task_by_name.assert_called_once_with(
+            name="clean kitchen",
+            assigned_to="jane",
+        )
+        assert hasattr(response, "speech")
+
+    async def test_get_recommended_tasks_success(self, mock_hass, mock_intent_obj):
+        """Test GetRecommendedTasksForPerson intent with successful response."""
+        handler = GetRecommendedTasksForPersonIntentHandler(mock_hass)
+        mock_intent_obj.slots = {
+            "person": {"value": "alice"},
+        }
+
+        # Mock successful API response
+        api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+        api_mock.get_recommended_tasks.return_value = {
+            "success": True,
+            "data": {
+                "items": [
+                    {"name": "wash dishes"},
+                    {"name": "vacuum living room"},
+                    {"name": "water plants"},
+                ]
+            },
+        }
+
+        response = await handler.async_handle(mock_intent_obj)
+
+        api_mock.get_recommended_tasks.assert_called_once_with(
+            assigned_to="alice",
+            available_minutes=60,
+        )
+        assert hasattr(response, "speech")
+
+    async def test_api_not_available(self, mock_intent_obj):
+        """Test intent handler when API is not available."""
+        # Mock hass without API data
+        hass_no_api = MagicMock()
+        hass_no_api.data = {DOMAIN: {}}
+
+        handler = AddLeftoverIntentHandler(hass_no_api)
+        response = await handler.async_handle(mock_intent_obj)
+
+        assert hasattr(response, "speech")
 
 
-def test_sentence_file_valid_yaml() -> None:
-    """Test that sentence file contains valid YAML."""
-    sentences_file = "custom_components/tasktracker/sentences.yaml"
+class TestIntentRegistration:
+    """Test intent registration functionality."""
 
-    with Path(sentences_file).open("r", encoding="utf-8") as f:
-        try:
-            data = yaml.safe_load(f)
-            assert "language" in data, "Sentence file missing language field"
-            assert "intents" in data, "Sentence file missing intents field"
-            assert "lists" in data, "Sentence file missing lists field"
-        except yaml.YAMLError as e:
-            pytest.fail(f"Invalid YAML in sentence file: {e}")
+    def test_intent_handlers_registry(self):
+        """Test that all intent handlers are in the registry."""
+        assert len(INTENT_HANDLERS) == 7
 
+        # Check that all handlers have unique intent types
+        intent_types = [handler.intent_type for handler in INTENT_HANDLERS]
+        assert len(intent_types) == len(set(intent_types))
 
-def test_voice_setup_function_exists() -> None:
-    """Test that voice setup function exists and can be imported."""
-    from custom_components.tasktracker import _setup_voice_sentences
+    async def test_async_register_intents(self, mock_hass):
+        """Test that async_register_intents calls registration for all handlers."""
+        with patch(
+            "custom_components.tasktracker.intents.async_register"
+        ) as mock_register:
+            await async_register_intents(mock_hass)
 
-    assert callable(_setup_voice_sentences), "Voice setup function should be callable"
+            # Should register all 7 intent handlers
+            assert mock_register.call_count == 7
