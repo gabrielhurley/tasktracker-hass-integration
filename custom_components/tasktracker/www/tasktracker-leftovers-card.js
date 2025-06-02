@@ -536,12 +536,6 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
       TaskTrackerUtils.createCheckboxInput(this._config.show_expired, 'show_expired')
     )}
 
-        ${TaskTrackerUtils.createConfigRow(
-      'Show Disposal Notes',
-      'Display disposal notes field in modal',
-      TaskTrackerUtils.createCheckboxInput(this._config.show_disposal_notes, 'show_disposal_notes')
-    )}
-
         <div class="section-title">User Settings</div>
 
         ${TaskTrackerUtils.createConfigRow(
