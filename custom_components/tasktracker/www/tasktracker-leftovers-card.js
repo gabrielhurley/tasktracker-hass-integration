@@ -1,3 +1,5 @@
+import { TaskTrackerUtils } from './tasktracker-utils.js';
+
 /**
  * TaskTracker Leftovers Card
  *
@@ -72,9 +74,13 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       clearInterval(this._refreshInterval);
     }
 
-    this._refreshInterval = setInterval(() => {
+    this._refreshInterval = TaskTrackerUtils.setupAutoRefresh(() => {
       this._fetchLeftovers();
-    }, this._config.refresh_interval * 1000);
+    }, this._config.refresh_interval);
+  }
+
+  _getCurrentUsername() {
+    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass);
   }
 
   async _fetchLeftovers() {
@@ -123,20 +129,12 @@ class TaskTrackerLeftoversCard extends HTMLElement {
   }
 
   _leftoversEqual(leftovers1, leftovers2) {
-    if (leftovers1.length !== leftovers2.length) return false;
-
-    for (let i = 0; i < leftovers1.length; i++) {
-      const l1 = leftovers1[i];
-      const l2 = leftovers2[i];
-
-      if (l1.name !== l2.name ||
-        l1.created_at !== l2.created_at ||
-        l1.due_date !== l2.due_date) {
-        return false;
-      }
-    }
-
-    return true;
+    return TaskTrackerUtils.arraysEqual(leftovers1, leftovers2, (l1, l2) => {
+      return l1.name === l2.name &&
+        l1.category === l2.category &&
+        l1.expiration_date === l2.expiration_date &&
+        l1.storage_location === l2.storage_location;
+    });
   }
 
   _categorizeLeftoversByStatus(leftovers) {
@@ -161,17 +159,29 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     return { good, expired };
   }
 
-  async _disposeLeftover(leftover) {
+  async _disposeLeftover(leftover, notes) {
+    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass);
+
+    if (!username) {
+      if (this._config.user_filter_mode === 'all') {
+        TaskTrackerUtils.showError('Cannot dispose leftover: No user available for disposal');
+      } else {
+        TaskTrackerUtils.showError('No user configured for leftover disposal');
+      }
+      return;
+    }
+
     try {
       const response = await this._hass.callService('tasktracker', 'complete_task_by_name', {
         name: leftover.name,
-        notes: `Disposed via leftovers card`
+        assigned_to: username,
+        notes: notes || undefined
       }, {}, true, true);
 
       if (response && response.response) {
-        this._showSuccess(`Leftover "${leftover.name}" disposed successfully`);
+        TaskTrackerUtils.showSuccess(`Leftover "${leftover.name}" disposed successfully`);
       } else {
-        this._showError(`Failed to dispose leftover: ${response.error || 'Unknown error'}`);
+        TaskTrackerUtils.showError(`Failed to dispose leftover: ${response.error || 'Unknown error'}`);
       }
 
       // Refresh leftovers after disposal
@@ -181,8 +191,12 @@ class TaskTrackerLeftoversCard extends HTMLElement {
 
     } catch (error) {
       console.error('Failed to dispose leftover:', error);
-      this._showError(`Failed to dispose leftover: ${error.message}`);
+      TaskTrackerUtils.showError(`Failed to dispose leftover: ${error.message}`);
     }
+  }
+
+  _formatExpirationDate(expirationDateString) {
+    return TaskTrackerUtils.formatDueDate(expirationDateString);
   }
 
   _formatAge(createdAt) {
@@ -238,223 +252,28 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     }
   }
 
-  _showSuccess(message) {
-    const toast = document.createElement('div');
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--primary-color);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      font-size: 0.9em;
-    `;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 3000);
-  }
-
-  _showError(message) {
-    const toast = document.createElement('div');
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--secondary-text-color);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      font-size: 0.9em;
-    `;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 5000);
+  _showLeftoverModal(leftover, leftoverIndex) {
+    const modal = this._createLeftoverModal(leftover, leftoverIndex);
+    TaskTrackerUtils.showModal(modal);
   }
 
   _render() {
-    const { good, expired } = this._config.categorize_by_safety
-      ? this._categorizeLeftoversByStatus(this._leftovers)
-      : { good: [], expired: this._leftovers };
+    const username = this._getCurrentUsername();
+    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host {
-          display: block;
+        ${TaskTrackerUtils.getCommonCardStyles()}
+        .leftover-item.fresh {
+          border-left: 2px solid #4caf50;
         }
 
-        .card {
-          background: var(--card-background-color);
-          border-radius: 4px;
-          padding: 16px;
-          box-shadow: var(--ha-card-box-shadow);
-          font-family: var(--primary-font-family);
-          border: 1px solid var(--divider-color);
-        }
-
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-          padding-bottom: 8px;
-          border-bottom: 1px solid var(--divider-color);
-          position: relative;
-        }
-
-        .title {
-          font-size: 1.1em;
-          font-weight: 500;
-          color: var(--primary-text-color);
-          margin: 0;
-        }
-
-        .refresh-btn {
-          background: none;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          padding: 6px;
-          cursor: pointer;
-          color: var(--secondary-text-color);
-        }
-
-        .refresh-btn:hover {
-          background: var(--secondary-background-color);
-        }
-
-        .loading, .error, .no-leftovers {
-          text-align: center;
-          padding: 24px 0;
-          color: var(--secondary-text-color);
-          font-size: 0.9em;
-        }
-
-        .error {
-          color: var(--primary-text-color);
-          background: var(--secondary-background-color);
-          padding: 12px;
-          border-radius: 4px;
-          border: 1px solid var(--divider-color);
-        }
-
-        .no-leftovers {
-          color: var(--secondary-text-color);
-        }
-
-        .category {
-          margin-bottom: 16px;
-        }
-
-        .category:last-child {
-          margin-bottom: 0;
-        }
-
-        .category-title {
-          font-size: 0.9em;
-          font-weight: 600;
-          margin-bottom: 8px;
-          padding-bottom: 4px;
-          border-bottom: 1px solid var(--divider-color);
-          color: var(--primary-text-color);
-          letter-spacing: 0.5px;
-        }
-
-        .leftover-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 8px 12px;
-          margin-bottom: 4px;
-          background: var(--secondary-background-color);
-          border-radius: 4px;
-          border-left: 2px solid var(--divider-color);
-        }
-
-        .leftover-item:hover {
-          background: var(--divider-color);
-        }
-
-        .leftover-item:last-child {
-          margin-bottom: 0;
+        .leftover-item.warning {
+          border-left: 2px solid #ff9800;
         }
 
         .leftover-item.expired {
-          border-left-color: var(--error-color);
-        }
-
-        .leftover-content {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .leftover-name {
-          font-weight: 500;
-          color: var(--primary-text-color);
-          font-size: 0.95em;
-          margin-bottom: 2px;
-          word-wrap: break-word;
-        }
-
-        .leftover-metadata {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-        }
-
-        .leftover-actions {
-          display: flex;
-          gap: 8px;
-          margin-left: 12px;
-        }
-
-        .dispose-btn {
-          background: transparent;
-          color: var(--secondary-text-color);
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          padding: 6px 10px;
-          font-size: 0.8em;
-          cursor: pointer;
-          min-width: 44px;
-          min-height: 32px;
-        }
-
-        .dispose-btn:hover {
-          background: var(--secondary-background-color);
-          border-color: var(--primary-text-color);
-        }
-
-        .refreshing-indicator {
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 2px;
-          height: 100%;
-          background: var(--primary-color);
-          opacity: 0.6;
-          animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.8; }
+          border-left: 2px solid #f44336;
         }
       </style>
 
@@ -467,7 +286,11 @@ class TaskTrackerLeftoversCard extends HTMLElement {
           ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
         </div>
 
-        ${this._renderContent(good, expired)}
+        ${!hasValidUserConfig ? `
+          <div class="no-user-warning">
+            No user configured. Please set user in card configuration.
+          </div>
+        ` : this._renderContent()}
       </div>
     `;
 
@@ -477,21 +300,32 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       refreshBtn.addEventListener('click', () => this._fetchLeftovers());
     }
 
-    // Dispose button event listeners
-    const disposeBtns = this.shadowRoot.querySelectorAll('.dispose-btn');
-    disposeBtns.forEach((btn, index) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const leftoverIndex = parseInt(btn.dataset.leftoverIndex);
-        const leftover = this._leftovers[leftoverIndex];
-        if (leftover) {
-          this._disposeLeftover(leftover);
-        }
+    if (hasValidUserConfig) {
+      // Leftover item click handlers
+      const leftoverItems = this.shadowRoot.querySelectorAll('.leftover-item');
+      leftoverItems.forEach((item, index) => {
+        item.addEventListener('click', () => {
+          if (this._leftovers[index]) {
+            this._showLeftoverModal(this._leftovers[index], index);
+          }
+        });
       });
-    });
+
+      // Dispose button click handlers
+      const disposeButtons = this.shadowRoot.querySelectorAll('.dispose-btn');
+      disposeButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent event bubbling to parent leftover item
+          const leftoverIndex = parseInt(button.dataset.leftoverIndex, 10);
+          if (this._leftovers[leftoverIndex]) {
+            this._disposeLeftover(this._leftovers[leftoverIndex], '');
+          }
+        });
+      });
+    }
   }
 
-  _renderContent(good, expired) {
+  _renderContent() {
     // Only show loading state on initial load
     if (this._loading && this._initialLoad) {
       return '<div class="loading">Loading leftovers...</div>';
@@ -508,6 +342,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     let content = '';
 
     if (this._config.categorize_by_safety) {
+      const { good, expired } = this._categorizeLeftoversByStatus(this._leftovers);
       if (expired.length > 0) {
         content += `
           <div class="category category-expired">
@@ -543,13 +378,13 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     metadataParts.push(expirationStatus);
 
     return `
-      <div class="leftover-item ${isExpired ? 'expired' : 'good'}">
-        <div class="leftover-content">
-          <div class="leftover-name">${leftover.name}</div>
-          <div class="leftover-metadata">${metadataParts.join(' | ')}</div>
+      <div class="task-item leftover-item ${isExpired ? 'expired' : 'fresh'}">
+        <div class="task-content leftover-content">
+          <div class="task-name leftover-name">${leftover.name}</div>
+          <div class="task-metadata leftover-metadata">${metadataParts.join(' | ')}</div>
         </div>
         ${this._config.show_disposal_actions ? `
-          <div class="leftover-actions">
+          <div class="task-actions leftover-actions">
             <button class="dispose-btn" data-leftover-index="${originalIndex}">
               Dispose
             </button>
@@ -570,7 +405,7 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
-    this._debounceTimers = {}; // Store debounce timers for different fields
+    this._debounceTimers = {};
   }
 
   setConfig(config) {
@@ -594,138 +429,49 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
   _render() {
     this.shadowRoot.innerHTML = `
       <style>
-        .card-config {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          padding: 16px;
-        }
-
-        .config-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-        }
-
-        .config-row label {
-          flex: 1;
-          font-weight: 500;
-          color: var(--primary-text-color);
-        }
-
-        .config-row input, .config-row select {
-          flex: 0 0 auto;
-          min-width: 120px;
-          padding: 8px 12px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          font-family: inherit;
-        }
-
-        .config-row input[type="checkbox"] {
-          min-width: auto;
-          width: 20px;
-          height: 20px;
-        }
-
-        .config-row input[type="number"] {
-          width: 80px;
-        }
-
-        .config-description {
-          font-size: 0.85em;
-          color: var(--secondary-text-color);
-          margin-top: 4px;
-          font-style: italic;
-        }
-
-        .section-title {
-          font-size: 1.1em;
-          font-weight: 600;
-          color: var(--primary-text-color);
-          margin-top: 16px;
-          margin-bottom: 8px;
-          padding-bottom: 4px;
-          border-bottom: 1px solid var(--divider-color);
-        }
-
-        .section-title:first-child {
-          margin-top: 0;
-        }
+        ${TaskTrackerUtils.getCommonConfigStyles()}
       </style>
 
       <div class="card-config">
         <div class="section-title">Display Settings</div>
 
-        <div class="config-row">
-          <label>
-            Maximum Items
-            <div class="config-description">Maximum number of leftovers to display</div>
-          </label>
-          <input
-            type="number"
-            min="5"
-            max="100"
-            value="${this._config.max_items}"
-            data-config-key="max_items"
-          />
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'Show Expired',
+      'Display expired leftovers in the list',
+      TaskTrackerUtils.createCheckboxInput(this._config.show_expired, 'show_expired')
+    )}
 
-        <div class="config-row">
-          <label>
-            Categorize by Safety
-            <div class="config-description">Separate good and expired leftovers</div>
-          </label>
-          <input
-            type="checkbox"
-            ${this._config.categorize_by_safety ? 'checked' : ''}
-            data-config-key="categorize_by_safety"
-          />
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'Show Disposal Notes',
+      'Display disposal notes field in modal',
+      TaskTrackerUtils.createCheckboxInput(this._config.show_disposal_notes, 'show_disposal_notes')
+    )}
 
-        <div class="config-row">
-          <label>
-            Show Age
-            <div class="config-description">Display how long leftovers have been stored</div>
-          </label>
-          <input
-            type="checkbox"
-            ${this._config.show_age ? 'checked' : ''}
-            data-config-key="show_age"
-          />
-        </div>
+        <div class="section-title">User Settings</div>
 
-        <div class="config-row">
-          <label>
-            Show Disposal Actions
-            <div class="config-description">Display quick disposal buttons for leftovers</div>
-          </label>
-          <input
-            type="checkbox"
-            ${this._config.show_disposal_actions ? 'checked' : ''}
-            data-config-key="show_disposal_actions"
-          />
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'User Filter Mode',
+      'How to determine the user for leftovers',
+      TaskTrackerUtils.createSelectInput(this._config.user_filter_mode, 'user_filter_mode', [
+        { value: 'all', label: 'All Users' },
+        { value: 'current', label: 'Current User' },
+        { value: 'explicit', label: 'Specific User' }
+      ])
+    )}
+
+        ${this._config.user_filter_mode === 'explicit' ? TaskTrackerUtils.createConfigRow(
+      'Username',
+      'Specific username for leftover management',
+      TaskTrackerUtils.createTextInput(this._config.explicit_user, 'explicit_user', 'Enter username')
+    ) : ''}
 
         <div class="section-title">Behavior Settings</div>
 
-        <div class="config-row">
-          <label>
-            Refresh Interval (seconds)
-            <div class="config-description">How often to automatically refresh leftover data</div>
-          </label>
-          <input
-            type="number"
-            min="10"
-            max="3600"
-            step="10"
-            value="${this._config.refresh_interval}"
-            data-config-key="refresh_interval"
-          />
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'Refresh Interval (seconds)',
+      'How often to automatically refresh leftover data',
+      TaskTrackerUtils.createNumberInput(this._config.refresh_interval, 'refresh_interval', 10, 3600, 10)
+    )}
       </div>
     `;
 
@@ -739,42 +485,7 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
   }
 
   _valueChanged(ev) {
-    if (!this._config || !this._hass) {
-      return;
-    }
-
-    const target = ev.target;
-    const configKey = target.dataset.configKey;
-
-    if (!configKey) {
-      return;
-    }
-
-    let value;
-    if (target.type === 'checkbox') {
-      value = target.checked;
-    } else if (target.type === 'number') {
-      value = parseInt(target.value, 10);
-    } else {
-      value = target.value || null;
-    }
-
-    // For text inputs, debounce the config update to avoid frequent API calls
-    if (target.type === 'text') {
-      // Clear any existing timer for this field
-      if (this._debounceTimers[configKey]) {
-        clearTimeout(this._debounceTimers[configKey]);
-      }
-
-      // Set a new timer to update config after user stops typing
-      this._debounceTimers[configKey] = setTimeout(() => {
-        this._updateConfig(configKey, value);
-        delete this._debounceTimers[configKey];
-      }, 500); // Wait 500ms after user stops typing
-    } else {
-      // For non-text inputs (checkboxes, selects, numbers), update immediately
-      this._updateConfig(configKey, value);
-    }
+    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
   }
 
   _updateConfig(configKey, value) {

@@ -75,7 +75,7 @@ class TestTaskTrackerServices:
 
             # Verify API was called
             mock_api.complete_task.assert_called_once_with(
-                task_id=123, username="testuser", notes="Completed via test"
+                task_id=123, assigned_to="testuser", notes="Completed via test"
             )
 
     @pytest.mark.asyncio
@@ -97,14 +97,18 @@ class TestTaskTrackerServices:
         await hass.services.async_call(
             DOMAIN,
             SERVICE_COMPLETE_TASK,
-            {"task_id": 123, "username": "explicituser", "notes": "Completed via test"},
+            {
+                "task_id": 123,
+                "assigned_to": "explicituser",
+                "notes": "Completed via test",
+            },
             blocking=True,
             return_response=True,
         )
 
         # Verify API was called with explicit username
         mock_api.complete_task.assert_called_once_with(
-            task_id=123, username="explicituser", notes="Completed via test"
+            task_id=123, assigned_to="explicituser", notes="Completed via test"
         )
 
     @pytest.mark.asyncio
@@ -138,7 +142,7 @@ class TestTaskTrackerServices:
 
             # Verify API was called
             mock_api.complete_task_by_name.assert_called_once_with(
-                name="Test Task", username="testuser", notes="Completed by name"
+                name="Test Task", assigned_to="testuser", notes="Completed by name"
             )
 
     @pytest.mark.asyncio
@@ -248,7 +252,7 @@ class TestTaskTrackerServices:
             # Verify API was called
             mock_api.create_adhoc_task.assert_called_once_with(
                 name="adhoc task",
-                username="testuser",
+                assigned_to="testuser",
                 duration_minutes=30,
                 priority=3,
             )
@@ -318,7 +322,7 @@ class TestTaskTrackerServices:
 
             # Verify API was called
             mock_api.get_recommended_tasks.assert_called_once_with(
-                username="testuser", available_minutes=30
+                assigned_to="testuser", available_minutes=30
             )
 
     @pytest.mark.asyncio
@@ -340,14 +344,14 @@ class TestTaskTrackerServices:
         await hass.services.async_call(
             DOMAIN,
             SERVICE_GET_AVAILABLE_TASKS,
-            {"username": "testuser", "available_minutes": 45, "upcoming_days": 7},
+            {"assigned_to": "testuser", "available_minutes": 45, "upcoming_days": 7},
             blocking=True,
             return_response=True,
         )
 
         # Verify API was called
         mock_api.get_available_tasks.assert_called_once_with(
-            username="testuser", available_minutes=45, upcoming_days=7
+            assigned_to="testuser", available_minutes=45, upcoming_days=7
         )
 
     @pytest.mark.asyncio
@@ -369,14 +373,14 @@ class TestTaskTrackerServices:
         await hass.services.async_call(
             DOMAIN,
             SERVICE_GET_RECENT_COMPLETIONS,
-            {"username": "testuser", "days": 7, "limit": 10},
+            {"assigned_to": "testuser", "days": 7, "limit": 10},
             blocking=True,
             return_response=True,
         )
 
         # Verify API was called
         mock_api.get_recent_completions.assert_called_once_with(
-            username="testuser", days=7, limit=10
+            assigned_to="testuser", days=7, limit=10
         )
 
     @pytest.mark.asyncio
@@ -423,7 +427,7 @@ class TestTaskTrackerServices:
 
         await async_setup_services(hass, mock_api, {})
 
-        # Call the service with thin=True
+        # Call the service with thin parameter
         response = await hass.services.async_call(
             DOMAIN,
             SERVICE_GET_ALL_TASKS,
@@ -433,15 +437,15 @@ class TestTaskTrackerServices:
         )
 
         # Verify API was called with thin=True and response is returned
-        mock_api.get_all_tasks.assert_called_once_with(thin=True)
+        mock_api.get_all_tasks.assert_called_once_with(thin=True, assigned_to=None)
         assert response is not None
         assert response["status"] == "success"
 
     @pytest.mark.asyncio
-    async def test_get_all_tasks_service_no_thin(
+    async def test_get_all_tasks_service_no_params(
         self, hass: HomeAssistant, setup_integration: AsyncMock
     ) -> None:
-        """Test get_all_tasks service without thin parameter."""
+        """Test get_all_tasks service without parameters."""
         mock_api = setup_integration
         mock_api.get_all_tasks.return_value = {
             "status": "success",
@@ -452,7 +456,7 @@ class TestTaskTrackerServices:
 
         await async_setup_services(hass, mock_api, {})
 
-        # Call the service without thin parameter
+        # Call the service without parameters
         response = await hass.services.async_call(
             DOMAIN,
             SERVICE_GET_ALL_TASKS,
@@ -461,8 +465,8 @@ class TestTaskTrackerServices:
             return_response=True,
         )
 
-        # Verify API was called with thin=False (default) and response is returned
-        mock_api.get_all_tasks.assert_called_once_with(thin=False)
+        # Verify API was called with thin=False (default) and assigned_to=None and response is returned
+        mock_api.get_all_tasks.assert_called_once_with(thin=False, assigned_to=None)
         assert response is not None
         assert response["status"] == "success"
 

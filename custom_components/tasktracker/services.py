@@ -35,7 +35,7 @@ _LOGGER = logging.getLogger(__name__)
 COMPLETE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.positive_int,
-        vol.Optional("username"): cv.string,
+        vol.Optional("assigned_to"): cv.string,
         vol.Optional("notes"): cv.string,
     }
 )
@@ -43,7 +43,7 @@ COMPLETE_TASK_SCHEMA = vol.Schema(
 COMPLETE_TASK_BY_NAME_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
-        vol.Optional("username"): cv.string,
+        vol.Optional("assigned_to"): cv.string,
         vol.Optional("notes"): cv.string,
     }
 )
@@ -60,7 +60,7 @@ CREATE_LEFTOVER_SCHEMA = vol.Schema(
 CREATE_ADHOC_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
-        vol.Optional("username"): cv.string,
+        vol.Optional("assigned_to"): cv.string,
         vol.Optional("duration_minutes"): cv.positive_int,
         vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
     }
@@ -77,14 +77,14 @@ QUERY_TASK_SCHEMA = vol.Schema(
 
 GET_RECOMMENDED_TASKS_SCHEMA = vol.Schema(
     {
-        vol.Optional("username"): cv.string,
-        vol.Optional("available_minutes"): cv.positive_int,
+        vol.Optional("assigned_to"): cv.string,
+        vol.Required("available_minutes"): cv.positive_int,
     }
 )
 
 GET_AVAILABLE_TASKS_SCHEMA = vol.Schema(
     {
-        vol.Optional("username"): cv.string,
+        vol.Optional("assigned_to"): cv.string,
         vol.Optional("available_minutes"): cv.positive_int,
         vol.Optional("upcoming_days"): cv.positive_int,
     }
@@ -92,7 +92,7 @@ GET_AVAILABLE_TASKS_SCHEMA = vol.Schema(
 
 GET_RECENT_COMPLETIONS_SCHEMA = vol.Schema(
     {
-        vol.Optional("username"): cv.string,
+        vol.Optional("assigned_to"): cv.string,
         vol.Optional("days"): cv.positive_int,
         vol.Optional("limit"): cv.positive_int,
     }
@@ -101,6 +101,7 @@ GET_RECENT_COMPLETIONS_SCHEMA = vol.Schema(
 GET_ALL_TASKS_SCHEMA = vol.Schema(
     {
         vol.Optional("thin"): cv.boolean,
+        vol.Optional("assigned_to"): cv.string,
     }
 )
 
@@ -125,21 +126,21 @@ async def async_setup_services(  # noqa: C901, PLR0915
         async def complete_task_service(call: ServiceCall) -> dict[str, Any]:
             """Complete a task by ID."""
             try:
-                username = call.data.get("username")
-                if not username:
+                assigned_to = call.data.get("assigned_to")
+                if not assigned_to:
                     # Handle case where user_id might be None
                     user_id = call.context.user_id if call.context else None
                     current_config = get_current_config()
-                    username = get_tasktracker_username_for_ha_user(
+                    assigned_to = get_tasktracker_username_for_ha_user(
                         hass, user_id, current_config
                     )
-                    if not username:
-                        msg = "No username provided and could not determine from user context"  # noqa: E501
+                    if not assigned_to:
+                        msg = "No assigned_to provided and could not determine from user context"  # noqa: E501
                         raise TaskTrackerAPIError(msg)  # noqa: TRY301
 
                 result = await api.complete_task(
                     task_id=call.data["task_id"],
-                    username=username,
+                    assigned_to=assigned_to,
                     notes=call.data.get("notes"),
                 )
 
@@ -155,22 +156,22 @@ async def async_setup_services(  # noqa: C901, PLR0915
         async def complete_task_by_name_service(call: ServiceCall) -> dict[str, Any]:
             """Complete a task by name."""
             try:
-                username = call.data.get("username")
-                if not username:
+                assigned_to = call.data.get("assigned_to")
+                if not assigned_to:
                     # Handle case where user_id might be None
                     user_id = call.context.user_id if call.context else None
                     current_config = get_current_config()
-                    username = get_tasktracker_username_for_ha_user(
+                    assigned_to = get_tasktracker_username_for_ha_user(
                         hass, user_id, current_config
                     )
-                    if not username:
-                        msg = "No username provided and could not determine from user context"  # noqa: E501
+                    if not assigned_to:
+                        msg = "No assigned_to provided and could not determine from user context"  # noqa: E501
                         raise TaskTrackerAPIError(msg)  # noqa: TRY301
 
                 _LOGGER.debug("Completing task by name: %s", call.data["name"])
                 result = await api.complete_task_by_name(
                     name=call.data["name"],
-                    username=username,
+                    assigned_to=assigned_to,
                     notes=call.data.get("notes"),
                 )
 
@@ -205,21 +206,21 @@ async def async_setup_services(  # noqa: C901, PLR0915
         async def create_adhoc_task_service(call: ServiceCall) -> dict[str, Any]:
             """Create an ad-hoc task."""
             try:
-                username = call.data.get("username")
-                if not username:
+                assigned_to = call.data.get("assigned_to")
+                if not assigned_to:
                     # Handle case where user_id might be None
                     user_id = call.context.user_id if call.context else None
                     current_config = get_current_config()
-                    username = get_tasktracker_username_for_ha_user(
+                    assigned_to = get_tasktracker_username_for_ha_user(
                         hass, user_id, current_config
                     )
-                    if not username:
-                        msg = "No username provided and could not determine from user context"  # noqa: E501
+                    if not assigned_to:
+                        msg = "No assigned_to provided and could not determine from user context"  # noqa: E501
                         raise TaskTrackerAPIError(msg)  # noqa: TRY301
 
                 result = await api.create_adhoc_task(
                     name=call.data["name"],
-                    username=username,
+                    assigned_to=assigned_to,
                     duration_minutes=call.data.get("duration_minutes"),
                     priority=call.data.get("priority"),
                 )
@@ -253,21 +254,26 @@ async def async_setup_services(  # noqa: C901, PLR0915
         async def get_recommended_tasks_service(call: ServiceCall) -> dict[str, Any]:
             """Get recommended tasks."""
             try:
-                username = call.data.get("username")
-                if not username:
+                assigned_to = call.data.get("assigned_to")
+                if not assigned_to:
                     # Handle case where user_id might be None
                     user_id = call.context.user_id if call.context else None
                     current_config = get_current_config()
-                    username = get_tasktracker_username_for_ha_user(
+                    assigned_to = get_tasktracker_username_for_ha_user(
                         hass, user_id, current_config
                     )
-                    if not username:
-                        msg = "No username provided and could not determine from user context"  # noqa: E501
+                    if not assigned_to:
+                        msg = "No assigned_to provided and could not determine from user context"  # noqa: E501
                         raise TaskTrackerAPIError(msg)  # noqa: TRY301
 
+                available_minutes = call.data.get("available_minutes")
+                if available_minutes is None:
+                    msg = "available_minutes is required for get_recommended_tasks"
+                    raise TaskTrackerAPIError(msg)  # noqa: TRY301
+
                 result = await api.get_recommended_tasks(
-                    username=username,
-                    available_minutes=call.data.get("available_minutes"),
+                    assigned_to=assigned_to,
+                    available_minutes=available_minutes,
                 )
 
                 _LOGGER.debug("Recommended tasks retrieved: %s", result)
@@ -283,7 +289,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
             """Get available tasks."""
             try:
                 result = await api.get_available_tasks(
-                    username=call.data.get("username"),
+                    assigned_to=call.data.get("assigned_to"),
                     available_minutes=call.data.get("available_minutes"),
                     upcoming_days=call.data.get("upcoming_days"),
                 )
@@ -301,7 +307,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
             """Get recent completions."""
             try:
                 result = await api.get_recent_completions(
-                    username=call.data.get("username"),
+                    assigned_to=call.data.get("assigned_to"),
                     days=call.data.get("days"),
                     limit=call.data.get("limit"),
                 )
@@ -332,7 +338,10 @@ async def async_setup_services(  # noqa: C901, PLR0915
         async def get_all_tasks_service(call: ServiceCall) -> dict[str, Any]:
             """Get all tasks."""
             try:
-                result = await api.get_all_tasks(thin=call.data.get("thin", False))
+                result = await api.get_all_tasks(
+                    thin=call.data.get("thin", False),
+                    assigned_to=call.data.get("assigned_to"),
+                )
 
                 _LOGGER.debug("All tasks retrieved: %s", result)
                 return result  # noqa: TRY300

@@ -55,16 +55,16 @@ SERVICE_GET_ALL_TASKS: Final = "get_all_tasks"
 SERVICE_GET_AVAILABLE_USERS: Final = "get_available_users"
 
 # API endpoints
-ENDPOINT_COMPLETE_TASK: Final = "/api/complete-task/"
-ENDPOINT_COMPLETE_TASK_BY_NAME: Final = "/api/complete-task-by-name/"
-ENDPOINT_CREATE_LEFTOVER: Final = "/api/create-leftover/"
-ENDPOINT_CREATE_ADHOC_TASK: Final = "/api/create-adhoc-task/"
-ENDPOINT_QUERY_TASK: Final = "/api/task-query/"
-ENDPOINT_RECOMMENDED_TASKS: Final = "/api/recommended-tasks/"
-ENDPOINT_AVAILABLE_TASKS: Final = "/api/available-tasks/"
-ENDPOINT_RECENT_COMPLETIONS: Final = "/api/recent-completions/"
-ENDPOINT_LIST_LEFTOVERS: Final = "/api/list-leftovers/"
-ENDPOINT_ALL_TASKS: Final = "/api/tasks/"
+ENDPOINT_COMPLETE_TASK: Final = "/api/completions/complete_task/"
+ENDPOINT_COMPLETE_TASK_BY_NAME: Final = "/api/completions/complete_task_by_name/"
+ENDPOINT_CREATE_LEFTOVER: Final = "/api/tasks/create-leftover/"
+ENDPOINT_CREATE_ADHOC_TASK: Final = "/api/tasks/create-adhoc-task/"
+ENDPOINT_QUERY_TASK: Final = "/api/tasks/task-query/"
+ENDPOINT_RECOMMENDED_TASKS: Final = "/api/recommendations/recommended-tasks/"
+ENDPOINT_AVAILABLE_TASKS: Final = "/api/tasks/available-tasks/"
+ENDPOINT_RECENT_COMPLETIONS: Final = "/api/completions/recent_completions/"
+ENDPOINT_LIST_LEFTOVERS: Final = "/api/leftovers/list-leftovers/"
+ENDPOINT_ALL_TASKS: Final = "/api/tasks/all-tasks/"
 
 # Default values
 DEFAULT_SCAN_INTERVAL: Final = 300  # 5 minutes

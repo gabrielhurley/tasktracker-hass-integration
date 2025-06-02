@@ -1,3 +1,5 @@
+import { TaskTrackerUtils } from './tasktracker-utils.js';
+
 /**
  * TaskTracker Complete Task Card
  *
@@ -19,6 +21,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     this._loading = false;
     this._error = null;
     this._completing = false;
+    this._shouldResetForm = false;
   }
 
   static getConfigElement() {
@@ -158,38 +161,45 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     try {
       const serviceData = {
         name: selectedTask,
-        username: selectedUsername
+        assigned_to: selectedUsername
       };
 
       if (notes) {
         serviceData.notes = notes;
       }
 
-      await this._hass.callService('tasktracker', 'complete_task_by_name', serviceData);
+      const response = await this._hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
 
-      this._showSuccess(`Task "${selectedTask}" completed successfully`);
+      if (response && response.response) {
+        TaskTrackerUtils.showSuccess(response.response.spoken_response);
 
-      // Reset form
-      taskSelect.value = '';
-      usernameSelect.value = this._getCurrentUsername() || '';
-      notesField.value = '';
+        // Mark that we should reset the form on next render
+        this._shouldResetForm = true;
+      } else {
+        TaskTrackerUtils.showError(`Failed to complete task: ${response.response.error || 'Unknown error'}`);
+      }
 
       this._completing = false;
       this._render();
 
     } catch (error) {
       console.error('Failed to complete task:', error);
-      this._showError(`Failed to complete task: ${error.message}`);
+      TaskTrackerUtils.showError(`Failed to complete task: ${error.message}`);
       this._completing = false;
       this._render();
     }
   }
 
-  _getSelectedTask() {
-    const taskSelect = this.shadowRoot.querySelector('#task-select');
-    if (!taskSelect || !taskSelect.value) return null;
+  _getSelectedTask(taskName = null) {
+    // If taskName is provided, use it; otherwise try to get from DOM
+    let selectedTaskName = taskName;
+    if (!selectedTaskName) {
+      const taskSelect = this.shadowRoot.querySelector('#task-select');
+      if (!taskSelect || !taskSelect.value) return null;
+      selectedTaskName = taskSelect.value;
+    }
 
-    return this._allTasks.find(task => task.name === taskSelect.value);
+    return this._allTasks.find(task => task.name === selectedTaskName);
   }
 
   _formatTaskDetails(task) {
@@ -218,59 +228,26 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
   }
 
   _showSuccess(message) {
-    const toast = document.createElement('div');
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--primary-color);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      font-size: 0.9em;
-    `;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 3000);
+    TaskTrackerUtils.showSuccess(message);
   }
 
   _showError(message) {
-    const toast = document.createElement('div');
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--error-color, #f44336);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      font-size: 0.9em;
-    `;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 5000);
+    TaskTrackerUtils.showError(message);
   }
 
   _render() {
-    const selectedTask = this._getSelectedTask();
+    // Preserve current form values before re-rendering (unless we should reset)
+    let currentTaskValue = '';
+    let currentUsernameValue = '';
+    let currentNotesValue = '';
+
+    if (!this._shouldResetForm) {
+      currentTaskValue = this.shadowRoot.querySelector('#task-select')?.value || '';
+      currentUsernameValue = this.shadowRoot.querySelector('#username-select')?.value || '';
+      currentNotesValue = this.shadowRoot.querySelector('#notes-field')?.value || '';
+    }
+
+    const selectedTask = this._getSelectedTask(currentTaskValue || null);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -278,21 +255,18 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
           display: block;
         }
 
-        .card {
+        .tasktracker-complete-task-card {
           background: var(--card-background-color);
           border-radius: 4px;
           padding: 16px;
           box-shadow: var(--ha-card-box-shadow);
-          font-family: var(--primary-font-family);
           border: 1px solid var(--divider-color);
         }
 
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        .tasktracker-complete-task-card .header {
           margin-bottom: 16px;
-          padding-bottom: 8px;
+          padding-bottom: 10px;
+          padding-top: 4px;
           border-bottom: 1px solid var(--divider-color);
         }
 
@@ -385,7 +359,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         .complete-btn {
           width: 100%;
           padding: 12px;
-          background: var(--primary-color);
+          background: var(--secondary-background-color);
           color: white;
           border: none;
           border-radius: 4px;
@@ -396,7 +370,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         }
 
         .complete-btn:hover:not(:disabled) {
-          background: var(--dark-primary-color, var(--primary-color));
+          background: var(--secondary-text-color);
           filter: brightness(0.9);
         }
 
@@ -411,7 +385,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         }
       </style>
 
-      <div class="card">
+      <div class="tasktracker-complete-task-card card">
         <div class="header">
           <h3 class="title">Complete Task</h3>
         </div>
@@ -423,7 +397,39 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     // Add event listeners
     const taskSelect = this.shadowRoot.querySelector('#task-select');
     if (taskSelect) {
+      // Restore the task selection or reset
+      if (this._shouldResetForm) {
+        taskSelect.value = '';
+      } else {
+        taskSelect.value = currentTaskValue;
+      }
       taskSelect.addEventListener('change', () => this._render());
+    }
+
+    const usernameSelect = this.shadowRoot.querySelector('#username-select');
+    if (usernameSelect) {
+      // Restore username selection, reset, or set default
+      if (this._shouldResetForm) {
+        const defaultUser = this._getCurrentUsername();
+        usernameSelect.value = (defaultUser && this._availableUsers.includes(defaultUser)) ? defaultUser : '';
+      } else if (currentUsernameValue) {
+        usernameSelect.value = currentUsernameValue;
+      } else {
+        const defaultUser = this._getCurrentUsername();
+        if (defaultUser && this._availableUsers.includes(defaultUser)) {
+          usernameSelect.value = defaultUser;
+        }
+      }
+    }
+
+    const notesField = this.shadowRoot.querySelector('#notes-field');
+    if (notesField) {
+      // Restore notes or reset
+      if (this._shouldResetForm) {
+        notesField.value = '';
+      } else {
+        notesField.value = currentNotesValue;
+      }
     }
 
     const completeBtn = this.shadowRoot.querySelector('.complete-btn');
@@ -431,14 +437,8 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
       completeBtn.addEventListener('click', () => this._completeTask());
     }
 
-    // Set default username
-    const usernameSelect = this.shadowRoot.querySelector('#username-select');
-    if (usernameSelect) {
-      const defaultUser = this._getCurrentUsername();
-      if (defaultUser && this._availableUsers.includes(defaultUser)) {
-        usernameSelect.value = defaultUser;
-      }
-    }
+    // Clear the reset flag after applying it
+    this._shouldResetForm = false;
   }
 
   _renderContent() {
@@ -450,8 +450,6 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
       return `<div class="error">${this._error}</div>`;
     }
 
-    const selectedTask = this._getSelectedTask();
-
     return `
       <div class="form-group">
         <label class="form-label" for="task-select">Task Name</label>
@@ -461,11 +459,6 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
             <option value="${task.name}">${task.name}</option>
           `).join('')}
         </select>
-        ${this._config.show_task_details && selectedTask ? `
-          <div class="task-details">
-            ${this._formatTaskDetails(selectedTask)}
-          </div>
-        ` : ''}
       </div>
 
       <div class="form-group">
@@ -643,41 +636,20 @@ class TaskTrackerCompleteTaskCardEditor extends HTMLElement {
   }
 
   _valueChanged(ev) {
-    if (!this._config || !this._hass) {
-      return;
-    }
+    TaskTrackerUtils.handleConfigValueChange(ev, this, (configKey, value) => {
+      // Update config
+      this._config = {
+        ...this._config,
+        [configKey]: value
+      };
 
-    const target = ev.target;
-    const configKey = target.dataset.configKey;
+      // If default_user_mode changed, re-render to show/hide default user field
+      if (configKey === 'default_user_mode') {
+        this._render();
+      }
 
-    if (!configKey) {
-      return;
-    }
-
-    let value;
-    if (target.type === 'checkbox') {
-      value = target.checked;
-    } else {
-      value = target.value || null;
-    }
-
-    // Handle empty string for optional fields
-    if (configKey === 'default_user' && value === '') {
-      value = null;
-    }
-
-    // Update config
-    this._config = {
-      ...this._config,
-      [configKey]: value
-    };
-
-    // If default_user_mode changed, re-render to show/hide default user field
-    if (configKey === 'default_user_mode') {
-      this._render();
-    }
-
-    this.configChanged(this._config);
+      this.configChanged(this._config);
+    }, ['default_user']);
   }
 }
 

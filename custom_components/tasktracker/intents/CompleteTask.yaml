@@ -1,0 +1,39 @@
+language: en
+intent:
+  CompleteTask:
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ task_name is not defined }}"
+            sequence:
+              - variables:
+                  missing_task_name: >-
+                    {
+                      "status": 500,
+                      "content": {"error": "Task name is not defined."}
+                    }
+              - stop: "Task name is not defined."
+                response_variable: missing_task_name
+      - service: tasktracker.complete_task_by_name
+        data:
+          name: "{{ task_name }}"
+          assigned_to: "{{ task_completed_by|default('') }}"
+        response_variable: result
+      - stop: "Return value to intent script"
+        response_variable: result
+    speech:
+      text: >
+        {% if action_response is defined and 'status' in action_response %}
+          {% if action_response['status']|int(500) == 404 and 'content' in action_response and 'error' in action_response['content'] %}
+            {{ action_response['content']['error'] }}
+          {% else %}
+            {% if action_response['status']|int(500) >= 300 %}
+              There was an error completing the task. The server returned: {{ action_response }}
+            {% else %}
+              {{ action_response['content']['spoken_response'] }}
+            {% endif %}
+          {% endif %}
+        {% else %}
+            Unknown response from server: {{ action_response }}
+        {% endif %}

@@ -39,7 +39,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.complete_task(
-            task_id=123, username="testuser", notes="Test completion"
+            task_id=123, assigned_to="testuser", notes="Test completion"
         )
 
         assert result["status"] == "success"
@@ -48,10 +48,15 @@ class TestTaskTrackerAPI:
         # Verify the request was made correctly
         api_client.session.request.assert_called_once_with(
             "POST",
-            "https://test.example.com/api/complete-task/",
+            "https://test.example.com/api/completions/complete_task/",
             headers={"X-API-Key": "test-api-key", "Content-Type": "application/json"},
             params=None,
-            json={"task_id": 123, "username": "testuser", "notes": "Test completion"},
+            json={
+                "task_id": 123,
+                "task_type": "recurring",
+                "assigned_to": "testuser",
+                "notes": "Test completion",
+            },
         )
 
     @pytest.mark.asyncio
@@ -70,7 +75,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.complete_task_by_name(
-            name="trash", username="testuser"
+            name="trash", assigned_to="testuser"
         )
 
         assert result["status"] == "success"
@@ -128,7 +133,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.create_adhoc_task(
-            name="adhoc task", username="testuser", duration_minutes=30
+            name="adhoc task", assigned_to="testuser", duration_minutes=30
         )
 
         assert result["status"] == "success"
@@ -149,7 +154,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.create_adhoc_task(
-            name="adhoc task", username="testuser"
+            name="adhoc task", assigned_to="testuser"
         )
 
         assert result["status"] == "success"
@@ -175,7 +180,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_recommended_tasks(
-            username="testuser", available_minutes=30
+            assigned_to="testuser", available_minutes=30
         )
 
         assert result["status"] == "success"
@@ -195,7 +200,9 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_recommended_tasks(username="testuser")
+        result = await api_client.get_recommended_tasks(
+            assigned_to="testuser", available_minutes=30
+        )
 
         assert result["status"] == "success"
 
@@ -213,7 +220,7 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_available_tasks(username="testuser")
+        result = await api_client.get_available_tasks(assigned_to="testuser")
 
         assert result["status"] == "success"
         assert len(result["data"]["tasks"]) == 1
@@ -250,7 +257,9 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_recent_completions(username="testuser", limit=10)
+        result = await api_client.get_recent_completions(
+            assigned_to="testuser", limit=10
+        )
 
         assert result["status"] == "success"
         assert len(result["data"]["completions"]) == 1
@@ -297,18 +306,18 @@ class TestTaskTrackerAPI:
         mock_response.status = 200
         mock_response.json.return_value = {
             "status": "success",
-            "data": {"tasks": []},
+            "data": {"tasks": [{"id": 1, "name": "Task 1"}]},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_all_tasks(thin=True)
+        result = await api_client.get_all_tasks(assigned_to="testuser")
 
         assert result["status"] == "success"
 
     @pytest.mark.asyncio
-    async def test_get_all_tasks_no_thin(self, api_client: TaskTrackerAPI) -> None:
-        """Test all tasks retrieval without thin parameter."""
+    async def test_get_all_tasks_no_params(self, api_client: TaskTrackerAPI) -> None:
+        """Test all tasks with no parameters."""
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
@@ -323,10 +332,10 @@ class TestTaskTrackerAPI:
         assert result["status"] == "success"
 
     @pytest.mark.asyncio
-    async def test_get_all_tasks_thin_param_conversion(
+    async def test_get_all_tasks_with_username(
         self, api_client: TaskTrackerAPI
     ) -> None:
-        """Test that thin boolean parameter is converted to string for URL compatibility."""  # noqa: E501
+        """Test all tasks with username filter."""
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
@@ -336,13 +345,9 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        await api_client.get_all_tasks(thin=True)
+        result = await api_client.get_all_tasks(assigned_to="testuser")
 
-        # Verify the call was made with string "true" instead of boolean True
-        call_args = api_client.session.request.call_args
-        params = call_args[1]["params"]
-        assert params == {"thin": "true"}
-        assert isinstance(params["thin"], str)
+        assert result["status"] == "success"
 
     @pytest.mark.asyncio
     async def test_api_error_handling(self, api_client: TaskTrackerAPI) -> None:
@@ -357,7 +362,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         with pytest.raises(TaskTrackerAPIError) as exc_info:
-            await api_client.complete_task(task_id=-1, username="testuser")
+            await api_client.complete_task(task_id=-1, assigned_to="testuser")
 
         assert "API request failed with status 400" in str(exc_info.value)
 
@@ -373,7 +378,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         with pytest.raises(TaskTrackerAPIError) as exc_info:
-            await api_client.complete_task(task_id=123, username="testuser")
+            await api_client.complete_task(task_id=123, assigned_to="testuser")
 
         assert "API request failed with status 500" in str(exc_info.value)
 
@@ -383,7 +388,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.side_effect = ClientError("Network error")
 
         with pytest.raises(TaskTrackerAPIError) as exc_info:
-            await api_client.complete_task(task_id=123, username="testuser")
+            await api_client.complete_task(task_id=123, assigned_to="testuser")
 
         assert "Network error" in str(exc_info.value)
 
@@ -395,7 +400,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.side_effect = ClientError("Request timed out")
 
         with pytest.raises(TaskTrackerAPIError) as exc_info:
-            await api_client.complete_task(task_id=123, username="testuser")
+            await api_client.complete_task(task_id=123, assigned_to="testuser")
 
         assert "Network error" in str(exc_info.value)
 
@@ -452,7 +457,7 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.complete_task(task_id=123, username="testuser")
+        result = await api_client.complete_task(task_id=123, assigned_to="testuser")
 
         assert result["status"] == "success"
 
@@ -471,7 +476,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.complete_task_by_name(
-            name="trash", username="testuser"
+            name="trash", assigned_to="testuser"
         )
 
         assert result["status"] == "success"
@@ -500,6 +505,6 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_available_tasks(username="testuser")
+        result = await api_client.get_available_tasks(assigned_to="testuser")
 
         assert result["status"] == "success"

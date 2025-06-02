@@ -1,0 +1,20 @@
+language: en
+intent:
+  GetRecommendedTasksForPerson:
+    action:
+      - service: tasktracker.get_recommended_tasks
+        data:
+          assigned_to: "{{ person }}"
+          available_minutes: 60
+        response_variable: result
+      - stop: "Return value to intent script"
+        response_variable: result
+    speech:
+      text: >
+        {% if action_response is defined and 'content' in action_response and 'spoken_response' in action_response['content'] %}
+          {{ action_response['content']['spoken_response'] }}
+        {% elif action_response is defined and 'speech' in action_response %}
+          {{ action_response['speech'] }}
+        {% else %}
+          I found some tasks for {{ person }}, but couldn't format the response properly.
+        {% endif %}

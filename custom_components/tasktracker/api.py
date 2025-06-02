@@ -86,12 +86,13 @@ class TaskTrackerAPI:
 
     # Task completion methods
     async def complete_task(
-        self, task_id: int, username: str, notes: str | None = None
+        self, task_id: int, assigned_to: str, notes: str | None = None
     ) -> dict[str, Any]:
         """Complete a task by ID."""
-        data = {
+        data: dict[str, Any] = {
             "task_id": task_id,
-            "username": username,
+            "task_type": "recurring",  # Default task type, may need to be configurable
+            "assigned_to": assigned_to,
         }
         if notes:
             data["notes"] = notes
@@ -99,12 +100,12 @@ class TaskTrackerAPI:
         return await self._request("POST", ENDPOINT_COMPLETE_TASK, data=data)
 
     async def complete_task_by_name(
-        self, name: str, username: str, notes: str | None = None
+        self, name: str, assigned_to: str, notes: str | None = None
     ) -> dict[str, Any]:
         """Complete a task by name (supports fuzzy matching across all task types)."""
-        data = {
+        data: dict[str, Any] = {
             "name": name,
-            "username": username,
+            "assigned_to": assigned_to,
         }
         if notes:
             data["notes"] = notes
@@ -120,7 +121,7 @@ class TaskTrackerAPI:
         days_ago: int | None = None,
     ) -> dict[str, Any]:
         """Create a new leftover."""
-        data = {"name": name}
+        data: dict[str, Any] = {"name": name}
         if assigned_to:
             data["assigned_to"] = assigned_to
         if shelf_life_days is not None:
@@ -133,19 +134,19 @@ class TaskTrackerAPI:
     async def create_adhoc_task(
         self,
         name: str,
-        username: str,
+        assigned_to: str,
         duration_minutes: int | None = None,
         priority: int | None = None,
     ) -> dict[str, Any]:
         """Create a new ad-hoc task."""
-        data = {
+        data: dict[str, Any] = {
             "name": name,
-            "username": username,
+            "assigned_to": assigned_to,
         }
         if duration_minutes is not None:
-            data["duration_minutes"] = str(duration_minutes)
+            data["duration_minutes"] = duration_minutes
         if priority is not None:
-            data["priority"] = str(priority)
+            data["priority"] = priority
 
         return await self._request("POST", ENDPOINT_CREATE_ADHOC_TASK, data=data)
 
@@ -161,25 +162,26 @@ class TaskTrackerAPI:
         return await self._request("GET", ENDPOINT_QUERY_TASK, params=params)
 
     async def get_recommended_tasks(
-        self, username: str, available_minutes: int | None = None
+        self, assigned_to: str, available_minutes: int
     ) -> dict[str, Any]:
         """Get recommended tasks for a user."""
-        params = {"username": username}
-        if available_minutes is not None:
-            params["available_minutes"] = str(available_minutes)
+        params = {
+            "assigned_to": assigned_to,
+            "available_minutes": available_minutes,
+        }
 
         return await self._request("GET", ENDPOINT_RECOMMENDED_TASKS, params=params)
 
     async def get_available_tasks(
         self,
-        username: str | None = None,
+        assigned_to: str | None = None,
         available_minutes: int | None = None,
         upcoming_days: int | None = None,
     ) -> dict[str, Any]:
         """Get available tasks."""
-        params = {}
-        if username:
-            params["username"] = username
+        params: dict[str, Any] = {}
+        if assigned_to:
+            params["assigned_to"] = assigned_to
         if available_minutes is not None:
             params["available_minutes"] = available_minutes
         if upcoming_days is not None:
@@ -189,14 +191,14 @@ class TaskTrackerAPI:
 
     async def get_recent_completions(
         self,
-        username: str | None = None,
+        assigned_to: str | None = None,
         days: int | None = None,
         limit: int | None = None,
     ) -> dict[str, Any]:
         """Get recent task completions."""
-        params = {}
-        if username:
-            params["username"] = username
+        params: dict[str, Any] = {}
+        if assigned_to:
+            params["assigned_to"] = assigned_to
         if days is not None:
             params["days"] = days
         if limit is not None:
@@ -208,10 +210,14 @@ class TaskTrackerAPI:
         """List all leftovers."""
         return await self._request("GET", ENDPOINT_LIST_LEFTOVERS)
 
-    async def get_all_tasks(self, thin: bool = False) -> dict[str, Any]:  # noqa: FBT001, FBT002
+    async def get_all_tasks(
+        self, thin: bool = False, assigned_to: str | None = None
+    ) -> dict[str, Any]:
         """Get all tasks."""
-        params = {}
+        params: dict[str, Any] = {}
         if thin:
-            params["thin"] = "true"
+            params["thin"] = thin
+        if assigned_to:
+            params["assigned_to"] = assigned_to
 
         return await self._request("GET", ENDPOINT_ALL_TASKS, params=params)

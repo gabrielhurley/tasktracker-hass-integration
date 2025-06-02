@@ -1,3 +1,5 @@
+import { TaskTrackerUtils } from './tasktracker-utils.js';
+
 /**
  * TaskTracker Recent Tasks Card
  *
@@ -83,28 +85,13 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       clearInterval(this._refreshInterval);
     }
 
-    this._refreshInterval = setInterval(() => {
+    this._refreshInterval = TaskTrackerUtils.setupAutoRefresh(() => {
       this._fetchRecentCompletions();
-    }, this._config.refresh_interval * 1000);
+    }, this._config.refresh_interval);
   }
 
   _getCurrentUsername() {
-    switch (this._config.user_filter_mode) {
-      case 'explicit':
-        return this._config.explicit_user;
-
-      case 'current':
-        // Try to detect current user
-        if (this._hass && this._hass.user && this._hass.user.name) {
-          // Basic mapping - in real implementation this would use the integration's user mapping
-          return this._hass.user.name.toLowerCase();
-        }
-        return null;
-
-      case 'all':
-      default:
-        return null; // No username filter
-    }
+    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass);
   }
 
   async _fetchRecentCompletions() {
@@ -128,7 +115,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
 
       const username = this._getCurrentUsername();
       if (username) {
-        params.username = username;
+        params.assigned_to = username;
       }
 
       const response = await this._hass.callService('tasktracker', 'get_recent_completions', params, {}, true, true);
@@ -163,182 +150,31 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   }
 
   _completionsEqual(completions1, completions2) {
-    if (completions1.length !== completions2.length) return false;
-
-    for (let i = 0; i < completions1.length; i++) {
-      const c1 = completions1[i];
-      const c2 = completions2[i];
-
-      if (c1.task_name !== c2.task_name ||
-        c1.completed_at !== c2.completed_at ||
-        c1.completed_by !== c2.completed_by ||
-        c1.notes !== c2.notes) {
-        return false;
-      }
-    }
-
-    return true;
+    return TaskTrackerUtils.arraysEqual(completions1, completions2, (c1, c2) => {
+      return c1.task_name === c2.task_name &&
+        c1.completed_at === c2.completed_at &&
+        c1.completed_by === c2.completed_by &&
+        c1.notes === c2.notes;
+    });
   }
 
   _formatDateTime(dateString) {
-    try {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-      // Return relative time for recent completions
-      if (diffDays === 0) {
-        if (diffHours === 0) {
-          if (diffMinutes < 1) {
-            return 'Just now';
-          }
-          return `${diffMinutes}m ago`;
-        }
-        return `${diffHours}h ago`;
-      } else if (diffDays === 1) {
-        return 'Yesterday';
-      } else if (diffDays < 7) {
-        return `${diffDays}d ago`;
-      } else {
-        // For older entries, show actual date
-        return date.toLocaleDateString();
-      }
-    } catch {
-      return 'Unknown time';
-    }
+    return TaskTrackerUtils.formatDateTime(dateString);
   }
 
   _formatDuration(minutes) {
-    if (!minutes) return '';
-
-    if (minutes < 60) {
-      return `${minutes}m`;
-    } else {
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
-    }
+    return TaskTrackerUtils.formatDuration(minutes);
   }
 
   _render() {
     this.shadowRoot.innerHTML = `
       <style>
-        :host {
-          display: block;
-        }
+        ${TaskTrackerUtils.getCommonCardStyles()}
 
-        .card {
-          background: var(--card-background-color);
-          border-radius: 4px;
-          padding: 16px;
-          box-shadow: var(--ha-card-box-shadow);
-          font-family: var(--primary-font-family);
-          border: 1px solid var(--divider-color);
-        }
-
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-          padding-bottom: 8px;
-          border-bottom: 1px solid var(--divider-color);
-          position: relative;
-        }
-
-        .title {
-          font-size: 1.1em;
-          font-weight: 500;
-          color: var(--primary-text-color);
-          margin: 0;
-        }
-
-        .refresh-btn {
-          background: none;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          padding: 6px;
-          cursor: pointer;
+        .completion-details {
+          font-size: 0.8em;
           color: var(--secondary-text-color);
-        }
-
-        .refresh-btn:hover {
-          background: var(--secondary-background-color);
-        }
-
-        .loading, .error, .no-completions {
-          text-align: center;
-          padding: 24px 0;
-          color: var(--secondary-text-color);
-          font-size: 0.9em;
-        }
-
-        .error {
-          color: var(--primary-text-color);
-          background: var(--secondary-background-color);
-          padding: 12px;
-          border-radius: 4px;
-          border: 1px solid var(--divider-color);
-        }
-
-        .no-completions {
-          color: var(--secondary-text-color);
-        }
-
-        .completion-item {
-          display: flex;
-          align-items: flex-start;
-          padding: 8px 12px;
           margin-bottom: 4px;
-          background: var(--secondary-background-color);
-          border-radius: 4px;
-          border-left: 2px solid #4caf50;
-        }
-
-        .completion-item:hover {
-          background: var(--divider-color);
-        }
-
-        .completion-item:last-child {
-          margin-bottom: 0;
-        }
-
-        .completion-content {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .completion-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 2px;
-          gap: 8px;
-        }
-
-        .completion-task {
-          font-weight: 500;
-          color: var(--primary-text-color);
-          font-size: 0.95em;
-          flex: 1;
-          min-width: 0;
-          word-wrap: break-word;
-        }
-
-        .completion-time {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-
-        .completion-metadata {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          margin-bottom: 2px;
         }
 
         .completion-notes {
@@ -346,26 +182,10 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
           color: var(--secondary-text-color);
           font-style: italic;
           margin-top: 4px;
-          padding: 6px 8px;
+          padding: 4px 8px;
           background: var(--card-background-color);
           border-radius: 4px;
-          border-left: 2px solid var(--divider-color);
-        }
-
-        .refreshing-indicator {
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 2px;
-          height: 100%;
-          background: var(--primary-color);
-          opacity: 0.6;
-          animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.8; }
+          border: 1px solid var(--divider-color);
         }
       </style>
 
@@ -408,24 +228,22 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
 
   _renderCompletionItem(completion) {
     const taskName = completion.task_name || completion.name;
-    const completedBy = completion.completed_by || 'Unknown';
-    const duration = this._formatDuration(completion.duration_minutes);
+    const completedBy = TaskTrackerUtils.capitalize(completion.completed_by) || 'Unknown';
     const time = this._formatDateTime(completion.completed_at);
 
     // Build metadata line with pipes
     const metadataParts = [];
-    metadataParts.push(`by ${completedBy}`);
-    if (duration) metadataParts.push(duration);
+    metadataParts.push(`Completed by ${completedBy}`);
+    if (time) metadataParts.push(time);
     if (completion.task_type) metadataParts.push(completion.task_type);
 
     return `
-      <div class="completion-item">
-        <div class="completion-content">
-          <div class="completion-header">
-            <div class="completion-task">${taskName}</div>
-            <div class="completion-time">${time}</div>
+      <div class="task-item completion-item completed">
+        <div class="task-content completion-content">
+          <div class="task-header completion-header">
+            <div class="task-name">${taskName}</div>
           </div>
-          <div class="completion-metadata">${metadataParts.join(' | ')}</div>
+          <div class="task-metadata completion-details">${metadataParts.join(' ')}</div>
           ${this._config.show_notes && completion.notes ? `
             <div class="completion-notes">"${completion.notes}"</div>
           ` : ''}
@@ -445,7 +263,7 @@ class TaskTrackerRecentTasksCardEditor extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
-    this._debounceTimers = {}; // Store debounce timers for different fields
+    this._debounceTimers = {};
   }
 
   setConfig(config) {
@@ -469,157 +287,55 @@ class TaskTrackerRecentTasksCardEditor extends HTMLElement {
   _render() {
     this.shadowRoot.innerHTML = `
       <style>
-        .card-config {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          padding: 16px;
-        }
-
-        .config-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-        }
-
-        .config-row label {
-          flex: 1;
-          font-weight: 500;
-          color: var(--primary-text-color);
-        }
-
-        .config-row input, .config-row select {
-          flex: 0 0 auto;
-          min-width: 120px;
-          padding: 8px 12px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          font-family: inherit;
-        }
-
-        .config-row input[type="checkbox"] {
-          min-width: auto;
-          width: 20px;
-          height: 20px;
-        }
-
-        .config-row input[type="number"] {
-          width: 80px;
-        }
-
-        .config-description {
-          font-size: 0.85em;
-          color: var(--secondary-text-color);
-          margin-top: 4px;
-          font-style: italic;
-        }
-
-        .section-title {
-          font-size: 1.1em;
-          font-weight: 600;
-          color: var(--primary-text-color);
-          margin-top: 16px;
-          margin-bottom: 8px;
-          padding-bottom: 4px;
-          border-bottom: 1px solid var(--divider-color);
-        }
-
-        .section-title:first-child {
-          margin-top: 0;
-        }
+        ${TaskTrackerUtils.getCommonConfigStyles()}
       </style>
 
       <div class="card-config">
         <div class="section-title">Display Settings</div>
 
-        <div class="config-row">
-          <label>
-            Days to Show
-            <div class="config-description">Number of days back to fetch completions</div>
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="365"
-            value="${this._config.days}"
-            data-config-key="days"
-          />
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'Time Range (days)',
+      'Number of days back to fetch completions',
+      TaskTrackerUtils.createNumberInput(this._config.days, 'days', 1, 90)
+    )}
 
-        <div class="config-row">
-          <label>
-            Completion Limit
-            <div class="config-description">Maximum number of completions to display</div>
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="100"
-            value="${this._config.limit}"
-            data-config-key="limit"
-          />
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'Maximum Results',
+      'Maximum number of completions to display',
+      TaskTrackerUtils.createNumberInput(this._config.limit, 'limit', 1, 50)
+    )}
 
-        <div class="config-row">
-          <label>
-            Show Completion Notes
-            <div class="config-description">Display completion notes when available</div>
-          </label>
-          <input
-            type="checkbox"
-            ${this._config.show_notes ? 'checked' : ''}
-            data-config-key="show_notes"
-          />
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'Show Notes',
+      'Display completion notes where available',
+      TaskTrackerUtils.createCheckboxInput(this._config.show_notes, 'show_notes')
+    )}
 
-        <div class="section-title">Filter Settings</div>
+        <div class="section-title">User Settings</div>
 
-        <div class="config-row">
-          <label>
-            User Filter Mode
-            <div class="config-description">How to filter completions by user</div>
-          </label>
-          <select data-config-key="user_filter_mode">
-            <option value="all" ${this._config.user_filter_mode === 'all' ? 'selected' : ''}>All Users</option>
-            <option value="current" ${this._config.user_filter_mode === 'current' ? 'selected' : ''}>Current User</option>
-            <option value="explicit" ${this._config.user_filter_mode === 'explicit' ? 'selected' : ''}>Specific User</option>
-          </select>
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'User Filter Mode',
+      'Which completions to display',
+      TaskTrackerUtils.createSelectInput(this._config.user_filter_mode, 'user_filter_mode', [
+        { value: 'all', label: 'All Users' },
+        { value: 'current', label: 'Current User' },
+        { value: 'explicit', label: 'Specific User' }
+      ])
+    )}
 
-        ${this._config.user_filter_mode === 'explicit' ? `
-        <div class="config-row">
-          <label>
-            Username
-            <div class="config-description">Specific username to filter completions for</div>
-          </label>
-          <input
-            type="text"
-            value="${this._config.explicit_user || ''}"
-            data-config-key="explicit_user"
-            placeholder="Enter username"
-          />
-        </div>
-        ` : ''}
+        ${this._config.user_filter_mode === 'explicit' ? TaskTrackerUtils.createConfigRow(
+      'Username',
+      'Specific username to filter completions',
+      TaskTrackerUtils.createTextInput(this._config.explicit_user, 'explicit_user', 'Enter username')
+    ) : ''}
 
         <div class="section-title">Behavior Settings</div>
 
-        <div class="config-row">
-          <label>
-            Refresh Interval (seconds)
-            <div class="config-description">How often to automatically refresh completion data</div>
-          </label>
-          <input
-            type="number"
-            min="10"
-            max="3600"
-            step="10"
-            value="${this._config.refresh_interval}"
-            data-config-key="refresh_interval"
-          />
-        </div>
+        ${TaskTrackerUtils.createConfigRow(
+      'Refresh Interval (seconds)',
+      'How often to automatically refresh completion data',
+      TaskTrackerUtils.createNumberInput(this._config.refresh_interval, 'refresh_interval', 10, 3600, 10)
+    )}
       </div>
     `;
 
@@ -633,47 +349,7 @@ class TaskTrackerRecentTasksCardEditor extends HTMLElement {
   }
 
   _valueChanged(ev) {
-    if (!this._config || !this._hass) {
-      return;
-    }
-
-    const target = ev.target;
-    const configKey = target.dataset.configKey;
-
-    if (!configKey) {
-      return;
-    }
-
-    let value;
-    if (target.type === 'checkbox') {
-      value = target.checked;
-    } else if (target.type === 'number') {
-      value = parseInt(target.value, 10);
-    } else {
-      value = target.value || null;
-    }
-
-    // Handle empty string for optional fields
-    if ((configKey === 'explicit_user' || configKey === 'user') && value === '') {
-      value = null;
-    }
-
-    // For text inputs, debounce the config update to avoid frequent API calls
-    if (target.type === 'text') {
-      // Clear any existing timer for this field
-      if (this._debounceTimers[configKey]) {
-        clearTimeout(this._debounceTimers[configKey]);
-      }
-
-      // Set a new timer to update config after user stops typing
-      this._debounceTimers[configKey] = setTimeout(() => {
-        this._updateConfig(configKey, value);
-        delete this._debounceTimers[configKey];
-      }, 500); // Wait 500ms after user stops typing
-    } else {
-      // For non-text inputs (checkboxes, selects, numbers), update immediately
-      this._updateConfig(configKey, value);
-    }
+    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
   }
 
   _updateConfig(configKey, value) {

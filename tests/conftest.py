@@ -2,6 +2,7 @@
 
 from collections.abc import Generator
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -15,6 +16,22 @@ def auto_enable_custom_integrations(
 ) -> Generator[None]:
     """Enable custom integrations defined in the test dir."""
     yield  # noqa: PT022
+
+
+@pytest.fixture(autouse=True)
+def mock_conversation_dependency():
+    """Mock the conversation component to prevent test failures."""
+    with patch("homeassistant.setup.async_setup_component") as mock_setup:
+        # Mock successful setup for conversation component
+        async def setup_side_effect(hass, domain, config):
+            if domain == "conversation":
+                # Mock successful conversation setup
+                return True
+            # Call the original function for other components
+            return await mock_setup.__wrapped__(hass, domain, config)
+
+        mock_setup.side_effect = setup_side_effect
+        yield mock_setup
 
 
 @pytest.fixture

@@ -1,13 +1,19 @@
 {
   "domain": "tasktracker",
   "name": "TaskTracker",
-  "codeowners": ["@gabrielhurley"],
+  "codeowners": [
+    "@gabrielhurley"
+  ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "conversation"
+  ],
   "documentation": "https://github.com/gabrielhurley/TaskTracker",
   "issue_tracker": "https://github.com/gabrielhurley/TaskTracker/issues",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "requirements": ["aiohttp>=3.8.0"],
+  "requirements": [
+    "aiohttp>=3.8.0"
+  ],
   "version": "1.0.0"
-} 
+}
