@@ -100,8 +100,8 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       const response = await this._hass.callService('tasktracker', 'list_leftovers', {}, {}, true, true);
 
       let newLeftovers = [];
-      if (response && response.response) {
-        newLeftovers = (response.response.leftovers || []).slice(0, this._config.max_items);
+      if (response && response.response && response.response.data && response.response.data.items) {
+        newLeftovers = response.response.data.items.slice(0, this._config.max_items);
       }
 
       // Always update leftovers and re-render on initial load, only compare for subsequent refreshes
@@ -178,10 +178,11 @@ class TaskTrackerLeftoversCard extends HTMLElement {
         notes: notes || undefined
       }, {}, true, true);
 
-      if (response && response.response) {
-        TaskTrackerUtils.showSuccess(`Leftover "${leftover.name}" disposed successfully`);
+      if (response && response.response && response.response.success) {
+        TaskTrackerUtils.showSuccess(response.response.spoken_response || `Leftover "${leftover.name}" disposed successfully`);
       } else {
-        TaskTrackerUtils.showError(`Failed to dispose leftover: ${response.error || 'Unknown error'}`);
+        const errorMsg = (response && response.response && response.response.message) || 'Unknown error';
+        TaskTrackerUtils.showError(`Failed to dispose leftover: ${errorMsg}`);
       }
 
       // Refresh leftovers after disposal

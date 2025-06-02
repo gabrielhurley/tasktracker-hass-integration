@@ -48,7 +48,7 @@ class TestTaskTrackerConfigFlow:
         ) as mock_api_class:
             mock_api = AsyncMock()
             mock_api_class.return_value = mock_api
-            mock_api.get_all_tasks.return_value = {"status": "success"}
+            mock_api.get_all_tasks.return_value = {"success": True}
 
             result = await hass.config_entries.flow.async_init(
                 DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -131,7 +131,7 @@ class TestTaskTrackerConfigFlow:
         ) as mock_api_class:
             mock_api = AsyncMock()
             mock_api_class.return_value = mock_api
-            mock_api.get_all_tasks.return_value = {"status": "success"}
+            mock_api.get_all_tasks.return_value = {"success": True}
 
             # Start flow
             result = await hass.config_entries.flow.async_init(

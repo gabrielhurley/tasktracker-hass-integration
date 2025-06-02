@@ -928,38 +928,73 @@ components:
       - name
       - tags
       - updated_at
+    AllTasksData:
+      type: object
+      description: Data structure for all_tasks endpoint
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskDataResponse'
+        count:
+          type: integer
+      required:
+      - count
+      - items
     AllTasksResponse:
       type: object
       description: Response for all_tasks endpoint
       properties:
-        tasks:
+        success:
+          type: boolean
+        spoken_response:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/AllTasksData'
+      required:
+      - data
+      - success
+    AvailableTasksData:
+      type: object
+      description: Data structure for available_tasks endpoint
+      properties:
+        items:
           type: array
           items:
             $ref: '#/components/schemas/TaskDataResponse'
         count:
           type: integer
+        total_duration:
+          type: integer
       required:
       - count
-      - tasks
+      - items
+      - total_duration
     AvailableTasksResponse:
       type: object
       description: Response for available_tasks endpoint
       properties:
-        available_tasks:
-          type: array
-          items:
-            $ref: '#/components/schemas/TaskDataResponse'
-        count:
-          type: integer
+        success:
+          type: boolean
         spoken_response:
           type: string
-        total_duration:
-          type: integer
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/AvailableTasksData'
       required:
-      - available_tasks
-      - count
-      - spoken_response
-      - total_duration
+      - data
+      - success
     CompleteTask:
       type: object
       description: Request serializer for complete_task endpoint
@@ -990,17 +1025,33 @@ components:
       required:
       - assigned_to
       - name
+    CompleteTaskData:
+      type: object
+      description: Data structure for complete_task endpoints
+      properties:
+        completion:
+          $ref: '#/components/schemas/CompletionData'
+      required:
+      - completion
     CompleteTaskResponse:
       type: object
       description: Response for complete_task and complete_task_by_name endpoints
       properties:
-        completion:
-          $ref: '#/components/schemas/CompletionData'
+        success:
+          type: boolean
         spoken_response:
           type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/CompleteTaskData'
       required:
-      - completion
-      - spoken_response
+      - data
+      - success
     CompletionData:
       type: object
       description: Completion data structure returned by service layer
@@ -1062,20 +1113,33 @@ components:
       required:
       - assigned_to
       - name
+    CreateAdHocTaskData:
+      type: object
+      description: Data structure for create_adhoc_task endpoint
+      properties:
+        task:
+          $ref: '#/components/schemas/TaskDataResponse'
+      required:
+      - task
     CreateAdHocTaskResponse:
       type: object
       description: Response for create_adhoc_task endpoint
       properties:
-        status:
-          type: string
+        success:
+          type: boolean
         spoken_response:
           type: string
-        task:
-          $ref: '#/components/schemas/TaskDataResponse'
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/CreateAdHocTaskData'
       required:
-      - spoken_response
-      - status
-      - task
+      - data
+      - success
     CreateLeftover:
       type: object
       properties:
@@ -1091,14 +1155,10 @@ components:
           nullable: true
       required:
       - name
-    CreateLeftoverResponse:
+    CreateLeftoverData:
       type: object
-      description: Response for create_leftover endpoint
+      description: Data structure for create_leftover endpoint
       properties:
-        status:
-          type: string
-        spoken_response:
-          type: string
         leftover:
           $ref: '#/components/schemas/TaskDataResponse'
         leftover_type:
@@ -1106,8 +1166,25 @@ components:
       required:
       - leftover
       - leftover_type
-      - spoken_response
-      - status
+    CreateLeftoverResponse:
+      type: object
+      description: Response for create_leftover endpoint
+      properties:
+        success:
+          type: boolean
+        spoken_response:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/CreateLeftoverData'
+      required:
+      - data
+      - success
     FrequencyDaysEnum:
       enum:
       - 1
@@ -1333,11 +1410,11 @@ components:
       - id
       - name
       - shelf_life_days
-    ListLeftoversResponse:
+    ListLeftoversData:
       type: object
-      description: Response for list_leftovers endpoint
+      description: Data structure for list_leftovers endpoint
       properties:
-        leftovers:
+        items:
           type: array
           items:
             $ref: '#/components/schemas/LeftoverDataResponse'
@@ -1347,14 +1424,30 @@ components:
           type: integer
         safe_count:
           type: integer
-        spoken_response:
-          type: string
       required:
       - count
-      - leftovers
+      - items
       - overdue_count
       - safe_count
-      - spoken_response
+    ListLeftoversResponse:
+      type: object
+      description: Response for list_leftovers endpoint
+      properties:
+        success:
+          type: boolean
+        spoken_response:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/ListLeftoversData'
+      required:
+      - data
+      - success
     NullEnum:
       enum:
       - null
@@ -1598,27 +1691,46 @@ components:
         * `1` - High
         * `2` - Medium
         * `3` - Low
+    RecentCompletionsData:
+      type: object
+      description: Data structure for get_recent_completions endpoint
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompletionData'
+        count:
+          type: integer
+        total_duration:
+          type: integer
+      required:
+      - count
+      - items
+      - total_duration
     RecentCompletionsResponse:
       type: object
       description: Response for get_recent_completions endpoint
       properties:
-        count:
-          type: integer
-        completions:
+        success:
+          type: boolean
+        spoken_response:
+          type: string
+        message:
+          type: string
+        errors:
           type: array
           items:
-            $ref: '#/components/schemas/CompletionData'
-        total_duration:
-          type: integer
+            type: string
+        data:
+          $ref: '#/components/schemas/RecentCompletionsData'
       required:
-      - completions
-      - count
-      - total_duration
-    RecommendedTasksResponse:
+      - data
+      - success
+    RecommendedTasksData:
       type: object
-      description: Response for get_recommended_tasks endpoint
+      description: Data structure for get_recommended_tasks endpoint
       properties:
-        recommended_tasks:
+        items:
           type: array
           items:
             $ref: '#/components/schemas/TaskDataResponse'
@@ -1628,14 +1740,30 @@ components:
           type: integer
         remaining_minutes:
           type: integer
-        spoken_response:
-          type: string
       required:
       - count
-      - recommended_tasks
+      - items
       - remaining_minutes
-      - spoken_response
       - total_duration
+    RecommendedTasksResponse:
+      type: object
+      description: Response for get_recommended_tasks endpoint
+      properties:
+        success:
+          type: boolean
+        spoken_response:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/RecommendedTasksData'
+      required:
+      - data
+      - success
     RecurringTask:
       type: object
       properties:
@@ -1714,14 +1842,33 @@ components:
       - name
       - tags
       - updated_at
-    TaskByNameResponse:
+    TaskByNameData:
       type: object
-      description: Response for get_task_by_name endpoint
+      description: Data structure for get_task_by_name endpoint
       properties:
         task:
           $ref: '#/components/schemas/TaskDataResponse'
       required:
       - task
+    TaskByNameResponse:
+      type: object
+      description: Response for get_task_by_name endpoint
+      properties:
+        success:
+          type: boolean
+        spoken_response:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/TaskByNameData'
+      required:
+      - data
+      - success
     TaskDataResponse:
       type: object
       description: Task data structure returned by service layer
@@ -1800,17 +1947,33 @@ components:
       - assigned_to
       - id
       - name
+    TaskQueryData:
+      type: object
+      description: Data structure for task_query endpoint
+      properties:
+        task:
+          $ref: '#/components/schemas/TaskDataResponse'
+      required:
+      - task
     TaskQueryResponse:
       type: object
       description: Response for task_query endpoint
       properties:
-        task:
-          $ref: '#/components/schemas/TaskDataResponse'
+        success:
+          type: boolean
         spoken_response:
           type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/TaskQueryData'
       required:
-      - spoken_response
-      - task
+      - data
+      - success
     UpdateNextDue:
       type: object
       properties:
@@ -1828,13 +1991,18 @@ components:
       type: object
       description: Response for update_next_due endpoint
       properties:
-        status:
-          type: string
+        success:
+          type: boolean
         spoken_response:
           type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
       required:
-      - spoken_response
-      - status
+      - success
   securitySchemes:
     cookieAuth:
       type: apiKey

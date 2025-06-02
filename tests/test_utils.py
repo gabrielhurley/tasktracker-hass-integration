@@ -151,13 +151,13 @@ class TestTaskTrackerUtils:
 
     def test_validate_api_response_success(self) -> None:
         """Test validating successful API response."""
-        response = {"status": "success", "data": {"task_id": 123}}
+        response = {"success": True, "data": {"task_id": 123}}
         result = validate_api_response(response)
         assert result is True
 
     def test_validate_api_response_error(self) -> None:
         """Test validating error API response."""
-        response = {"status": "error", "message": "Task not found"}
+        response = {"success": False, "message": "Task not found"}
         result = validate_api_response(response)
         assert result is False
 

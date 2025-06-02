@@ -121,8 +121,8 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       const response = await this._hass.callService('tasktracker', 'get_recent_completions', params, {}, true, true);
 
       let newCompletions = [];
-      if (response && response.response) {
-        newCompletions = response.response.completions || [];
+      if (response && response.response && response.response.data && response.response.data.items) {
+        newCompletions = response.response.data.items;
       }
 
       // Always update completions and re-render on initial load, only compare for subsequent refreshes

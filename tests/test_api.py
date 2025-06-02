@@ -31,9 +31,9 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "message": "Task completed",
-            "data": {"task_id": 123, "completed": True},
+            "success": True,
+            "spoken_response": "Task completed successfully",
+            "data": {"completion": {"task_id": 123, "completed": True}},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
@@ -42,8 +42,8 @@ class TestTaskTrackerAPI:
             task_id=123, assigned_to="testuser", notes="Test completion"
         )
 
-        assert result["status"] == "success"
-        assert result["data"]["task_id"] == 123
+        assert result["success"] is True
+        assert result["data"]["completion"]["task_id"] == 123
 
         # Verify the request was made correctly
         api_client.session.request.assert_called_once_with(
@@ -67,9 +67,9 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "message": "Task completed",
-            "data": {"name": "trash", "completed": True},
+            "success": True,
+            "spoken_response": "Task completed successfully",
+            "data": {"completion": {"name": "trash", "completed": True}},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
@@ -78,8 +78,8 @@ class TestTaskTrackerAPI:
             name="trash", assigned_to="testuser"
         )
 
-        assert result["status"] == "success"
-        assert result["data"]["name"] == "trash"
+        assert result["success"] is True
+        assert result["data"]["completion"]["name"] == "trash"
 
     @pytest.mark.asyncio
     async def test_create_leftover_success(self, api_client: TaskTrackerAPI) -> None:
@@ -87,9 +87,9 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 201
         mock_response.json.return_value = {
-            "status": "success",
-            "message": "Leftover created",
-            "data": {"id": 456, "name": "pizza"},
+            "success": True,
+            "spoken_response": "Leftover created successfully",
+            "data": {"leftover": {"id": 456, "name": "pizza"}},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
@@ -98,8 +98,8 @@ class TestTaskTrackerAPI:
             name="pizza", assigned_to="testuser", shelf_life_days=3
         )
 
-        assert result["status"] == "success"
-        assert result["data"]["name"] == "pizza"
+        assert result["success"] is True
+        assert result["data"]["leftover"]["name"] == "pizza"
 
     @pytest.mark.asyncio
     async def test_create_leftover_minimal_params(
@@ -109,16 +109,17 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 201
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"id": 456, "name": "pizza"},
+            "success": True,
+            "spoken_response": "Leftover created successfully",
+            "data": {"leftover": {"id": 456, "name": "pizza"}},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.create_leftover(name="pizza")
 
-        assert result["status"] == "success"
-        assert result["data"]["name"] == "pizza"
+        assert result["success"] is True
+        assert result["data"]["leftover"]["name"] == "pizza"
 
     @pytest.mark.asyncio
     async def test_create_adhoc_task_success(self, api_client: TaskTrackerAPI) -> None:
@@ -126,8 +127,9 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 201
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"id": 789, "name": "adhoc task"},
+            "success": True,
+            "spoken_response": "Task created successfully",
+            "data": {"task": {"id": 789, "name": "adhoc task"}},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
@@ -136,8 +138,8 @@ class TestTaskTrackerAPI:
             name="adhoc task", assigned_to="testuser", duration_minutes=30
         )
 
-        assert result["status"] == "success"
-        assert result["data"]["name"] == "adhoc task"
+        assert result["success"] is True
+        assert result["data"]["task"]["name"] == "adhoc task"
 
     @pytest.mark.asyncio
     async def test_create_adhoc_task_minimal_params(
@@ -147,8 +149,9 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 201
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"id": 789, "name": "adhoc task"},
+            "success": True,
+            "spoken_response": "Task created successfully",
+            "data": {"task": {"id": 789, "name": "adhoc task"}},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
@@ -157,8 +160,8 @@ class TestTaskTrackerAPI:
             name="adhoc task", assigned_to="testuser"
         )
 
-        assert result["status"] == "success"
-        assert result["data"]["name"] == "adhoc task"
+        assert result["success"] is True
+        assert result["data"]["task"]["name"] == "adhoc task"
 
     @pytest.mark.asyncio
     async def test_get_recommended_tasks_success(
@@ -168,12 +171,14 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "Found 2 recommended tasks",
             "data": {
-                "tasks": [
+                "items": [
                     {"id": 1, "name": "Quick task", "duration": 15},
                     {"id": 2, "name": "Medium task", "duration": 30},
-                ]
+                ],
+                "count": 2,
             },
         }
 
@@ -183,8 +188,8 @@ class TestTaskTrackerAPI:
             assigned_to="testuser", available_minutes=30
         )
 
-        assert result["status"] == "success"
-        assert len(result["data"]["tasks"]) == 2
+        assert result["success"] is True
+        assert len(result["data"]["items"]) == 2
 
     @pytest.mark.asyncio
     async def test_get_recommended_tasks_minimal_params(
@@ -194,8 +199,9 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"tasks": []},
+            "success": True,
+            "spoken_response": "No recommended tasks found",
+            "data": {"items": [], "count": 0},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
@@ -204,7 +210,7 @@ class TestTaskTrackerAPI:
             assigned_to="testuser", available_minutes=30
         )
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_get_available_tasks_success(
@@ -214,16 +220,17 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"tasks": [{"id": 1, "name": "Task 1"}]},
+            "success": True,
+            "spoken_response": "Found 1 available task",
+            "data": {"items": [{"id": 1, "name": "Task 1"}], "count": 1},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_available_tasks(assigned_to="testuser")
 
-        assert result["status"] == "success"
-        assert len(result["data"]["tasks"]) == 1
+        assert result["success"] is True
+        assert len(result["data"]["items"]) == 1
 
     @pytest.mark.asyncio
     async def test_get_available_tasks_no_params(
@@ -233,15 +240,16 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"tasks": []},
+            "success": True,
+            "spoken_response": "No available tasks found",
+            "data": {"items": [], "count": 0},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_available_tasks()
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_get_recent_completions_success(
@@ -251,8 +259,12 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"completions": [{"id": 1, "task_name": "Completed Task"}]},
+            "success": True,
+            "spoken_response": "Found 1 recent completion",
+            "data": {
+                "completions": [{"id": 1, "task_name": "Completed Task"}],
+                "count": 1,
+            },
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
@@ -261,7 +273,7 @@ class TestTaskTrackerAPI:
             assigned_to="testuser", limit=10
         )
 
-        assert result["status"] == "success"
+        assert result["success"] is True
         assert len(result["data"]["completions"]) == 1
 
     @pytest.mark.asyncio
@@ -272,15 +284,16 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"completions": []},
+            "success": True,
+            "spoken_response": "No recent completions found",
+            "data": {"completions": [], "count": 0},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_recent_completions()
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_list_leftovers_success(self, api_client: TaskTrackerAPI) -> None:
@@ -288,15 +301,16 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"leftovers": [{"id": 1, "name": "pizza"}]},
+            "success": True,
+            "spoken_response": "Found 1 leftover",
+            "data": {"leftovers": [{"id": 1, "name": "pizza"}], "count": 1},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.list_leftovers()
 
-        assert result["status"] == "success"
+        assert result["success"] is True
         assert len(result["data"]["leftovers"]) == 1
 
     @pytest.mark.asyncio
@@ -305,15 +319,16 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"tasks": [{"id": 1, "name": "Task 1"}]},
+            "success": True,
+            "spoken_response": "Found 1 task",
+            "data": {"tasks": [{"id": 1, "name": "Task 1"}], "count": 1},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_all_tasks(assigned_to="testuser")
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_get_all_tasks_no_params(self, api_client: TaskTrackerAPI) -> None:
@@ -321,15 +336,16 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"tasks": []},
+            "success": True,
+            "spoken_response": "No tasks found",
+            "data": {"tasks": [], "count": 0},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_all_tasks()
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_get_all_tasks_with_username(
@@ -339,15 +355,16 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"tasks": []},
+            "success": True,
+            "spoken_response": "Found 1 task",
+            "data": {"tasks": [{"id": 1, "name": "Task 1"}], "count": 1},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_all_tasks(assigned_to="testuser")
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_api_error_handling(self, api_client: TaskTrackerAPI) -> None:
@@ -412,7 +429,8 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "Found answer to the query",
             "data": {"answer": "This leftover is still safe to eat"},
         }
 
@@ -422,7 +440,7 @@ class TestTaskTrackerAPI:
             name="leftover pizza", question_type="safety"
         )
 
-        assert result["status"] == "success"
+        assert result["success"] is True
         assert "answer" in result["data"]
 
     @pytest.mark.asyncio
@@ -433,7 +451,8 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "Found answer to the query",
             "data": {"answer": "General information about the task"},
         }
 
@@ -441,7 +460,7 @@ class TestTaskTrackerAPI:
 
         result = await api_client.query_task(name="leftover pizza")
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_complete_task_without_notes(
@@ -451,15 +470,16 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"task_id": 123, "completed": True},
+            "success": True,
+            "spoken_response": "Task completed successfully",
+            "data": {"completion": {"task_id": 123, "completed": True}},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.complete_task(task_id=123, assigned_to="testuser")
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_complete_task_by_name_without_notes(
@@ -469,8 +489,9 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"name": "trash", "completed": True},
+            "success": True,
+            "spoken_response": "Task completed successfully",
+            "data": {"completion": {"name": "trash", "completed": True}},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
@@ -479,7 +500,7 @@ class TestTaskTrackerAPI:
             name="trash", assigned_to="testuser"
         )
 
-        assert result["status"] == "success"
+        assert result["success"] is True
 
     def test_host_stripping(self) -> None:
         """Test that trailing slash is stripped from host."""
@@ -499,12 +520,13 @@ class TestTaskTrackerAPI:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = {
-            "status": "success",
-            "data": {"tasks": []},
+            "success": True,
+            "spoken_response": "Found 1 available task",
+            "data": {"items": [{"id": 1, "name": "Task 1"}], "count": 1},
         }
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_available_tasks(assigned_to="testuser")
 
-        assert result["status"] == "success"
+        assert result["success"] is True

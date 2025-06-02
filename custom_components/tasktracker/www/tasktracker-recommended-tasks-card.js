@@ -129,8 +129,8 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       }, {}, true, true);
 
       let newTasks = [];
-      if (response && response.response) {
-        newTasks = (response.response.recommended_tasks || []).slice(0, this._config.max_tasks);
+      if (response && response.response && response.response.data && response.response.data.items) {
+        newTasks = response.response.data.items.slice(0, this._config.max_tasks);
       }
 
       // Always update tasks and re-render on initial load, only compare for subsequent refreshes
@@ -183,10 +183,11 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     try {
       const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes);
 
-      if (response && response.response) {
-        TaskTrackerUtils.showSuccess(`Task "${task.name}" completed successfully`);
+      if (response && response.response && response.response.success) {
+        TaskTrackerUtils.showSuccess(response.response.spoken_response || `Task "${task.name}" completed successfully`);
       } else {
-        TaskTrackerUtils.showError(`Failed to complete task: ${response.error || 'Unknown error'}`);
+        const errorMsg = (response && response.response && response.response.message) || 'Unknown error';
+        TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
       }
 
       // Refresh tasks after completion

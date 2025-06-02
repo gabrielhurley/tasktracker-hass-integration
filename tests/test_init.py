@@ -58,7 +58,7 @@ class TestTaskTrackerIntegration:
             mock_session.return_value = AsyncMock()
             mock_api = AsyncMock()
             mock_api_class.return_value = mock_api
-            mock_api.get_all_tasks.return_value = {"status": "success"}
+            mock_api.get_all_tasks.return_value = {"success": True}
             mock_js_module.return_value.async_register = AsyncMock()
 
             result = await async_setup_entry(hass, mock_config_entry)
@@ -120,7 +120,7 @@ class TestTaskTrackerIntegration:
             mock_session.return_value = AsyncMock()
             mock_api = AsyncMock()
             mock_api_class.return_value = mock_api
-            mock_api.get_all_tasks.return_value = {"status": "success"}
+            mock_api.get_all_tasks.return_value = {"success": True}
             mock_setup_services.side_effect = Exception("Service setup failed")
 
             result = await async_setup_entry(hass, mock_config_entry)

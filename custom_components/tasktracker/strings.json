@@ -77,8 +77,8 @@
                     "name": "Task ID",
                     "description": "The unique ID of the task to complete."
                 },
-                "username": {
-                    "name": "Username",
+                "assigned_to": {
+                    "name": "Assigned To",
                     "description": "TaskTracker username. If not provided, will attempt to determine from user context."
                 },
                 "notes": {
@@ -95,8 +95,8 @@
                     "name": "Task Name",
                     "description": "The name of the task to complete (supports fuzzy matching)."
                 },
-                "username": {
-                    "name": "Username",
+                "assigned_to": {
+                    "name": "Assigned To",
                     "description": "TaskTracker username. If not provided, will attempt to determine from user context."
                 },
                 "notes": {
@@ -135,8 +135,8 @@
                     "name": "Task Name",
                     "description": "The name of the task to create."
                 },
-                "username": {
-                    "name": "Username",
+                "assigned_to": {
+                    "name": "Assigned To",
                     "description": "TaskTracker username. If not provided, will attempt to determine from user context."
                 },
                 "duration_minutes": {
@@ -167,8 +167,8 @@
             "name": "Get Recommended Tasks",
             "description": "Get tasks recommended for a user based on available time.",
             "fields": {
-                "username": {
-                    "name": "Username",
+                "assigned_to": {
+                    "name": "Assigned To",
                     "description": "TaskTracker username. If not provided, will attempt to determine from user context."
                 },
                 "available_minutes": {
@@ -181,8 +181,8 @@
             "name": "Get Available Tasks",
             "description": "Get all available tasks with optional filtering.",
             "fields": {
-                "username": {
-                    "name": "Username",
+                "assigned_to": {
+                    "name": "Assigned To",
                     "description": "Filter tasks for a specific user."
                 },
                 "available_minutes": {
@@ -199,8 +199,8 @@
             "name": "Get Recent Completions",
             "description": "Get recently completed tasks.",
             "fields": {
-                "username": {
-                    "name": "Username",
+                "assigned_to": {
+                    "name": "Assigned To",
                     "description": "Filter completions for a specific user."
                 },
                 "days": {
@@ -216,6 +216,24 @@
         "list_leftovers": {
             "name": "List Leftovers",
             "description": "Get a list of all leftover items that need attention."
+        },
+        "get_all_tasks": {
+            "name": "Get All Tasks",
+            "description": "Get all tasks with optional filtering.",
+            "fields": {
+                "thin": {
+                    "name": "Thin Response",
+                    "description": "Return minimal task information for better performance."
+                },
+                "assigned_to": {
+                    "name": "Assigned To",
+                    "description": "Filter tasks for a specific user."
+                }
+            }
+        },
+        "get_available_users": {
+            "name": "Get Available Users",
+            "description": "Get list of available TaskTracker usernames from configuration."
         }
     }
 }

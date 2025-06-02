@@ -81,7 +81,7 @@ class TaskTrackerAPI:
 
         except aiohttp.ClientError as ex:
             _LOGGER.exception("Network error during API request")
-            msg = "Network error"
+            msg = f"Network error: {ex}"
             raise TaskTrackerAPIError(msg) from ex
 
     # Task completion methods
@@ -211,12 +211,13 @@ class TaskTrackerAPI:
         return await self._request("GET", ENDPOINT_LIST_LEFTOVERS)
 
     async def get_all_tasks(
-        self, thin: bool = False, assigned_to: str | None = None
+        self,
+        thin: bool = False,  # noqa: FBT001, FBT002
+        assigned_to: str | None = None,
     ) -> dict[str, Any]:
         """Get all tasks."""
         params: dict[str, Any] = {}
-        if thin:
-            params["thin"] = thin
+        params["thin"] = str(thin).lower()  # Convert boolean to lowercase string
         if assigned_to:
             params["assigned_to"] = assigned_to
 

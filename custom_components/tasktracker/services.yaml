@@ -8,7 +8,7 @@ complete_task:
       selector:
         number:
           min: 1
-    username:
+    assigned_to:
       required: false
       example: "john_doe"
       selector:
@@ -27,7 +27,7 @@ complete_task_by_name:
       example: "Take out trash"
       selector:
         text:
-    username:
+    assigned_to:
       required: false
       example: "john_doe"
       selector:
@@ -73,7 +73,7 @@ create_adhoc_task:
       example: "Fix leaky faucet"
       selector:
         text:
-    username:
+    assigned_to:
       required: false
       example: "john_doe"
       selector:
@@ -123,13 +123,13 @@ query_task:
 
 get_recommended_tasks:
   fields:
-    username:
+    assigned_to:
       required: false
       example: "john_doe"
       selector:
         text:
     available_minutes:
-      required: false
+      required: true
       example: 60
       selector:
         number:
@@ -139,7 +139,7 @@ get_recommended_tasks:
 
 get_available_tasks:
   fields:
-    username:
+    assigned_to:
       required: false
       example: "john_doe"
       selector:
@@ -163,7 +163,7 @@ get_available_tasks:
 
 get_recent_completions:
   fields:
-    username:
+    assigned_to:
       required: false
       example: "john_doe"
       selector:
@@ -185,3 +185,18 @@ get_recent_completions:
           max: 100
 
 list_leftovers:
+
+get_all_tasks:
+  fields:
+    thin:
+      required: false
+      example: false
+      selector:
+        boolean:
+    assigned_to:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+
+get_available_users:

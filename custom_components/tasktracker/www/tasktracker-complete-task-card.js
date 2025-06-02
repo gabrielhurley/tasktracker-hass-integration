@@ -71,8 +71,8 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     try {
       const response = await this._hass.callService('tasktracker', 'get_all_tasks', { thin: true }, {}, true, true);
 
-      if (response && response.response && response.response.tasks) {
-        this._allTasks = response.response.tasks.sort((a, b) => a.name.localeCompare(b.name));
+      if (response && response.response && response.response.data && response.response.data.tasks) {
+        this._allTasks = response.response.data.tasks.sort((a, b) => a.name.localeCompare(b.name));
       } else {
         this._allTasks = [];
       }
@@ -92,8 +92,8 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     try {
       const response = await this._hass.callService('tasktracker', 'get_available_users', {}, {}, true, true);
 
-      if (response && response.response && response.response.users) {
-        this._availableUsers = response.response.users;
+      if (response && response.response && response.response.data && response.response.data.users) {
+        this._availableUsers = response.response.data.users;
       } else {
         // Fallback to hardcoded users if service fails
         this._availableUsers = ['gabriel', 'katie', 'admin'];
@@ -170,13 +170,14 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
 
       const response = await this._hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
 
-      if (response && response.response) {
-        TaskTrackerUtils.showSuccess(response.response.spoken_response);
+      if (response && response.response && response.response.success) {
+        TaskTrackerUtils.showSuccess(response.response.spoken_response || 'Task completed successfully');
 
         // Mark that we should reset the form on next render
         this._shouldResetForm = true;
       } else {
-        TaskTrackerUtils.showError(`Failed to complete task: ${response.response.error || 'Unknown error'}`);
+        const errorMsg = (response && response.response && response.response.message) || 'Unknown error';
+        TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
       }
 
       this._completing = false;

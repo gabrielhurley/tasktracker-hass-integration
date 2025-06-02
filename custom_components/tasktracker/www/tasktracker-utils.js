@@ -6,52 +6,52 @@
 
 export class TaskTrackerUtils {
 
-    // User management utilities
-    static getCurrentUsername(config, hass) {
-        switch (config.user_filter_mode) {
-            case 'explicit':
-                return config.explicit_user;
+  // User management utilities
+  static getCurrentUsername(config, hass) {
+    switch (config.user_filter_mode) {
+      case 'explicit':
+        return config.explicit_user;
 
-            case 'current':
-                // Try to detect current user
-                if (hass && hass.user && hass.user.name) {
-                    // Basic mapping - in real implementation this would use the integration's user mapping
-                    return hass.user.name.toLowerCase();
-                }
-                return null;
-
-            case 'all':
-            default:
-                return null; // No username filter
+      case 'current':
+        // Try to detect current user
+        if (hass && hass.user && hass.user.name) {
+          // Basic mapping - in real implementation this would use the integration's user mapping
+          return hass.user.name.toLowerCase();
         }
+        return null;
+
+      case 'all':
+      default:
+        return null; // No username filter
+    }
+  }
+
+  static hasValidUserConfig(config) {
+    return config.user_filter_mode &&
+      (config.user_filter_mode === 'all' ||
+        config.user_filter_mode === 'current' ||
+        (config.user_filter_mode === 'explicit' && config.explicit_user));
+  }
+
+  static getUsernameForAction(config, hass) {
+    let username = TaskTrackerUtils.getCurrentUsername(config, hass);
+
+    // If we're in "all users" mode, we need a username for actions
+    if (config.user_filter_mode === 'all' && !username) {
+      // Try to get current user as fallback
+      if (hass && hass.user && hass.user.name) {
+        username = hass.user.name.toLowerCase();
+      }
     }
 
-    static hasValidUserConfig(config) {
-        return config.user_filter_mode &&
-            (config.user_filter_mode === 'all' ||
-                config.user_filter_mode === 'current' ||
-                (config.user_filter_mode === 'explicit' && config.explicit_user));
-    }
+    return username;
+  }
 
-    static getUsernameForAction(config, hass) {
-        let username = TaskTrackerUtils.getCurrentUsername(config, hass);
-
-        // If we're in "all users" mode, we need a username for actions
-        if (config.user_filter_mode === 'all' && !username) {
-            // Try to get current user as fallback
-            if (hass && hass.user && hass.user.name) {
-                username = hass.user.name.toLowerCase();
-            }
-        }
-
-        return username;
-    }
-
-    // Toast notification utilities
-    static showSuccess(message) {
-        const toast = document.createElement('div');
-        toast.textContent = message;
-        toast.style.cssText = `
+  // Toast notification utilities
+  static showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
@@ -65,19 +65,19 @@ export class TaskTrackerUtils {
       font-size: 0.9em;
     `;
 
-        document.body.appendChild(toast);
+    document.body.appendChild(toast);
 
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 3000);
-    }
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 3000);
+  }
 
-    static showError(message) {
-        const toast = document.createElement('div');
-        toast.textContent = message;
-        toast.style.cssText = `
+  static showError(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
@@ -91,138 +91,138 @@ export class TaskTrackerUtils {
       font-size: 0.9em;
     `;
 
-        document.body.appendChild(toast);
+    document.body.appendChild(toast);
 
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 5000);
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 5000);
+  }
+
+  // Date and time formatting utilities
+  static formatDate(dateString) {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return dateString;
     }
+  }
 
-    // Date and time formatting utilities
-    static formatDate(dateString) {
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } catch {
-            return dateString;
-        }
-    }
+  static formatDueDate(dueDateString) {
+    try {
+      const dueDate = new Date(dueDateString);
+      const now = new Date();
+      const diffMs = dueDate - now;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-    static formatDueDate(dueDateString) {
-        try {
-            const dueDate = new Date(dueDateString);
-            const now = new Date();
-            const diffMs = dueDate - now;
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-            if (diffMs < 0) {
-                // Overdue
-                const overdueDays = Math.abs(diffDays);
-                if (overdueDays === 0) {
-                    return 'Today';
-                } else if (overdueDays === 1) {
-                    return '1 day ago';
-                } else {
-                    return `${overdueDays} days ago`;
-                }
-            } else if (diffDays === 0) {
-                // Due today
-                return diffHours > 0 ? `${diffHours}h` : 'Now';
-            } else if (diffDays === 1) {
-                return 'Tomorrow';
-            } else {
-                return `${diffDays} days`;
-            }
-        } catch {
-            return 'Unknown';
-        }
-    }
-
-    static formatDateTime(dateString) {
-        try {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-            // Return relative time for recent completions
-            if (diffDays === 0) {
-                if (diffHours === 0) {
-                    if (diffMinutes < 1) {
-                        return 'Just now';
-                    }
-                    return `${diffMinutes}m ago`;
-                }
-                return `${diffHours}h ago`;
-            } else if (diffDays === 1) {
-                return 'Yesterday';
-            } else {
-                return `${diffDays} days ago`;
-            }
-        } catch {
-            return dateString;
-        }
-    }
-
-    static formatDuration(minutes) {
-        if (!minutes) return 'Unknown';
-
-        if (minutes < 60) {
-            return `${minutes}m`;
+      if (diffMs < 0) {
+        // Overdue
+        const overdueDays = Math.abs(diffDays);
+        if (overdueDays === 0) {
+          return 'Today';
+        } else if (overdueDays === 1) {
+          return '1 day ago';
         } else {
-            const hours = Math.floor(minutes / 60);
-            const remainingMinutes = minutes % 60;
-            return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+          return `${overdueDays} days ago`;
         }
+      } else if (diffDays === 0) {
+        // Due today
+        return diffHours > 0 ? `${diffHours}h` : 'Now';
+      } else if (diffDays === 1) {
+        return 'Tomorrow';
+      } else {
+        return `${diffDays} days`;
+      }
+    } catch {
+      return 'Unknown';
+    }
+  }
+
+  static formatDateTime(dateString) {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      // Return relative time for recent completions
+      if (diffDays === 0) {
+        if (diffHours === 0) {
+          if (diffMinutes < 1) {
+            return 'Just now';
+          }
+          return `${diffMinutes}m ago`;
+        }
+        return `${diffHours}h ago`;
+      } else if (diffDays === 1) {
+        return 'Yesterday';
+      } else {
+        return `${diffDays} days ago`;
+      }
+    } catch {
+      return dateString;
+    }
+  }
+
+  static formatDuration(minutes) {
+    if (!minutes) return 'Unknown';
+
+    if (minutes < 60) {
+      return `${minutes}m`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    }
+  }
+
+  // Priority formatting
+  static formatPriority(priority) {
+    const priorityStringMap = {
+      'High': 1,
+      'Medium': 2,
+      'Low': 3
+    };
+
+    const priorityMap = {
+      3: 'Low',
+      2: 'Medium',
+      1: 'High',
+      4: 'Very Low',
+      5: 'Minimal'
+    };
+
+    if (priority in priorityStringMap) {
+      return priorityMap[priorityStringMap[priority]];
+    } else {
+      return priorityMap[priority] || `Priority ${priority}`;
+    }
+  }
+
+  // Task completion utility
+  static async completeTask(hass, taskName, username, notes) {
+    const serviceData = {
+      name: taskName,
+      assigned_to: username
+    };
+
+    if (notes) {
+      serviceData.notes = notes;
     }
 
-    // Priority formatting
-    static formatPriority(priority) {
-        const priorityStringMap = {
-            'High': 1,
-            'Medium': 2,
-            'Low': 3
-        };
+    return await hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
+  }
 
-        const priorityMap = {
-            3: 'Low',
-            2: 'Medium',
-            1: 'High',
-            4: 'Very Low',
-            5: 'Minimal'
-        };
-
-        if (priority in priorityStringMap) {
-            return priorityMap[priorityStringMap[priority]];
-        } else {
-            return priorityMap[priority] || `Priority ${priority}`;
-        }
-    }
-
-    // Task completion utility
-    static async completeTask(hass, taskName, username, notes) {
-        const serviceData = {
-            name: taskName,
-            assigned_to: username
-        };
-
-        if (notes) {
-            serviceData.notes = notes;
-        }
-
-        return await hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
-    }
-
-    // Modal creation utilities
-    static createTaskModal(task, config, onComplete) {
-        const modal = document.createElement('div');
-        modal.className = 'task-modal';
-        modal.style.cssText = `
+  // Modal creation utilities
+  static createTaskModal(task, config, onComplete) {
+    const modal = document.createElement('div');
+    modal.className = 'task-modal';
+    modal.style.cssText = `
       position: fixed;
       top: 0;
       left: 0;
@@ -237,9 +237,9 @@ export class TaskTrackerUtils {
       justify-content: center;
     `;
 
-        const modalContent = document.createElement('div');
-        modalContent.className = 'modal-content';
-        modalContent.style.cssText = `
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    modalContent.style.cssText = `
       background: var(--card-background-color);
       border-radius: 4px;
       padding: 16px;
@@ -252,7 +252,7 @@ export class TaskTrackerUtils {
       border: 1px solid var(--divider-color);
     `;
 
-        modalContent.innerHTML = `
+    modalContent.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--divider-color);">
         <h2 style="margin: 0; color: var(--primary-text-color); font-size: 1.1em; font-weight: 500;">${task.name}</h2>
         <button class="close-btn" style="
@@ -350,58 +350,58 @@ export class TaskTrackerUtils {
       </div>
     `;
 
-        modal.appendChild(modalContent);
+    modal.appendChild(modalContent);
 
-        // Event listeners
-        const closeBtn = modalContent.querySelector('.close-btn');
-        const cancelBtn = modalContent.querySelector('.cancel-btn');
-        const completeBtn = modalContent.querySelector('.complete-btn');
-        const notesTextarea = modalContent.querySelector('.completion-notes');
+    // Event listeners
+    const closeBtn = modalContent.querySelector('.close-btn');
+    const cancelBtn = modalContent.querySelector('.cancel-btn');
+    const completeBtn = modalContent.querySelector('.complete-btn');
+    const notesTextarea = modalContent.querySelector('.completion-notes');
 
-        const closeModal = () => {
-            modal.style.opacity = '0';
-            setTimeout(() => {
-                if (modal.parentNode) {
-                    modal.parentNode.removeChild(modal);
-                }
-            }, 300);
-        };
+    const closeModal = () => {
+      modal.style.opacity = '0';
+      setTimeout(() => {
+        if (modal.parentNode) {
+          modal.parentNode.removeChild(modal);
+        }
+      }, 300);
+    };
 
-        closeBtn.addEventListener('click', closeModal);
-        cancelBtn.addEventListener('click', closeModal);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
 
-        completeBtn.addEventListener('click', async () => {
-            const notes = notesTextarea ? notesTextarea.value.trim() : '';
-            await onComplete(notes);
-            closeModal();
-        });
+    completeBtn.addEventListener('click', async () => {
+      const notes = notesTextarea ? notesTextarea.value.trim() : '';
+      await onComplete(notes);
+      closeModal();
+    });
 
-        // Style complete button on hover
-        completeBtn.addEventListener('mouseenter', () => {
-            completeBtn.style.background = 'var(--divider-color)';
-            completeBtn.style.color = 'var(--primary-text-color)';
-        });
-        completeBtn.addEventListener('mouseleave', () => {
-            completeBtn.style.background = 'transparent';
-            completeBtn.style.color = 'var(--secondary-text-color)';
-        });
+    // Style complete button on hover
+    completeBtn.addEventListener('mouseenter', () => {
+      completeBtn.style.background = 'var(--divider-color)';
+      completeBtn.style.color = 'var(--primary-text-color)';
+    });
+    completeBtn.addEventListener('mouseleave', () => {
+      completeBtn.style.background = 'transparent';
+      completeBtn.style.color = 'var(--secondary-text-color)';
+    });
 
-        return modal;
-    }
+    return modal;
+  }
 
-    static showModal(modal) {
-        document.body.appendChild(modal);
-        requestAnimationFrame(() => {
-            modal.style.opacity = '1';
-        });
-    }
+  static showModal(modal) {
+    document.body.appendChild(modal);
+    requestAnimationFrame(() => {
+      modal.style.opacity = '1';
+    });
+  }
 
-    // Configuration utilities
-    static createConfigRow(label, description, inputHtml) {
-        return `
+  // Configuration utilities
+  static createConfigRow(label, description, inputHtml) {
+    return `
       <div class="config-row">
         <label>
           ${label}
@@ -410,22 +410,22 @@ export class TaskTrackerUtils {
         ${inputHtml}
       </div>
     `;
-    }
+  }
 
-    static createNumberInput(value, configKey, min = null, max = null, step = null) {
-        const attrs = [
-            `value="${value}"`,
-            `data-config-key="${configKey}"`,
-            min !== null ? `min="${min}"` : '',
-            max !== null ? `max="${max}"` : '',
-            step !== null ? `step="${step}"` : ''
-        ].filter(Boolean).join(' ');
+  static createNumberInput(value, configKey, min = null, max = null, step = null) {
+    const attrs = [
+      `value="${value}"`,
+      `data-config-key="${configKey}"`,
+      min !== null ? `min="${min}"` : '',
+      max !== null ? `max="${max}"` : '',
+      step !== null ? `step="${step}"` : ''
+    ].filter(Boolean).join(' ');
 
-        return `<input type="number" ${attrs} />`;
-    }
+    return `<input type="number" ${attrs} />`;
+  }
 
-    static createTextInput(value, configKey, placeholder = '') {
-        return `
+  static createTextInput(value, configKey, placeholder = '') {
+    return `
       <input
         type="text"
         value="${value || ''}"
@@ -433,37 +433,37 @@ export class TaskTrackerUtils {
         placeholder="${placeholder}"
       />
     `;
-    }
+  }
 
-    static createCheckboxInput(checked, configKey) {
-        return `
+  static createCheckboxInput(checked, configKey) {
+    return `
       <input
         type="checkbox"
         ${checked ? 'checked' : ''}
         data-config-key="${configKey}"
       />
     `;
-    }
+  }
 
-    static createSelectInput(value, configKey, options) {
-        const optionsHtml = options.map(option => {
-            const optionValue = typeof option === 'string' ? option : option.value;
-            const optionLabel = typeof option === 'string' ? option : option.label;
-            const selected = value === optionValue ? 'selected' : '';
-            return `<option value="${optionValue}" ${selected}>${optionLabel}</option>`;
-        }).join('');
+  static createSelectInput(value, configKey, options) {
+    const optionsHtml = options.map(option => {
+      const optionValue = typeof option === 'string' ? option : option.value;
+      const optionLabel = typeof option === 'string' ? option : option.label;
+      const selected = value === optionValue ? 'selected' : '';
+      return `<option value="${optionValue}" ${selected}>${optionLabel}</option>`;
+    }).join('');
 
-        return `<select data-config-key="${configKey}">${optionsHtml}</select>`;
-    }
+    return `<select data-config-key="${configKey}">${optionsHtml}</select>`;
+  }
 
-    static capitalize(string) {
-        if (!string) return string;
-        return string.charAt(0).toUpperCase() + string.slice(1);
-    }
+  static capitalize(string) {
+    if (!string) return string;
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  }
 
-    // Common styles for cards
-    static getCommonCardStyles() {
-        return `
+  // Common styles for cards
+  static getCommonCardStyles() {
+    return `
       :host {
         display: block;
       }
@@ -635,11 +635,11 @@ export class TaskTrackerUtils {
         font-size: 1.1em;
       }
     `;
-    }
+  }
 
-    // Common styles for config editors
-    static getCommonConfigStyles() {
-        return `
+  // Common styles for config editors
+  static getCommonConfigStyles() {
+    return `
       .card-config {
         display: flex;
         flex-direction: column;
@@ -702,82 +702,82 @@ export class TaskTrackerUtils {
         margin-top: 0;
       }
     `;
+  }
+
+  // Auto-refresh setup utility
+  static setupAutoRefresh(refreshCallback, intervalSeconds) {
+    // Validate interval before setting up the timer
+    const intervalMs = intervalSeconds * 1000;
+    if (isNaN(intervalMs) || intervalMs <= 0) {
+      console.warn('Invalid refresh interval, skipping auto-refresh setup');
+      return null;
     }
 
-    // Auto-refresh setup utility
-    static setupAutoRefresh(refreshCallback, intervalSeconds) {
-        // Validate interval before setting up the timer
-        const intervalMs = intervalSeconds * 1000;
-        if (isNaN(intervalMs) || intervalMs <= 0) {
-            console.warn('Invalid refresh interval, skipping auto-refresh setup');
-            return null;
-        }
+    return setInterval(refreshCallback, intervalMs);
+  }
 
-        return setInterval(refreshCallback, intervalMs);
+  // Array equality check utility
+  static arraysEqual(arr1, arr2, compareFunction) {
+    if (arr1.length !== arr2.length) return false;
+
+    for (let i = 0; i < arr1.length; i++) {
+      if (!compareFunction(arr1[i], arr2[i])) {
+        return false;
+      }
     }
 
-    // Array equality check utility
-    static arraysEqual(arr1, arr2, compareFunction) {
-        if (arr1.length !== arr2.length) return false;
+    return true;
+  }
 
-        for (let i = 0; i < arr1.length; i++) {
-            if (!compareFunction(arr1[i], arr2[i])) {
-                return false;
-            }
-        }
-
-        return true;
+  // Common config value change handler for card editors
+  static handleConfigValueChange(ev, editorInstance, updateConfigCallback, optionalFields = ['explicit_user', 'user', 'default_user']) {
+    if (!editorInstance._config || !editorInstance._hass) {
+      return;
     }
 
-    // Common config value change handler for card editors
-    static handleConfigValueChange(ev, editorInstance, updateConfigCallback, optionalFields = ['explicit_user', 'user', 'default_user']) {
-        if (!editorInstance._config || !editorInstance._hass) {
-            return;
-        }
+    const target = ev.target;
+    const configKey = target.dataset.configKey;
 
-        const target = ev.target;
-        const configKey = target.dataset.configKey;
-
-        if (!configKey) {
-            return;
-        }
-
-        let value;
-        if (target.type === 'checkbox') {
-            value = target.checked;
-        } else if (target.type === 'number') {
-            const parsedValue = parseInt(target.value, 10);
-            // Handle empty values or invalid numbers by using null to trigger default fallback
-            value = isNaN(parsedValue) ? null : parsedValue;
-        } else {
-            value = target.value || null;
-        }
-
-        // Handle empty string for optional fields
-        if (optionalFields.includes(configKey) && value === '') {
-            value = null;
-        }
-
-        // For text inputs, debounce the config update to avoid frequent API calls
-        if (target.type === 'text') {
-            // Initialize debounce timers if not exists
-            if (!editorInstance._debounceTimers) {
-                editorInstance._debounceTimers = {};
-            }
-
-            // Clear any existing timer for this field
-            if (editorInstance._debounceTimers[configKey]) {
-                clearTimeout(editorInstance._debounceTimers[configKey]);
-            }
-
-            // Set a new timer to update config after user stops typing
-            editorInstance._debounceTimers[configKey] = setTimeout(() => {
-                updateConfigCallback(configKey, value);
-                delete editorInstance._debounceTimers[configKey];
-            }, 500); // Wait 500ms after user stops typing
-        } else {
-            // For non-text inputs (checkboxes, selects, numbers), update immediately
-            updateConfigCallback(configKey, value);
-        }
+    if (!configKey) {
+      return;
     }
+
+    let value;
+    if (target.type === 'checkbox') {
+      value = target.checked;
+    } else if (target.type === 'number') {
+      const parsedValue = parseInt(target.value, 10);
+      // Handle empty values or invalid numbers by using null to trigger default fallback
+      value = isNaN(parsedValue) ? null : parsedValue;
+    } else {
+      value = target.value || null;
+    }
+
+    // Handle empty string for optional fields
+    if (optionalFields.includes(configKey) && value === '') {
+      value = null;
+    }
+
+    // For text inputs, debounce the config update to avoid frequent API calls
+    if (target.type === 'text') {
+      // Initialize debounce timers if not exists
+      if (!editorInstance._debounceTimers) {
+        editorInstance._debounceTimers = {};
+      }
+
+      // Clear any existing timer for this field
+      if (editorInstance._debounceTimers[configKey]) {
+        clearTimeout(editorInstance._debounceTimers[configKey]);
+      }
+
+      // Set a new timer to update config after user stops typing
+      editorInstance._debounceTimers[configKey] = setTimeout(() => {
+        updateConfigCallback(configKey, value);
+        delete editorInstance._debounceTimers[configKey];
+      }, 500); // Wait 500ms after user stops typing
+    } else {
+      // For non-text inputs (checkboxes, selects, numbers), update immediately
+      updateConfigCallback(configKey, value);
+    }
+  }
 }

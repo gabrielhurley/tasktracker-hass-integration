@@ -53,8 +53,9 @@ def test_basic_utility_functions() -> None:
     assert format_time_ago(1440) == "1 day ago"
 
     # Test validate_api_response
-    assert validate_api_response({"status": "success"}) is True
-    assert validate_api_response({"status": "error"}) is False
+    assert validate_api_response({"success": True}) is True
+    assert validate_api_response({"success": False}) is False
+    assert validate_api_response({}) is False
     assert validate_api_response(None) is False
 
 

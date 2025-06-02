@@ -42,25 +42,14 @@ class TestTaskTrackerUtilsSimple:
         assert format_time_ago(1440) == "1 day ago"  # 24 hours
         assert format_time_ago(2880) == "2 days ago"  # 48 hours
 
-    def test_validate_api_response_success(self) -> None:
-        """Test validating successful API response."""
-        response = {"status": "success", "data": {"task_id": 123}}
-        result = validate_api_response(response)
-        assert result is True
+    def test_validate_api_response(self) -> None:
+        """Test validate_api_response function."""
+        # Test valid response
+        response = {"success": True, "data": {"task_id": 123}}
+        assert validate_api_response(response) is True
 
-    def test_validate_api_response_error(self) -> None:
-        """Test validating error API response."""
-        response = {"status": "error", "message": "Task not found"}
-        result = validate_api_response(response)
-        assert result is False
-
-    def test_validate_api_response_malformed(self) -> None:
-        """Test validating malformed API response."""
-        response = {"invalid": "response"}
-        result = validate_api_response(response)
-        assert result is False
-
-    def test_validate_api_response_none(self) -> None:
-        """Test validating None response."""
-        result = validate_api_response(None)
-        assert result is False
+        # Test invalid responses
+        assert validate_api_response(None) is False
+        assert validate_api_response({}) is False
+        assert validate_api_response({"success": False}) is False
+        assert validate_api_response({"success": "true"}) is False  # Should be boolean

@@ -353,13 +353,17 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 raise
 
         async def get_available_users_service(call: ServiceCall) -> dict[str, Any]:  # noqa: ARG001
-            """Get available users from configuration."""
+            """Get available TaskTracker usernames."""
             try:
                 current_config = get_current_config()
                 usernames = get_available_tasktracker_usernames(current_config)
-                result = {"status": "success", "users": usernames}
 
-                _LOGGER.debug("Available users retrieved: %s", result)
+                _LOGGER.debug("Available TaskTracker usernames: %s", usernames)
+                result = {
+                    "success": True,
+                    "spoken_response": f"Available users: {', '.join(usernames)}",
+                    "data": {"users": usernames},
+                }
                 return result  # noqa: TRY300
             except Exception:
                 _LOGGER.exception("Unexpected error in get_available_users_service")

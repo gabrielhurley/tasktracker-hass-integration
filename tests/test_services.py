@@ -50,8 +50,9 @@ class TestTaskTrackerServices:
         """Test complete_task service."""
         mock_api = setup_integration
         mock_api.complete_task.return_value = {
-            "status": "success",
-            "message": "Task completed successfully",
+            "success": True,
+            "spoken_response": "Task completed successfully",
+            "data": {"completion": {"task_id": 123}},
         }
 
         with patch(
@@ -85,8 +86,9 @@ class TestTaskTrackerServices:
         """Test complete_task service with explicit username."""
         mock_api = setup_integration
         mock_api.complete_task.return_value = {
-            "status": "success",
-            "message": "Task completed successfully",
+            "success": True,
+            "spoken_response": "Task completed successfully",
+            "data": {"completion": {"task_id": 123}},
         }
 
         from custom_components.tasktracker.services import async_setup_services
@@ -118,8 +120,9 @@ class TestTaskTrackerServices:
         """Test complete_task_by_name service."""
         mock_api = setup_integration
         mock_api.complete_task_by_name.return_value = {
-            "status": "success",
-            "message": "Task completed by name successfully",
+            "success": True,
+            "spoken_response": "Task completed by name successfully",
+            "data": {"completion": {"name": "Test Task"}},
         }
 
         with patch(
@@ -152,8 +155,9 @@ class TestTaskTrackerServices:
         """Test create_leftover service."""
         mock_api = setup_integration
         mock_api.create_leftover.return_value = {
-            "status": "success",
-            "data": {"id": 456, "name": "leftover pizza"},
+            "success": True,
+            "spoken_response": "Leftover created successfully",
+            "data": {"leftover": {"id": 456, "name": "leftover pizza"}},
         }
 
         with patch(
@@ -190,8 +194,9 @@ class TestTaskTrackerServices:
         """Test create_leftover service with all parameters."""
         mock_api = setup_integration
         mock_api.create_leftover.return_value = {
-            "status": "success",
-            "data": {"id": 456, "name": "leftover pizza"},
+            "success": True,
+            "spoken_response": "Leftover created successfully",
+            "data": {"leftover": {"id": 456, "name": "leftover pizza"}},
         }
 
         from custom_components.tasktracker.services import async_setup_services
@@ -227,8 +232,9 @@ class TestTaskTrackerServices:
         """Test create_adhoc_task service."""
         mock_api = setup_integration
         mock_api.create_adhoc_task.return_value = {
-            "status": "success",
-            "data": {"id": 789, "name": "adhoc task"},
+            "success": True,
+            "spoken_response": "Task created successfully",
+            "data": {"task": {"id": 789, "name": "adhoc task"}},
         }
 
         with patch(
@@ -264,7 +270,8 @@ class TestTaskTrackerServices:
         """Test query_task service."""
         mock_api = setup_integration
         mock_api.query_task.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "Task queried successfully",
             "data": {"name": "Test Task", "safe_to_eat": True},
         }
 
@@ -292,7 +299,8 @@ class TestTaskTrackerServices:
         """Test get_recommended_tasks service."""
         mock_api = setup_integration
         mock_api.get_recommended_tasks.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "Recommended tasks retrieved successfully",
             "data": {
                 "tasks": [
                     {"id": 1, "name": "Quick task", "duration": 15},
@@ -332,7 +340,8 @@ class TestTaskTrackerServices:
         """Test get_available_tasks service."""
         mock_api = setup_integration
         mock_api.get_available_tasks.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "Available tasks retrieved successfully",
             "data": {"tasks": [{"id": 1, "name": "Available task"}]},
         }
 
@@ -361,7 +370,8 @@ class TestTaskTrackerServices:
         """Test get_recent_completions service."""
         mock_api = setup_integration
         mock_api.get_recent_completions.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "Recent completions retrieved successfully",
             "data": {"completions": [{"id": 1, "name": "Completed task"}]},
         }
 
@@ -390,7 +400,8 @@ class TestTaskTrackerServices:
         """Test list_leftovers service."""
         mock_api = setup_integration
         mock_api.list_leftovers.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "Leftovers retrieved successfully",
             "data": {"leftovers": [{"id": 1, "name": "leftover pizza"}]},
         }
 
@@ -410,7 +421,7 @@ class TestTaskTrackerServices:
         # Verify API was called and response is returned
         mock_api.list_leftovers.assert_called_once()
         assert response is not None
-        assert response["status"] == "success"
+        assert response["success"] == True
 
     @pytest.mark.asyncio
     async def test_get_all_tasks_service(
@@ -419,7 +430,8 @@ class TestTaskTrackerServices:
         """Test get_all_tasks service with thin parameter."""
         mock_api = setup_integration
         mock_api.get_all_tasks.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "All tasks retrieved successfully",
             "data": {"tasks": [{"id": 1, "name": "test task"}]},
         }
 
@@ -439,7 +451,7 @@ class TestTaskTrackerServices:
         # Verify API was called with thin=True and response is returned
         mock_api.get_all_tasks.assert_called_once_with(thin=True, assigned_to=None)
         assert response is not None
-        assert response["status"] == "success"
+        assert response["success"] == True
 
     @pytest.mark.asyncio
     async def test_get_all_tasks_service_no_params(
@@ -448,7 +460,8 @@ class TestTaskTrackerServices:
         """Test get_all_tasks service without parameters."""
         mock_api = setup_integration
         mock_api.get_all_tasks.return_value = {
-            "status": "success",
+            "success": True,
+            "spoken_response": "All tasks retrieved successfully",
             "data": {"tasks": [{"id": 1, "name": "test task"}]},
         }
 
@@ -468,7 +481,7 @@ class TestTaskTrackerServices:
         # Verify API was called with thin=False (default) and assigned_to=None and response is returned
         mock_api.get_all_tasks.assert_called_once_with(thin=False, assigned_to=None)
         assert response is not None
-        assert response["status"] == "success"
+        assert response["success"] == True
 
     @pytest.mark.asyncio
     async def test_service_missing_user_context(
@@ -504,8 +517,8 @@ class TestTaskTrackerServices:
         """Test service behavior when API returns an error."""
         mock_api = setup_integration
         mock_api.complete_task.return_value = {
-            "status": "error",
-            "message": "Task not found",
+            "success": False,
+            "spoken_response": "Task not found",
         }
 
         with patch(
@@ -644,4 +657,7 @@ class TestTaskTrackerServices:
 
         # Should return users from the updated config, not the initial empty config
         assert response is not None
-        assert response.get("users") == ["testuser1", "testuser2"]
+        assert isinstance(response, dict)
+        data = response.get("data")
+        assert isinstance(data, dict)
+        assert data.get("users") == ["testuser1", "testuser2"]

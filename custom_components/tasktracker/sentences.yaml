@@ -11,11 +11,13 @@ intents:
             required: true
       - sentences:
           - "I completed [the task] {task_name}"
-          - "I'm getting rid of [the] leftover {task_name} [in|from] [the fridge]"
-          - "I'm throwing out [the] leftover {task_name} [in|from] [the fridge]"
-          - "I'm tossing [out] [the] leftover {task_name} [in|from] [the fridge]"
+          - "I'm getting rid of [the] leftover {task_name} [in|from] [the (fridge|refridgerator)]"
+          - "I'm throwing out [the] leftover {task_name} [in|from] [the (fridge|refridgerator)]"
+          - "I'm tossing [out] [the] leftover {task_name} [in|from] [the (fridge|refridgerator)]"
+          - "I'm eating [the] [leftover] {task_name} [leftover|leftovers] [in|from] [the (fridge|refridgerator)] "
+          - "I ate [the] [leftover] {task_name} [leftover|leftovers] [in|from] [the (fridge|refridgerator)]"
           - "(remove|delete) [the] leftover {task_name}"
-          - "I threw out the leftover {task_name} [in|from] [the fridge]"
+          - "I threw out the leftover {task_name} [in|from] [the (fridge|refridgerator)]"
         slots:
           task_name:
             required: true
@@ -54,19 +56,20 @@ intents:
     data:
       - sentences:
           - "Add leftover {leftover_name}"
-          - "I'm adding [leftover] {leftover_name} to the fridge"
-          - "I'm putting [leftover] {leftover_name} in the fridge"
-          - "I (added|put) leftover {leftover_name} (to|in) the fridge"
-          - "I (added|put) {leftover_name} leftovers (to|in) the fridge"
+          - "I'm adding [leftover] {leftover_name} [leftover|leftovers] to the (fridge|refridgerator)"
+          - "I'm putting [leftover] {leftover_name} [leftover|leftovers] in the (fridge|refridgerator)"
+          - "I (added|put) leftover {leftover_name} [leftover|leftovers] (to|in) the (fridge|refridgerator)"
+          - "I (added|put) {leftover_name} [leftover|leftovers] (to|in) the (fridge|refridgerator)"
           - "There (is|are) leftover[s] [of] {leftover_name}"
+          - "There (is|are) {leftover_name} leftover[s]"
         slots:
           leftover_name:
             required: true
       - sentences:
-          - "I (added|put) leftover {leftover_name} (to|in) the fridge {days_ago} days ago"
-          - "I (added|put) {leftover_name} leftovers (to|in) the fridge {days_ago} days ago"
+          - "I (added|put) leftover {leftover_name} (to|in) the (fridge|refridgerator) {days_ago} days ago"
+          - "I (added|put) {leftover_name} leftovers (to|in) the (fridge|refridgerator) {days_ago} days ago"
         slots:
-          leftover_name:
+          task_name:
             required: true
           days_ago:
             required: true
@@ -116,7 +119,7 @@ intents:
     data:
       - sentences:
           - "is [the] [leftover] {task_name} [still] good"
-          - "can (I|we) [still] eat [the] [leftover] {task_name} [in the fridge]"
+          - "can (I|we) [still] eat [the] [leftover] {task_name} [in the (fridge|refridgerator)]"
           - "is [the] [leftover] {task_name} [still] safe [to eat]"
         slots:
           task_name:
@@ -125,9 +128,9 @@ intents:
             value: "safe_to_eat"
       - sentences:
           - "how old is [the] [leftover] {task_name}"
-          - "how long has [the] [leftover] {task_name} been in the fridge"
+          - "how long has [the] [leftover] {task_name} been in the (fridge|refridgerator)"
           - "when was [the] [leftover] {task_name} added"
-          - "when did (I|we) put [the] [leftover] {task_name} in the fridge"
+          - "when did (I|we) put [the] [leftover] {task_name} in the (fridge|refridgerator)"
           - "when did we order [the] [leftover] {task_name}"
         slots:
           task_name:

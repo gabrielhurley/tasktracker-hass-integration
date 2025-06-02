@@ -55,7 +55,9 @@ def mock_config_entry() -> MockConfigEntry:
 def mock_api_response() -> dict[str, Any]:
     """Mock API response data."""
     return {
-        "status": "success",
-        "message": "Operation completed",
-        "data": {"task_id": 123, "name": "Test Task", "completed": True},
+        "success": True,
+        "spoken_response": "Operation completed successfully",
+        "data": {
+            "completion": {"task_id": 123, "name": "Test Task", "completed": True}
+        },
     }

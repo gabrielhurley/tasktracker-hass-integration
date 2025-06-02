@@ -111,8 +111,8 @@ def validate_api_response(response: dict[str, Any] | None) -> bool:
     if not response or not isinstance(response, dict):
         return False
 
-    status = response.get("status")
-    return status == "success"
+    success = response.get("success")
+    return success is True
 
 
 def get_tasktracker_username_for_ha_user(
