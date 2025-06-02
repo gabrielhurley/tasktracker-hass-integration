@@ -17,6 +17,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._tasks = [];
+    this._availableUsers = [];
     this._loading = false;
     this._initialLoad = true;
     this._refreshing = false;
@@ -112,10 +113,24 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 
   _getCurrentUsername() {
-    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass);
+    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
+  }
+
+  async _fetchAvailableUsers() {
+    try {
+      this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
+    } catch (error) {
+      console.warn('Failed to fetch available users:', error);
+      this._availableUsers = ['gabriel', 'katie', 'admin']; // fallback
+    }
   }
 
   async _fetchAvailableTasks() {
+    // Fetch available users if not already loaded and we're in current user mode
+    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
+      await this._fetchAvailableUsers();
+    }
+
     // Only show full loading on initial load, use refreshing for subsequent calls
     if (this._initialLoad) {
       this._loading = true;
@@ -207,14 +222,17 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 
   async _completeTask(task, notes) {
-    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass);
+    // Fetch available users if not already loaded and we're in current user mode
+    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
+      await this._fetchAvailableUsers();
+    }
 
-    if (!username) {
-      if (this._config.user_filter_mode === 'all') {
-        TaskTrackerUtils.showError('Cannot complete task: No user available for completion');
-      } else {
-        TaskTrackerUtils.showError('No user configured for task completion');
-      }
+    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
+
+    // For 'current' user mode, username will be null and that's expected
+    // The backend will handle user mapping via call context
+    if (username === null && this._config.user_filter_mode !== 'current' && this._config.user_filter_mode !== 'all') {
+      TaskTrackerUtils.showError('No user configured for task completion');
       return;
     }
 

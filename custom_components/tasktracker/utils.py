@@ -116,7 +116,7 @@ def validate_api_response(response: dict[str, Any] | None) -> bool:
 
 
 def get_tasktracker_username_for_ha_user(
-    hass: HomeAssistant,  # noqa: ARG001
+    hass: HomeAssistant,
     ha_user_id: str | None,
     config: dict[str, Any],
 ) -> str | None:
@@ -137,10 +137,23 @@ def get_tasktracker_username_for_ha_user(
         return None
 
     users = config.get(CONF_USERS, [])
+    _LOGGER.debug(
+        "Looking for HA user ID '%s' in user mappings: %s",
+        ha_user_id,
+        users,
+    )
 
     for user in users:
-        if user.get(CONF_HA_USER_ID) == ha_user_id:
-            username = user.get(CONF_TASKTRACKER_USERNAME)
+        user_ha_id = user.get(CONF_HA_USER_ID)
+        user_tasktracker = user.get(CONF_TASKTRACKER_USERNAME)
+        _LOGGER.debug(
+            "Comparing HA user ID '%s' with mapping HA ID '%s' -> TaskTracker '%s'",
+            ha_user_id,
+            user_ha_id,
+            user_tasktracker,
+        )
+        if user_ha_id == ha_user_id:
+            username = user_tasktracker
             _LOGGER.debug(
                 "Found TaskTracker username '%s' for HA user ID '%s'",
                 username,
@@ -149,6 +162,19 @@ def get_tasktracker_username_for_ha_user(
             return username
 
     _LOGGER.warning("No TaskTracker username found for HA user ID '%s'", ha_user_id)
+    _LOGGER.warning("Available user mappings: %s", users)
+
+    # Check if any mapping has the ha_user_id as a display name instead
+    for user in users:
+        if user.get(CONF_HA_USER_ID, "").lower() == ha_user_id.lower():
+            _LOGGER.error(
+                "Found potential misconfiguration: User mapping has '%s' as user ID, "
+                "but this looks like a display name. Please reconfigure the user "
+                "mapping in the integration options to use the proper user ID.",
+                user.get(CONF_HA_USER_ID),
+            )
+            break
+
     return None
 
 
@@ -277,3 +303,64 @@ def get_available_tasktracker_usernames(config: dict[str, Any]) -> list[str]:
             usernames.append(username)
 
     return sorted(usernames)
+
+
+async def validate_user_configuration(
+    hass: HomeAssistant,
+    config: dict[str, Any],
+) -> tuple[bool, list[str]]:
+    """
+    Validate user configuration and identify potential issues.
+
+    Args:
+        hass: Home Assistant instance
+        config: Integration configuration containing user mappings
+
+    Returns:
+        Tuple of (is_valid, list_of_issues)
+
+    """
+    issues = []
+    users = config.get(CONF_USERS, [])
+
+    if not users:
+        return True, []  # No users configured is valid
+
+    # Get all Home Assistant users to validate against
+    try:
+        ha_users = await hass.auth.async_get_users()
+        ha_user_ids = {user.id for user in ha_users if user.is_active}
+        ha_user_names = {
+            user.name.lower() for user in ha_users if user.is_active and user.name
+        }
+    except Exception:
+        # If we can't get HA users, we can't validate
+        return True, []
+
+    for i, user in enumerate(users):
+        ha_user_id = user.get(CONF_HA_USER_ID)
+        tasktracker_username = user.get(CONF_TASKTRACKER_USERNAME)
+
+        if not ha_user_id:
+            issues.append(f"User mapping {i + 1}: Missing Home Assistant user ID")
+            continue
+
+        if not tasktracker_username:
+            issues.append(f"User mapping {i + 1}: Missing TaskTracker username")
+            continue
+
+        # Check if the ha_user_id looks like a display name instead of a user ID
+        if ha_user_id not in ha_user_ids:
+            if ha_user_id.lower() in ha_user_names:
+                issues.append(
+                    f"User mapping {i + 1}: '{ha_user_id}' appears to be a display name "
+                    f"instead of a user ID. Please reconfigure this mapping using the "
+                    f"integration options."
+                )
+            else:
+                issues.append(
+                    f"User mapping {i + 1}: Home Assistant user ID '{ha_user_id}' "
+                    f"does not exist or user is inactive"
+                )
+
+    return len(issues) == 0, issues

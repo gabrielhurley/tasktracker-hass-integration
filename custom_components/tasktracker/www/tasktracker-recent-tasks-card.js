@@ -22,6 +22,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     this._refreshing = false;
     this._error = null;
     this._refreshInterval = null;
+    this._availableUsers = []; // Add available users tracking
     this._default_days = 7;
     this._default_limit = 10;
     this._default_refresh_interval = 300;
@@ -110,10 +111,24 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   }
 
   _getCurrentUsername() {
-    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass);
+    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
+  }
+
+  async _fetchAvailableUsers() {
+    try {
+      this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
+    } catch (error) {
+      console.warn('Failed to fetch available users:', error);
+      this._availableUsers = []; // fallback to empty array
+    }
   }
 
   async _fetchRecentCompletions() {
+    // Fetch available users if not already loaded and we're in current user mode
+    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
+      await this._fetchAvailableUsers();
+    }
+
     // Only show full loading on initial load, use refreshing for subsequent calls
     if (this._initialLoad) {
       this._loading = true;
@@ -186,6 +201,9 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   }
 
   _render() {
+    const username = this._getCurrentUsername();
+    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
+
     this.shadowRoot.innerHTML = `
       <style>
         ${TaskTrackerUtils.getCommonCardStyles()}
@@ -217,7 +235,11 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
           ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
         </div>
 
-        ${this._renderContent()}
+        ${!hasValidUserConfig ? `
+          <div class="no-user-warning">
+            No user configured. Please set user in card configuration.
+          </div>
+        ` : this._renderContent()}
       </div>
     `;
 

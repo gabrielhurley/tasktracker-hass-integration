@@ -7,17 +7,59 @@
 export class TaskTrackerUtils {
 
   // User management utilities
-  static getCurrentUsername(config, hass) {
+  static async getAvailableUsers(hass) {
+    try {
+      const response = await hass.callService('tasktracker', 'get_available_users', {}, {}, true, true);
+      if (response && response.response && response.response.data && response.response.data.users) {
+        return response.response.data.users;
+      }
+    } catch (error) {
+      console.warn('Failed to fetch available users:', error);
+    }
+    // Fallback to empty array if service fails
+    return [];
+  }
+
+  static getCurrentUsername(config, hass, availableUsers = null) {
     switch (config.user_filter_mode) {
       case 'explicit':
         return config.explicit_user;
 
       case 'current':
-        // Try to detect current user
-        if (hass && hass.user && hass.user.name) {
-          // Basic mapping - in real implementation this would use the integration's user mapping
-          return hass.user.name.toLowerCase();
+        // Try to map the current HA user to a TaskTracker username
+        if (hass && hass.user && hass.user.name && availableUsers) {
+          const currentUserName = hass.user.name.toLowerCase();
+
+          // First try exact lowercase match
+          if (availableUsers.includes(currentUserName)) {
+            return currentUserName;
+          }
+
+          // Try case-insensitive match
+          const matchedUser = availableUsers.find(user =>
+            user.toLowerCase() === currentUserName
+          );
+          if (matchedUser) {
+            return matchedUser;
+          }
+
+          // Try to match by first name if full name doesn't work
+          const firstName = hass.user.name.split(' ')[0].toLowerCase();
+          if (availableUsers.includes(firstName)) {
+            return firstName;
+          }
+
+          // Try case-insensitive first name match
+          const matchedFirstName = availableUsers.find(user =>
+            user.toLowerCase() === firstName
+          );
+          if (matchedFirstName) {
+            return matchedFirstName;
+          }
         }
+
+        // If no availableUsers provided or no match found, return null
+        // Backend will handle user mapping via call context as fallback
         return null;
 
       case 'all':
@@ -33,15 +75,13 @@ export class TaskTrackerUtils {
         (config.user_filter_mode === 'explicit' && config.explicit_user));
   }
 
-  static getUsernameForAction(config, hass) {
-    let username = TaskTrackerUtils.getCurrentUsername(config, hass);
+  static getUsernameForAction(config, hass, availableUsers = null) {
+    let username = TaskTrackerUtils.getCurrentUsername(config, hass, availableUsers);
 
-    // If we're in "all users" mode, we need a username for actions
+    // If we're in "all users" mode and no username is configured,
+    // return null to let the backend handle user mapping via call context
     if (config.user_filter_mode === 'all' && !username) {
-      // Try to get current user as fallback
-      if (hass && hass.user && hass.user.name) {
-        username = hass.user.name.toLowerCase();
-      }
+      return null;
     }
 
     return username;
@@ -207,9 +247,14 @@ export class TaskTrackerUtils {
   // Task completion utility
   static async completeTask(hass, taskName, username, notes) {
     const serviceData = {
-      name: taskName,
-      assigned_to: username
+      name: taskName
     };
+
+    // Only include assigned_to if username is provided
+    // If null, let backend handle user mapping via call context
+    if (username) {
+      serviceData.assigned_to = username;
+    }
 
     if (notes) {
       serviceData.notes = notes;
@@ -234,9 +279,14 @@ export class TaskTrackerUtils {
   static async disposeLeftover(hass, leftoverName, username, notes) {
     const serviceData = {
       name: leftoverName,
-      assigned_to: username,
       event_type: 'leftover_disposed'
     };
+
+    // Only include assigned_to if username is provided
+    // If null, let backend handle user mapping via call context
+    if (username) {
+      serviceData.assigned_to = username;
+    }
 
     if (notes) {
       serviceData.notes = notes;

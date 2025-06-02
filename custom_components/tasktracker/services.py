@@ -99,6 +99,12 @@ GET_RECENT_COMPLETIONS_SCHEMA = vol.Schema(
     }
 )
 
+LIST_LEFTOVERS_SCHEMA = vol.Schema(
+    {
+        vol.Optional("assigned_to"): cv.string,
+    }
+)
+
 GET_ALL_TASKS_SCHEMA = vol.Schema(
     {
         vol.Optional("thin"): cv.boolean,
@@ -385,10 +391,12 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Unexpected error in get_recent_completions_service")
                 raise
 
-        async def list_leftovers_service(call: ServiceCall) -> dict[str, Any]:  # noqa: ARG001
+        async def list_leftovers_service(call: ServiceCall) -> dict[str, Any]:
             """List leftovers."""
             try:
-                result = await api.list_leftovers()
+                result = await api.list_leftovers(
+                    assigned_to=call.data.get("assigned_to"),
+                )
 
                 _LOGGER.debug("Leftovers retrieved: %s", result)
                 return result  # noqa: TRY300
@@ -508,6 +516,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
             DOMAIN,
             SERVICE_LIST_LEFTOVERS,
             list_leftovers_service,
+            schema=LIST_LEFTOVERS_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
         _LOGGER.debug("Registered service: %s", SERVICE_LIST_LEFTOVERS)

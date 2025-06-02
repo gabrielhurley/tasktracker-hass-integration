@@ -17,7 +17,8 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._tasks = [];
-    this._availableMinutes = 60;
+    this._availableUsers = [];
+    this._availableMinutes = 30;
     this._loading = false;
     this._initialLoad = true;
     this._refreshing = false;
@@ -114,12 +115,28 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   }
 
   _getCurrentUsername() {
-    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass);
+    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
+  }
+
+  async _fetchAvailableUsers() {
+    try {
+      this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
+    } catch (error) {
+      console.warn('Failed to fetch available users:', error);
+      this._availableUsers = ['gabriel', 'katie', 'admin']; // fallback
+    }
   }
 
   async _fetchRecommendedTasks() {
+    // Fetch available users if not already loaded and we're in current user mode
+    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
+      await this._fetchAvailableUsers();
+    }
+
     const username = this._getCurrentUsername();
-    if (!username) {
+    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
+
+    if (!hasValidUserConfig) {
       this._error = "No user configured. Please set user in card configuration.";
       this._tasks = [];
       this._loading = false;
@@ -142,10 +159,17 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     this._render();
 
     try {
-      const response = await this._hass.callService('tasktracker', 'get_recommended_tasks', {
-        assigned_to: username,
+      const serviceData = {
         available_minutes: this._availableMinutes
-      }, {}, true, true);
+      };
+
+      // Only include assigned_to if username is provided
+      // If null, let backend handle user mapping via call context
+      if (username) {
+        serviceData.assigned_to = username;
+      }
+
+      const response = await this._hass.callService('tasktracker', 'get_recommended_tasks', serviceData, {}, true, true);
 
       let newTasks = [];
       if (response && response.response && response.response.data && response.response.data.items) {
@@ -194,7 +218,9 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
 
   async _completeTask(task, notes) {
     const username = this._getCurrentUsername();
-    if (!username) {
+    // For 'current' user mode, username will be null and that's expected
+    // The backend will handle user mapping via call context
+    if (username === null && this._config.user_filter_mode !== 'current') {
       TaskTrackerUtils.showError('No user configured for task completion');
       return;
     }
@@ -234,6 +260,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
 
   _render() {
     const username = this._getCurrentUsername();
+    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -296,7 +323,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       <div class="card">
         ${this._config.show_header ? `
           <div class="header">
-            <h3 class="title">Tasks for ${TaskTrackerUtils.capitalize(username)}</h3>
+            <h3 class="title">Tasks for ${username ? TaskTrackerUtils.capitalize(username) : 'Current User'}</h3>
             <button class="refresh-btn" title="Refresh tasks">
               <ha-icon icon="mdi:refresh"></ha-icon>
             </button>
@@ -304,7 +331,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
           </div>
         ` : ''}
 
-        ${!username ? `
+        ${!hasValidUserConfig ? `
           <div class="no-user-warning">
             No user configured. Please set user in card configuration.
           </div>
@@ -335,7 +362,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       refreshBtn.addEventListener('click', () => this._fetchRecommendedTasks());
     }
 
-    if (username) {
+    if (hasValidUserConfig) {
       const slider = this.shadowRoot.querySelector('.time-slider');
       const timeValue = this.shadowRoot.querySelector('.time-value');
 

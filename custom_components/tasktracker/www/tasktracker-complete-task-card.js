@@ -118,12 +118,12 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         this._availableUsers = response.response.data.users;
       } else {
         // Fallback to hardcoded users if service fails
-        this._availableUsers = ['gabriel', 'katie', 'admin'];
+        this._availableUsers = [];
       }
     } catch (error) {
       console.error('Failed to fetch available users:', error);
       // Fallback to hardcoded users if service fails
-      this._availableUsers = ['gabriel', 'katie', 'admin'];
+      this._availableUsers = [];
     }
   }
 
@@ -133,12 +133,13 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         return this._config.default_user;
 
       case 'current':
-        // Try to detect current user
+        // For current user mode, we need to find the mapped TaskTracker username
+        // The available users list contains the actual TaskTracker usernames
+        // We should check if there's a way to get the mapped username for the current HA user
         if (this._hass && this._hass.user && this._hass.user.name) {
-          // Convert to lowercase and check if it matches any available user
           const currentUserName = this._hass.user.name.toLowerCase();
 
-          // First try exact match
+          // First try exact match with current logic for backward compatibility
           if (this._availableUsers.includes(currentUserName)) {
             return currentUserName;
           }
@@ -149,6 +150,20 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
           );
           if (matchedUser) {
             return matchedUser;
+          }
+
+          // Try to match by first name if full name doesn't work
+          const firstName = this._hass.user.name.split(' ')[0].toLowerCase();
+          if (this._availableUsers.includes(firstName)) {
+            return firstName;
+          }
+
+          // Try case-insensitive first name match
+          const matchedFirstName = this._availableUsers.find(user =>
+            user.toLowerCase() === firstName
+          );
+          if (matchedFirstName) {
+            return matchedFirstName;
           }
         }
         return null;

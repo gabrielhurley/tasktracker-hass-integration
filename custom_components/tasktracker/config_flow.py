@@ -80,13 +80,28 @@ class TaskTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Add user mapping
-            if user_input.get(CONF_HA_USER_ID) and user_input.get(
-                CONF_TASKTRACKER_USERNAME
+            # Process user selection
+            ha_user_id = user_input.get(CONF_HA_USER_ID)
+            ha_user_selection = user_input.get("ha_user_selection")
+
+            # If no manual user ID provided, extract it from the selection
+            if (
+                not ha_user_id
+                and ha_user_selection
+                and ha_user_selection != "Manual Entry"
             ):
+                # Extract user ID from format "Name (user-id)"
+                import re
+
+                match = re.match(r".*\(([^)]+)\)$", ha_user_selection)
+                if match:
+                    ha_user_id = match.group(1)
+
+            # Add user mapping
+            if ha_user_id and user_input.get(CONF_TASKTRACKER_USERNAME):
                 self._users.append(
                     {
-                        CONF_HA_USER_ID: user_input[CONF_HA_USER_ID],
+                        CONF_HA_USER_ID: ha_user_id,
                         CONF_TASKTRACKER_USERNAME: user_input[
                             CONF_TASKTRACKER_USERNAME
                         ],

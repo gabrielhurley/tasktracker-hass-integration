@@ -149,6 +149,46 @@ class TestTaskTrackerServices:
             )
 
     @pytest.mark.asyncio
+    async def test_complete_task_by_name_without_assigned_to_uses_user_mapping(
+        self, hass: HomeAssistant, setup_integration: AsyncMock
+    ) -> None:
+        """Test complete_task_by_name service without assigned_to uses user mapping."""
+        mock_api = setup_integration
+        mock_api.complete_task_by_name.return_value = {
+            "success": True,
+            "spoken_response": "Task completed by name successfully",
+            "data": {"completion": {"name": "Test Task"}},
+        }
+
+        with patch(
+            "custom_components.tasktracker.services.get_tasktracker_username_for_ha_user"
+        ) as mock_get_user:
+            mock_get_user.return_value = "mapped_user"
+
+            from custom_components.tasktracker.services import async_setup_services
+
+            await async_setup_services(hass, mock_api, {})
+
+            # Call the service without assigned_to
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_COMPLETE_TASK_BY_NAME,
+                {"name": "Test Task", "notes": "Completed without assigned_to"},
+                blocking=True,
+                return_response=True,
+            )
+
+            # Verify user mapping function was called
+            mock_get_user.assert_called_once()
+
+            # Verify API was called with mapped username
+            mock_api.complete_task_by_name.assert_called_once_with(
+                name="Test Task",
+                assigned_to="mapped_user",
+                notes="Completed without assigned_to",
+            )
+
+    @pytest.mark.asyncio
     async def test_create_leftover_service(
         self, hass: HomeAssistant, setup_integration: AsyncMock
     ) -> None:
@@ -331,6 +371,43 @@ class TestTaskTrackerServices:
             # Verify API was called
             mock_api.get_recommended_tasks.assert_called_once_with(
                 assigned_to="testuser", available_minutes=30
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_recommended_tasks_service_without_assigned_to_uses_user_mapping(
+        self, hass: HomeAssistant, setup_integration: AsyncMock
+    ) -> None:
+        """Test get_recommended_tasks service without assigned_to uses user mapping."""
+        mock_api = setup_integration
+        mock_api.get_recommended_tasks.return_value = {
+            "success": True,
+            "data": {"items": [{"name": "Test Task", "priority": 2}]},
+        }
+
+        with patch(
+            "custom_components.tasktracker.services.get_tasktracker_username_for_ha_user"
+        ) as mock_get_user:
+            mock_get_user.return_value = "mapped_user"
+
+            from custom_components.tasktracker.services import async_setup_services
+
+            await async_setup_services(hass, mock_api, {})
+
+            # Call the service without assigned_to
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_GET_RECOMMENDED_TASKS,
+                {"available_minutes": 30},
+                blocking=True,
+                return_response=True,
+            )
+
+            # Verify user mapping function was called
+            mock_get_user.assert_called_once()
+
+            # Verify API was called with mapped username
+            mock_api.get_recommended_tasks.assert_called_once_with(
+                assigned_to="mapped_user", available_minutes=30
             )
 
     @pytest.mark.asyncio

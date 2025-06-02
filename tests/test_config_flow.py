@@ -729,3 +729,66 @@ class TestTaskTrackerConfigFlow:
             assert len(users) == 1
             assert users[0]["ha_user_id"] == "test-user-id"
             assert users[0]["tasktracker_username"] == "testuser"
+
+    @pytest.mark.asyncio
+    async def test_user_step_extracts_user_id_from_selection(
+        self, hass: HomeAssistant
+    ) -> None:
+        """Test that user step properly extracts user ID from dropdown selection."""
+        from unittest.mock import Mock
+
+        mock_user = Mock()
+        mock_user.id = "user-id-123"
+        mock_user.name = "Gabriel Hurley"
+        mock_user.is_active = True
+
+        with (
+            patch.object(hass.auth, "async_get_users", return_value=[mock_user]),
+            patch(
+                "custom_components.tasktracker.config_flow.TaskTrackerAPI"
+            ) as mock_api_class,
+        ):
+            mock_api = AsyncMock()
+            mock_api_class.return_value = mock_api
+            mock_api.get_all_tasks.return_value = {"success": True}
+
+            # Start flow
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": config_entries.SOURCE_USER}
+            )
+
+            # Submit API form
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"],
+                {
+                    "host": "https://test.example.com",
+                    "api_key": "test-api-key",
+                },
+            )
+
+            # Should go to users step
+            if (
+                result.get("type") == FlowResultType.FORM
+                and result.get("step_id") == "users"
+            ):
+                # Submit user mapping using dropdown selection
+                result = await hass.config_entries.flow.async_configure(
+                    result["flow_id"],
+                    {
+                        "ha_user_selection": "Gabriel Hurley (user-id-123)",
+                        "tasktracker_username": "gabriel",
+                        "add_another_user": False,
+                    },
+                )
+
+                # Should create entry successfully
+                assert result.get("type") == FlowResultType.CREATE_ENTRY
+                assert result.get("title") == "TaskTracker"
+
+                # Verify user mapping was correctly stored with extracted user ID
+                users = result.get("data", {}).get("users", [])
+                assert len(users) == 1
+                assert (
+                    users[0]["ha_user_id"] == "user-id-123"
+                )  # Should be extracted ID, not display name
+                assert users[0]["tasktracker_username"] == "gabriel"

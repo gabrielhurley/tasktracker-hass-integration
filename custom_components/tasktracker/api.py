@@ -206,9 +206,13 @@ class TaskTrackerAPI:
 
         return await self._request("GET", ENDPOINT_RECENT_COMPLETIONS, params=params)
 
-    async def list_leftovers(self) -> dict[str, Any]:
+    async def list_leftovers(self, assigned_to: str | None = None) -> dict[str, Any]:
         """List all leftovers."""
-        return await self._request("GET", ENDPOINT_LIST_LEFTOVERS)
+        params: dict[str, Any] = {}
+        if assigned_to:
+            params["assigned_to"] = assigned_to
+
+        return await self._request("GET", ENDPOINT_LIST_LEFTOVERS, params=params)
 
     async def get_all_tasks(
         self,
