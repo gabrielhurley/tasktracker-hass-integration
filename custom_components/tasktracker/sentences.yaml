@@ -17,7 +17,7 @@ intents:
           - "I'm eating [the] [leftover] {task_name} [leftover|leftovers] [in|from] [the (fridge|refridgerator)] "
           - "I ate [the] [leftover] {task_name} [leftover|leftovers] [in|from] [the (fridge|refridgerator)]"
           - "(remove|delete) [the] leftover {task_name}"
-          - "I threw out the leftover {task_name} [in|from] [the (fridge|refridgerator)]"
+          - "I threw out the [leftover] {task_name} [in|from] [the (fridge|refridgerator)]"
         slots:
           task_name:
             required: true

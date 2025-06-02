@@ -288,15 +288,27 @@ export class TaskTrackerUtils {
       `tasktracker_${eventType}`
     );
 
+    // Track if this subscription has been cleaned up
+    let isCleanedUp = false;
+
     // Return cleanup function that handles the promise properly
     return async () => {
+      if (isCleanedUp) {
+        return; // Already cleaned up, avoid duplicate cleanup
+      }
+
       try {
         const unsubscribe = await unsubscribePromise;
         if (typeof unsubscribe === 'function') {
           unsubscribe();
         }
       } catch (error) {
-        console.warn('Error cleaning up TaskTracker event listener:', error);
+        // Only warn for unexpected errors, not "not_found" which is common during re-renders
+        if (error.code !== 'not_found') {
+          console.warn('Error cleaning up TaskTracker event listener:', error);
+        }
+      } finally {
+        isCleanedUp = true;
       }
     };
   }

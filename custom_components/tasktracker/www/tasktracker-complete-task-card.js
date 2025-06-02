@@ -69,8 +69,12 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     if (this._eventCleanup) {
       // Handle async cleanup
       this._eventCleanup().catch(error => {
-        console.warn('Error cleaning up TaskTracker event listener:', error);
+        // Suppress "not_found" errors which are common during dashboard editing
+        if (error?.code !== 'not_found') {
+          console.warn('Error cleaning up TaskTracker event listener:', error);
+        }
       });
+      this._eventCleanup = null;
     }
   }
 
@@ -505,8 +509,12 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     // Clean up any existing listener
     if (this._eventCleanup) {
       this._eventCleanup().catch(error => {
-        console.warn('Error cleaning up existing TaskTracker event listener:', error);
+        // Suppress "not_found" errors which are common during dashboard editing
+        if (error?.code !== 'not_found') {
+          console.warn('Error cleaning up existing TaskTracker event listener:', error);
+        }
       });
+      this._eventCleanup = null;
     }
 
     // Set up listener for task creations to refresh task list
@@ -533,7 +541,10 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
 
     // Combined cleanup function
     this._eventCleanup = async () => {
-      await Promise.all([creationCleanup(), completionCleanup()]);
+      await Promise.all([
+        creationCleanup().catch(err => err.code !== 'not_found' && console.warn('Creation cleanup error:', err)),
+        completionCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion cleanup error:', err))
+      ]);
     };
   }
 }

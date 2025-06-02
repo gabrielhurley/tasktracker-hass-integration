@@ -79,8 +79,12 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     if (this._eventCleanup) {
       // Handle async cleanup
       this._eventCleanup().catch(error => {
-        console.warn('Error cleaning up TaskTracker event listener:', error);
+        // Suppress "not_found" errors which are common during dashboard editing
+        if (error?.code !== 'not_found') {
+          console.warn('Error cleaning up TaskTracker event listener:', error);
+        }
       });
+      this._eventCleanup = null;
     }
   }
 
@@ -178,8 +182,12 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     // Clean up any existing listener
     if (this._eventCleanup) {
       this._eventCleanup().catch(error => {
-        console.warn('Error cleaning up existing TaskTracker event listener:', error);
+        // Suppress "not_found" errors which are common during dashboard editing
+        if (error?.code !== 'not_found') {
+          console.warn('Error cleaning up existing TaskTracker event listener:', error);
+        }
       });
+      this._eventCleanup = null;
     }
 
     // Set up listeners for leftover disposals, leftover creations, and task completions
@@ -216,7 +224,11 @@ class TaskTrackerLeftoversCard extends HTMLElement {
 
     // Combined cleanup function
     this._eventCleanup = async () => {
-      await Promise.all([disposalCleanup(), creationCleanup(), taskCompletionCleanup()]);
+      await Promise.all([
+        disposalCleanup().catch(err => err.code !== 'not_found' && console.warn('Disposal cleanup error:', err)),
+        creationCleanup().catch(err => err.code !== 'not_found' && console.warn('Creation cleanup error:', err)),
+        taskCompletionCleanup().catch(err => err.code !== 'not_found' && console.warn('Task completion cleanup error:', err))
+      ]);
     };
   }
 

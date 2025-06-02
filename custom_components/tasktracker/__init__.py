@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -58,7 +59,9 @@ async def _setup_voice_sentences(hass: HomeAssistant) -> bool:
             return False
 
         # Create target directory if it doesn't exist (non-blocking)
-        await hass.async_add_executor_job(target_dir.mkdir, True, True)
+        await hass.async_add_executor_job(
+            partial(target_dir.mkdir, parents=True, exist_ok=True)
+        )
 
         # Check if target already exists and compare contents (non-blocking)
         target_exists = await hass.async_add_executor_job(target_file.exists)
@@ -66,10 +69,10 @@ async def _setup_voice_sentences(hass: HomeAssistant) -> bool:
             try:
                 # Compare file contents to avoid unnecessary overwrites
                 source_content = await hass.async_add_executor_job(
-                    source_file.read_text, "utf-8"
+                    partial(source_file.read_text, encoding="utf-8")
                 )
                 target_content = await hass.async_add_executor_job(
-                    target_file.read_text, "utf-8"
+                    partial(target_file.read_text, encoding="utf-8")
                 )
 
                 if source_content == target_content:
@@ -81,7 +84,9 @@ async def _setup_voice_sentences(hass: HomeAssistant) -> bool:
                 _LOGGER.warning("Could not compare sentence files: %s", e)
 
         # Copy the file (non-blocking)
-        await hass.async_add_executor_job(shutil.copy2, source_file, target_file)
+        await hass.async_add_executor_job(
+            partial(shutil.copy2, source_file, target_file)
+        )
         _LOGGER.info(
             "TaskTracker voice sentences installed to %s. "
             "Please restart Home Assistant to enable voice commands.",
