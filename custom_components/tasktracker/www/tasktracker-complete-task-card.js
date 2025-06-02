@@ -22,6 +22,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     this._error = null;
     this._completing = false;
     this._shouldResetForm = false;
+    this._eventCleanup = null; // Store event listener cleanup function
   }
 
   static getConfigElement() {
@@ -48,12 +49,29 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const wasInitialized = this._hass !== null;
     this._hass = hass;
-    this._fetchInitialData();
+
+    // Always set up event listeners when hass changes
+    this._setupEventListeners();
+
+    // Only fetch initial data on first hass assignment
+    if (!wasInitialized && hass) {
+      this._fetchInitialData();
+    }
   }
 
   connectedCallback() {
     this._render();
+  }
+
+  disconnectedCallback() {
+    if (this._eventCleanup) {
+      // Handle async cleanup
+      this._eventCleanup().catch(error => {
+        console.warn('Error cleaning up TaskTracker event listener:', error);
+      });
+    }
   }
 
   async _fetchInitialData() {
@@ -481,6 +499,42 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
 
   getCardSize() {
     return 3;
+  }
+
+  _setupEventListeners() {
+    // Clean up any existing listener
+    if (this._eventCleanup) {
+      this._eventCleanup().catch(error => {
+        console.warn('Error cleaning up existing TaskTracker event listener:', error);
+      });
+    }
+
+    // Set up listener for task creations to refresh task list
+    const creationCleanup = TaskTrackerUtils.setupTaskCreationListener(
+      this._hass,
+      (eventData) => {
+        // Refresh the task list when new tasks are created
+        setTimeout(() => {
+          this._fetchAllTasks();
+        }, 500);
+      }
+    );
+
+    // Also listen for completions to keep the list up to date
+    const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(
+      this._hass,
+      (eventData) => {
+        // Refresh the task list when tasks are completed
+        setTimeout(() => {
+          this._fetchAllTasks();
+        }, 500);
+      }
+    );
+
+    // Combined cleanup function
+    this._eventCleanup = async () => {
+      await Promise.all([creationCleanup(), completionCleanup()]);
+    };
   }
 }
 

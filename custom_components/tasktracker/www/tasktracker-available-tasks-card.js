@@ -68,10 +68,17 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const wasInitialized = this._hass !== null;
     this._hass = hass;
+
+    // Always set up auto-refresh and event listeners when hass changes
     this._setupAutoRefresh();
     this._setupEventListeners();
-    this._fetchAvailableTasks();
+
+    // Only fetch initial data on first hass assignment
+    if (!wasInitialized && hass) {
+      this._fetchAvailableTasks();
+    }
   }
 
   connectedCallback() {
