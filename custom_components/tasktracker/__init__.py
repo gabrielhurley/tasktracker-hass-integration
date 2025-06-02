@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import executor
 
 from .api import TaskTrackerAPI
 from .const import DOMAIN
@@ -37,7 +38,7 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = []  # We'll add platforms here if needed
 
 
-def _setup_voice_sentences(hass: HomeAssistant) -> bool:
+async def _setup_voice_sentences(hass: HomeAssistant) -> bool:
     """Set up voice sentences by copying them to the correct location."""
     try:
         # Get the HA config directory
@@ -50,30 +51,37 @@ def _setup_voice_sentences(hass: HomeAssistant) -> bool:
         target_dir = config_dir / "custom_sentences" / "en"
         target_file = target_dir / "tasktracker.yaml"
 
-        # Check if source file exists
-        if not source_file.exists():
+        # Check if source file exists (non-blocking)
+        source_exists = await hass.async_add_executor_job(source_file.exists)
+        if not source_exists:
             _LOGGER.debug("TaskTracker sentences file not found at %s", source_file)
             return False
 
-        # Create target directory if it doesn't exist
-        target_dir.mkdir(parents=True, exist_ok=True)
+        # Create target directory if it doesn't exist (non-blocking)
+        await hass.async_add_executor_job(target_dir.mkdir, True, True)
 
-        # Check if target already exists and is different
-        if target_file.exists():
+        # Check if target already exists and compare contents (non-blocking)
+        target_exists = await hass.async_add_executor_job(target_file.exists)
+        if target_exists:
             try:
                 # Compare file contents to avoid unnecessary overwrites
-                if source_file.read_text(encoding="utf-8") == target_file.read_text(
-                    encoding="utf-8"
-                ):
+                source_content = await hass.async_add_executor_job(
+                    source_file.read_text, "utf-8"
+                )
+                target_content = await hass.async_add_executor_job(
+                    target_file.read_text, "utf-8"
+                )
+
+                if source_content == target_content:
                     _LOGGER.debug("TaskTracker sentences file is already up to date")
                     return True
-                else:  # noqa: RET505
+                else:
                     _LOGGER.info("Updating TaskTracker sentences file")
             except Exception as e:  # noqa: BLE001
                 _LOGGER.warning("Could not compare sentence files: %s", e)
 
-        # Copy the file
-        shutil.copy2(source_file, target_file)
+        # Copy the file (non-blocking)
+        await hass.async_add_executor_job(shutil.copy2, source_file, target_file)
         _LOGGER.info(
             "TaskTracker voice sentences installed to %s. "
             "Please restart Home Assistant to enable voice commands.",
@@ -130,7 +138,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Set up voice sentences (optional, graceful failure)
         try:
             _LOGGER.debug("Setting up TaskTracker voice sentences")
-            voice_setup_success = _setup_voice_sentences(hass)
+            voice_setup_success = await _setup_voice_sentences(hass)
             if not voice_setup_success:
                 _LOGGER.debug(
                     "Automatic voice setup failed. See VOICE_SETUP.md for manual instructions."  # noqa: E501

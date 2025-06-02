@@ -24,6 +24,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     this._refreshInterval = null;
     this._default_refresh_interval = 300;
     this._default_max_items = 20;
+    this._eventCleanup = null; // Store event listener cleanup function
   }
 
   static getConfigElement() {
@@ -56,6 +57,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._setupAutoRefresh();
+    this._setupEventListeners();
     this._fetchLeftovers();
   }
 
@@ -66,6 +68,12 @@ class TaskTrackerLeftoversCard extends HTMLElement {
   disconnectedCallback() {
     if (this._refreshInterval) {
       clearInterval(this._refreshInterval);
+    }
+    if (this._eventCleanup) {
+      // Handle async cleanup
+      this._eventCleanup().catch(error => {
+        console.warn('Error cleaning up TaskTracker event listener:', error);
+      });
     }
   }
 
@@ -159,6 +167,52 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     return { good, expired };
   }
 
+  _setupEventListeners() {
+    // Clean up any existing listener
+    if (this._eventCleanup) {
+      this._eventCleanup().catch(error => {
+        console.warn('Error cleaning up existing TaskTracker event listener:', error);
+      });
+    }
+
+    // Set up listeners for leftover disposals, leftover creations, and task completions
+    // (task completions needed because voice commands for leftover disposal fire task_completed events)
+    const disposalCleanup = TaskTrackerUtils.setupLeftoverDisposalListener(
+      this._hass,
+      (eventData) => {
+        // For leftovers, refresh when any leftover is disposed
+        setTimeout(() => {
+          this._fetchLeftovers();
+        }, 500);
+      }
+    );
+
+    const creationCleanup = TaskTrackerUtils.setupLeftoverCreationListener(
+      this._hass,
+      (eventData) => {
+        // Refresh when any leftover is created
+        setTimeout(() => {
+          this._fetchLeftovers();
+        }, 500);
+      }
+    );
+
+    const taskCompletionCleanup = TaskTrackerUtils.setupTaskCompletionListener(
+      this._hass,
+      (eventData) => {
+        // Refresh for task completions (covers voice commands for leftover disposal)
+        setTimeout(() => {
+          this._fetchLeftovers();
+        }, 500);
+      }
+    );
+
+    // Combined cleanup function
+    this._eventCleanup = async () => {
+      await Promise.all([disposalCleanup(), creationCleanup(), taskCompletionCleanup()]);
+    };
+  }
+
   async _disposeLeftover(leftover, notes) {
     const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass);
 
@@ -172,11 +226,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     }
 
     try {
-      const response = await this._hass.callService('tasktracker', 'complete_task_by_name', {
-        name: leftover.name,
-        assigned_to: username,
-        notes: notes || undefined
-      }, {}, true, true);
+      const response = await TaskTrackerUtils.disposeLeftover(this._hass, leftover.name, username, notes);
 
       if (response && response.response && response.response.success) {
         TaskTrackerUtils.showSuccess(response.response.spoken_response || `Leftover "${leftover.name}" disposed successfully`);

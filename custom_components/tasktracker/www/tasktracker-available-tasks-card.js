@@ -25,6 +25,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     this._default_upcoming_days = 1;
     this._default_refresh_interval = 300;
     this._default_max_tasks = 20;
+    this._eventCleanup = null; // Store event listener cleanup function
   }
 
   static getConfigElement() {
@@ -69,6 +70,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._setupAutoRefresh();
+    this._setupEventListeners();
     this._fetchAvailableTasks();
   }
 
@@ -79,6 +81,12 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   disconnectedCallback() {
     if (this._refreshInterval) {
       clearInterval(this._refreshInterval);
+    }
+    if (this._eventCleanup) {
+      // Handle async cleanup
+      this._eventCleanup().catch(error => {
+        console.warn('Error cleaning up TaskTracker event listener:', error);
+      });
     }
   }
 
@@ -366,6 +374,62 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
 
   getCardSize() {
     return Math.min(4, Math.max(1, Math.ceil(this._tasks.length / 5)));
+  }
+
+  _setupEventListeners() {
+    // Clean up any existing listener
+    if (this._eventCleanup) {
+      this._eventCleanup().catch(error => {
+        console.warn('Error cleaning up existing TaskTracker event listener:', error);
+      });
+    }
+
+    // Set up listeners for both task completions and task creations
+    const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(
+      this._hass,
+      (eventData) => {
+        const shouldRefresh = this._shouldRefreshForUser(eventData.username);
+        if (shouldRefresh) {
+          setTimeout(() => {
+            this._fetchAvailableTasks();
+          }, 500);
+        }
+      }
+    );
+
+    const creationCleanup = TaskTrackerUtils.setupTaskCreationListener(
+      this._hass,
+      (eventData) => {
+        const shouldRefresh = this._shouldRefreshForUser(eventData.assigned_to);
+        if (shouldRefresh) {
+          setTimeout(() => {
+            this._fetchAvailableTasks();
+          }, 500);
+        }
+      }
+    );
+
+    // Combined cleanup function
+    this._eventCleanup = async () => {
+      await Promise.all([completionCleanup(), creationCleanup()]);
+    };
+  }
+
+  _shouldRefreshForUser(completedByUsername) {
+    const currentUsername = this._getCurrentUsername();
+
+    // If we're showing all users, refresh for any completion
+    if (this._config.user_filter_mode === 'all') {
+      return true;
+    }
+
+    // If we're filtering by user, only refresh if it matches our filter
+    if (currentUsername) {
+      return completedByUsername === currentUsername;
+    }
+
+    // Default to refreshing
+    return true;
   }
 }
 

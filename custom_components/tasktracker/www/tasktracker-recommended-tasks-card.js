@@ -26,6 +26,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     this._default_minutes = 60;
     this._default_refresh_interval = 300;
     this._default_max_tasks = 3;
+    this._eventCleanup = null; // Store event listener cleanup function
   }
 
   static getConfigElement() {
@@ -71,6 +72,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._setupAutoRefresh();
+    this._setupEventListeners();
     this._fetchRecommendedTasks();
   }
 
@@ -81,6 +83,12 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   disconnectedCallback() {
     if (this._refreshInterval) {
       clearInterval(this._refreshInterval);
+    }
+    if (this._eventCleanup) {
+      // Handle async cleanup
+      this._eventCleanup().catch(error => {
+        console.warn('Error cleaning up TaskTracker event listener:', error);
+      });
     }
   }
 
@@ -387,6 +395,47 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
 
   getCardSize() {
     return Math.min(4, Math.max(2, Math.ceil(this._tasks.length / 3) + 1));
+  }
+
+  _setupEventListeners() {
+    // Clean up any existing listener
+    if (this._eventCleanup) {
+      this._eventCleanup().catch(error => {
+        console.warn('Error cleaning up existing TaskTracker event listener:', error);
+      });
+    }
+
+    // Set up listeners for both task completions and task creations
+    const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(
+      this._hass,
+      (eventData) => {
+        // Only refresh if the completed task affects this user
+        const currentUsername = this._getCurrentUsername();
+        if (currentUsername && eventData.username === currentUsername) {
+          setTimeout(() => {
+            this._fetchRecommendedTasks();
+          }, 500);
+        }
+      }
+    );
+
+    const creationCleanup = TaskTrackerUtils.setupTaskCreationListener(
+      this._hass,
+      (eventData) => {
+        // Only refresh if the created task affects this user
+        const currentUsername = this._getCurrentUsername();
+        if (currentUsername && eventData.assigned_to === currentUsername) {
+          setTimeout(() => {
+            this._fetchRecommendedTasks();
+          }, 500);
+        }
+      }
+    );
+
+    // Combined cleanup function
+    this._eventCleanup = async () => {
+      await Promise.all([completionCleanup(), creationCleanup()]);
+    };
   }
 }
 

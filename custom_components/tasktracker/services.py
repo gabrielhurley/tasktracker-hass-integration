@@ -45,6 +45,7 @@ COMPLETE_TASK_BY_NAME_SCHEMA = vol.Schema(
         vol.Required("name"): cv.string,
         vol.Optional("assigned_to"): cv.string,
         vol.Optional("notes"): cv.string,
+        vol.Optional("event_type"): vol.In(["task_completed", "leftover_disposed"]),
     }
 )
 
@@ -144,6 +145,18 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     notes=call.data.get("notes"),
                 )
 
+                # Fire custom event if completion was successful
+                if result.get("success"):
+                    hass.bus.fire(
+                        "tasktracker_task_completed",
+                        {
+                            "task_id": call.data["task_id"],
+                            "username": assigned_to,
+                            "notes": call.data.get("notes"),
+                            "completion_data": result.get("data"),
+                        },
+                    )
+
                 _LOGGER.info("Task completed successfully: %s", result)
                 return result  # noqa: TRY300
             except TaskTrackerAPIError:
@@ -175,6 +188,31 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     notes=call.data.get("notes"),
                 )
 
+                # Fire custom event if completion was successful
+                if result.get("success"):
+                    event_type = call.data.get("event_type", "task_completed")
+
+                    if event_type == "leftover_disposed":
+                        hass.bus.fire(
+                            f"tasktracker_{event_type}",
+                            {
+                                "leftover_name": call.data["name"],
+                                "username": assigned_to,
+                                "notes": call.data.get("notes"),
+                                "disposal_data": result.get("data"),
+                            },
+                        )
+                    else:
+                        hass.bus.fire(
+                            f"tasktracker_{event_type}",
+                            {
+                                "task_name": call.data["name"],
+                                "username": assigned_to,
+                                "notes": call.data.get("notes"),
+                                "completion_data": result.get("data"),
+                            },
+                        )
+
                 _LOGGER.info("Task completed by name successfully: %s", result)
                 return result  # noqa: TRY300
             except TaskTrackerAPIError:
@@ -193,6 +231,19 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     shelf_life_days=call.data.get("shelf_life_days"),
                     days_ago=call.data.get("days_ago"),
                 )
+
+                # Fire custom event if creation was successful
+                if result.get("success"):
+                    hass.bus.fire(
+                        "tasktracker_leftover_created",
+                        {
+                            "leftover_name": call.data["name"],
+                            "assigned_to": call.data.get("assigned_to"),
+                            "shelf_life_days": call.data.get("shelf_life_days"),
+                            "days_ago": call.data.get("days_ago"),
+                            "creation_data": result.get("data"),
+                        },
+                    )
 
                 _LOGGER.info("Leftover created successfully: %s", result)
                 return result  # noqa: TRY300
@@ -224,6 +275,19 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     duration_minutes=call.data.get("duration_minutes"),
                     priority=call.data.get("priority"),
                 )
+
+                # Fire custom event if creation was successful
+                if result.get("success"):
+                    hass.bus.fire(
+                        "tasktracker_task_created",
+                        {
+                            "task_name": call.data["name"],
+                            "assigned_to": assigned_to,
+                            "duration_minutes": call.data.get("duration_minutes"),
+                            "priority": call.data.get("priority"),
+                            "creation_data": result.get("data"),
+                        },
+                    )
 
                 _LOGGER.info("Ad-hoc task created successfully: %s", result)
                 return result  # noqa: TRY300

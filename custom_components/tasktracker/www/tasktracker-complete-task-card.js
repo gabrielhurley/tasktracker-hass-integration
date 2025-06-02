@@ -159,16 +159,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     this._render();
 
     try {
-      const serviceData = {
-        name: selectedTask,
-        assigned_to: selectedUsername
-      };
-
-      if (notes) {
-        serviceData.notes = notes;
-      }
-
-      const response = await this._hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
+      const response = await TaskTrackerUtils.completeTask(this._hass, selectedTask, selectedUsername, notes);
 
       if (response && response.response && response.response.success) {
         TaskTrackerUtils.showSuccess(response.response.spoken_response || 'Task completed successfully');

@@ -215,7 +215,101 @@ export class TaskTrackerUtils {
       serviceData.notes = notes;
     }
 
-    return await hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
+    const response = await hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
+
+    // Fire a custom event to notify other cards
+    if (response && response.response && response.response.success) {
+      await TaskTrackerUtils.fireTaskEvent(hass, 'task_completed', {
+        task_name: taskName,
+        username: username,
+        notes: notes,
+        completion_data: response.response.data
+      });
+    }
+
+    return response;
+  }
+
+  // Leftover disposal utility
+  static async disposeLeftover(hass, leftoverName, username, notes) {
+    const serviceData = {
+      name: leftoverName,
+      assigned_to: username,
+      event_type: 'leftover_disposed'
+    };
+
+    if (notes) {
+      serviceData.notes = notes;
+    }
+
+    const response = await hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
+
+    // Fire a custom event to notify other cards
+    if (response && response.response && response.response.success) {
+      await TaskTrackerUtils.fireTaskEvent(hass, 'leftover_disposed', {
+        leftover_name: leftoverName,
+        username: username,
+        notes: notes,
+        disposal_data: response.response.data
+      });
+    }
+
+    return response;
+  }
+
+  // Event listening utility for cross-card communication
+  static setupTaskCompletionListener(hass, callback) {
+    return TaskTrackerUtils.setupEventListener(hass, 'task_completed', callback);
+  }
+
+  // Event listening utility for leftover disposal events
+  static setupLeftoverDisposalListener(hass, callback) {
+    return TaskTrackerUtils.setupEventListener(hass, 'leftover_disposed', callback);
+  }
+
+  // Event listening utility for task creation events
+  static setupTaskCreationListener(hass, callback) {
+    return TaskTrackerUtils.setupEventListener(hass, 'task_created', callback);
+  }
+
+  // Event listening utility for leftover creation events
+  static setupLeftoverCreationListener(hass, callback) {
+    return TaskTrackerUtils.setupEventListener(hass, 'leftover_created', callback);
+  }
+
+  // Generic event listening utility for cross-card communication
+  static setupEventListener(hass, eventType, callback) {
+    // Use Home Assistant's event bus to listen for custom events
+    // subscribeEvents returns a promise that resolves to an unsubscribe function
+    let unsubscribePromise = hass.connection.subscribeEvents(
+      (event) => {
+        callback(event.data);
+      },
+      `tasktracker_${eventType}`
+    );
+
+    // Return cleanup function that handles the promise properly
+    return async () => {
+      try {
+        const unsubscribe = await unsubscribePromise;
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+      } catch (error) {
+        console.warn('Error cleaning up TaskTracker event listener:', error);
+      }
+    };
+  }
+
+  // Generic event firing utility for other task actions
+  static async fireTaskEvent(hass, eventType, data) {
+    try {
+      // Use Home Assistant's REST API to fire custom events
+      const eventUrl = `/api/events/tasktracker_${eventType}`;
+      await hass.callApi('POST', eventUrl.substring(5), data); // Remove '/api/' prefix as callApi adds it
+    } catch (error) {
+      console.warn('Failed to fire TaskTracker event:', error);
+    }
   }
 
   // Modal creation utilities

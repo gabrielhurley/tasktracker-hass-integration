@@ -117,6 +117,20 @@ class AddLeftoverIntentHandler(BaseTaskTrackerIntentHandler):
                 f"There was an error adding the leftover: {error_msg}"
             )
         else:
+            # Fire custom event for frontend cards
+            self.hass.bus.fire(
+                "tasktracker_leftover_created",
+                {
+                    "leftover_name": leftover_name,
+                    "assigned_to": leftover_assigned_to,
+                    "shelf_life_days": int(shelf_life_days)
+                    if shelf_life_days
+                    else None,
+                    "days_ago": int(days_ago) if days_ago else None,
+                    "creation_data": result.get("data"),
+                },
+            )
+
             message = result.get(
                 "spoken_response",
                 f"The {leftover_name} leftover has been added successfully.",
@@ -162,6 +176,17 @@ class CompleteTaskIntentHandler(BaseTaskTrackerIntentHandler):
                 f"There was an error completing the task: {error_msg}"
             )
         else:
+            # Fire custom event for frontend cards
+            self.hass.bus.fire(
+                "tasktracker_task_completed",
+                {
+                    "task_name": task_name,
+                    "username": task_completed_by,
+                    "notes": None,
+                    "completion_data": result.get("data"),
+                },
+            )
+
             message = result.get(
                 "spoken_response", f"Task {task_name} completed successfully."
             )
@@ -211,6 +236,18 @@ class AddAdHocTaskIntentHandler(BaseTaskTrackerIntentHandler):
                 f"There was an error creating the task: {error_msg}"
             )
         else:
+            # Fire custom event for frontend cards
+            self.hass.bus.fire(
+                "tasktracker_task_created",
+                {
+                    "task_name": task_name.capitalize(),
+                    "assigned_to": task_assigned_to,
+                    "duration_minutes": int(task_duration) if task_duration else None,
+                    "priority": int(task_priority) if task_priority else None,
+                    "creation_data": result.get("data"),
+                },
+            )
+
             message = result.get(
                 "spoken_response", f"Task {task_name} created successfully."
             )
@@ -230,14 +267,46 @@ class QueryTaskStatusIntentHandler(BaseTaskTrackerIntentHandler):
         """Handle QueryTaskStatus intent."""
         response = IntentResponse(language=intent_obj.language)
 
-        task_name = intent_obj.slots.get("task_name", {}).get("value")
-        question_type = intent_obj.slots.get("question_type", {}).get(
-            "value", "general"
-        )
+        # More robust task_name extraction
+        task_name_slot = intent_obj.slots.get("task_name", {})
+        if isinstance(task_name_slot, dict):
+            task_name = task_name_slot.get("value")
+        else:
+            task_name = task_name_slot
+
+        # Handle nested dictionary case
+        if isinstance(task_name, dict) and "value" in task_name:
+            task_name = task_name["value"]
+
+        # Ensure we have a string value for task_name
+        if not isinstance(task_name, str):
+            task_name = str(task_name) if task_name is not None else None
+
+        # More robust question_type extraction
+        question_type_slot = intent_obj.slots.get("question_type", {})
+        if isinstance(question_type_slot, dict):
+            question_type = question_type_slot.get("value", "general")
+        else:
+            question_type = question_type_slot
+
+        # Handle nested dictionary case
+        if isinstance(question_type, dict) and "value" in question_type:
+            question_type = question_type["value"]
+
+        # Ensure we have a string value
+        if not isinstance(question_type, str):
+            question_type = "general"
 
         if not task_name:
             response.async_set_speech("Task name is required.")
             return response
+
+        _LOGGER.debug(
+            "QueryTaskStatus: task_name=%s, question_type=%s (type: %s)",
+            task_name,
+            question_type,
+            type(question_type),
+        )
 
         result = await api.query_task(
             name=task_name,
