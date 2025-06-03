@@ -498,7 +498,7 @@ class TestTaskTrackerServices:
         # Verify API was called and response is returned
         mock_api.list_leftovers.assert_called_once()
         assert response is not None
-        assert response["success"] == True
+        assert response["success"] is True
 
     @pytest.mark.asyncio
     async def test_get_all_tasks_service(
@@ -528,7 +528,7 @@ class TestTaskTrackerServices:
         # Verify API was called with thin=True and response is returned
         mock_api.get_all_tasks.assert_called_once_with(thin=True, assigned_to=None)
         assert response is not None
-        assert response["success"] == True
+        assert response["success"] is True
 
     @pytest.mark.asyncio
     async def test_get_all_tasks_service_no_params(
@@ -555,10 +555,11 @@ class TestTaskTrackerServices:
             return_response=True,
         )
 
-        # Verify API was called with thin=False (default) and assigned_to=None and response is returned
+        # Verify API was called with thin=False (default) and assigned_to=None
+        # and response is returned
         mock_api.get_all_tasks.assert_called_once_with(thin=False, assigned_to=None)
         assert response is not None
-        assert response["success"] == True
+        assert response["success"] is True
 
     @pytest.mark.asyncio
     async def test_service_missing_user_context(

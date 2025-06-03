@@ -1,8 +1,9 @@
 """
 TaskTracker Home Assistant Intent Handlers.
 
-This module provides voice command integration through Home Assistant's conversation system.
-Each intent type has its own dedicated handler class for better organization.
+This module provides voice command integration through Home Assistant's
+conversation system. Each intent type has its own dedicated handler class
+for better organization.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from .utils import get_user_context
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
+
     from .api import TaskTrackerAPI
 
 _LOGGER = logging.getLogger(__name__)
@@ -423,7 +425,7 @@ class GetRecommendedTasksForPersonAndTimeIntentHandler(BaseTaskTrackerIntentHand
                 )
             else:
                 response.async_set_speech(
-                    f"No recommended tasks found for {person} with {available_time} minutes available."
+                    f"No recommended tasks found for {person} with {available_time} minutes available."  # noqa: E501
                 )
 
         return response

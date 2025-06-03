@@ -2,9 +2,11 @@
 
 from collections.abc import Generator
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.tasktracker.const import DOMAIN
@@ -19,16 +21,18 @@ def auto_enable_custom_integrations(
 
 
 @pytest.fixture(autouse=True)
-def mock_conversation_dependency():
+def mock_conversation_dependency() -> Generator[None]:
     """Mock the conversation component to prevent test failures."""
     with patch("homeassistant.setup.async_setup_component") as mock_setup:
         # Mock successful setup for conversation component
-        async def setup_side_effect(hass, domain, config):
+        async def setup_side_effect(
+            hass: HomeAssistant, domain: str, config: dict[str, Any]
+        ) -> bool:
             if domain == "conversation":
                 # Mock successful conversation setup
                 return True
             # Call the original function for other components
-            return await mock_setup.__wrapped__(hass, domain, config)
+            return await async_setup_component(hass, domain, config)
 
         mock_setup.side_effect = setup_side_effect
         yield mock_setup

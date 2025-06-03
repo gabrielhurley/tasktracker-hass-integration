@@ -116,7 +116,7 @@ def validate_api_response(response: dict[str, Any] | None) -> bool:
 
 
 def get_tasktracker_username_for_ha_user(
-    hass: HomeAssistant,
+    hass: HomeAssistant,  # noqa: ARG001
     ha_user_id: str | None,
     config: dict[str, Any],
 ) -> str | None:
@@ -333,7 +333,7 @@ async def validate_user_configuration(
         ha_user_names = {
             user.name.lower() for user in ha_users if user.is_active and user.name
         }
-    except Exception:
+    except Exception:  # noqa: BLE001
         # If we can't get HA users, we can't validate
         return True, []
 
@@ -353,7 +353,7 @@ async def validate_user_configuration(
         if ha_user_id not in ha_user_ids:
             if ha_user_id.lower() in ha_user_names:
                 issues.append(
-                    f"User mapping {i + 1}: '{ha_user_id}' appears to be a display name "
+                    f"User mapping {i + 1}: '{ha_user_id}' appears to be a display name "  # noqa: E501
                     f"instead of a user ID. Please reconfigure this mapping using the "
                     f"integration options."
                 )

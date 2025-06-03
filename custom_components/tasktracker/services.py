@@ -436,7 +436,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     "spoken_response": f"Available users: {', '.join(usernames)}",
                     "data": {"users": usernames},
                 }
-                return result  # noqa: TRY300
+                return result  # noqa: TRY300, RET504
             except Exception:
                 _LOGGER.exception("Unexpected error in get_available_users_service")
                 raise
