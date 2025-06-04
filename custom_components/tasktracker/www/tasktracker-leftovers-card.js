@@ -26,6 +26,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     this._default_refresh_interval = 300;
     this._default_max_items = 20;
     this._eventCleanup = null; // Store event listener cleanup function
+    this._default_user_filter_mode = 'all';
   }
 
   static getConfigElement() {
@@ -38,7 +39,8 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       show_disposal_actions: true,
       refresh_interval: this._default_refresh_interval,
       max_items: this._default_max_items,
-      show_age: true
+      show_age: true,
+      user_filter_mode: 'all'
     };
   }
 
@@ -49,6 +51,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       refresh_interval: config.refresh_interval || this._default_refresh_interval, // seconds
       max_items: config.max_items || this._default_max_items,
       show_age: config.show_age !== false,
+      user_filter_mode: config.user_filter_mode || this._default_user_filter_mode,
       ...config
     };
 

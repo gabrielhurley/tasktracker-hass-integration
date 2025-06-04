@@ -628,7 +628,7 @@ export class TaskTrackerUtils {
         padding: 16px;
         font-family: var(--primary-font-family);
         background: var(--card-background-color);
-        border-radius: 4px;
+        border-radius: var(--ha-card-border-radius, 12px);
         border: 1px solid var(--divider-color);
       }
 
