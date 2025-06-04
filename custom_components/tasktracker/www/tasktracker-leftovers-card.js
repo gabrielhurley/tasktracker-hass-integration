@@ -531,14 +531,6 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
       </style>
 
       <div class="card-config">
-        <div class="section-title">Display Settings</div>
-
-        ${TaskTrackerUtils.createConfigRow(
-      'Show Expired',
-      'Display expired leftovers in the list',
-      TaskTrackerUtils.createCheckboxInput(this._config.show_expired, 'show_expired')
-    )}
-
         <div class="section-title">User Settings</div>
 
         ${TaskTrackerUtils.createConfigRow(

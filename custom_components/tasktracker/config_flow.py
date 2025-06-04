@@ -80,25 +80,23 @@ class TaskTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Process user selection
-            ha_user_id = user_input.get(CONF_HA_USER_ID)
+            # Extract user ID from the selection format "Name (user-id)"
             ha_user_selection = user_input.get("ha_user_selection")
+            ha_user_id = None
 
-            # If no manual user ID provided, extract it from the selection
-            if (
-                not ha_user_id
-                and ha_user_selection
-                and ha_user_selection != "Manual Entry"
-            ):
-                # Extract user ID from format "Name (user-id)"
+            if ha_user_selection:
                 import re
-
                 match = re.match(r".*\(([^)]+)\)$", ha_user_selection)
                 if match:
                     ha_user_id = match.group(1)
 
-            # Add user mapping
-            if ha_user_id and user_input.get(CONF_TASKTRACKER_USERNAME):
+            # Validate that we have required data
+            if not ha_user_id:
+                errors["base"] = "missing_ha_user_id"
+            elif not user_input.get(CONF_TASKTRACKER_USERNAME):
+                errors["base"] = "missing_tasktracker_username"
+            else:
+                # Add user mapping
                 self._users.append(
                     {
                         CONF_HA_USER_ID: ha_user_id,
@@ -108,18 +106,18 @@ class TaskTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     }
                 )
 
-            # Check if user wants to add more or finish
-            if user_input.get("add_another_user", False):
-                return await self.async_step_users()
-            else:  # noqa: RET505
-                # Create the entry
-                return self.async_create_entry(
-                    title="TaskTracker",
-                    data={
-                        **self._api_data,
-                        CONF_USERS: self._users,
-                    },
-                )
+                # Check if user wants to add more or finish
+                if user_input.get("add_another_user", False):
+                    return await self.async_step_users()
+                else:  # noqa: RET505
+                    # Create the entry
+                    return self.async_create_entry(
+                        title="TaskTracker",
+                        data={
+                            **self._api_data,
+                            CONF_USERS: self._users,
+                        },
+                    )
 
         # Get HA users for dropdown
         ha_users_data = await self.hass.auth.async_get_users()
@@ -130,12 +128,10 @@ class TaskTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         ]
 
         user_options = [f"{user['name']} ({user['id']})" for user in ha_users]
-        user_options.append("Manual Entry")
 
         data_schema = vol.Schema(
             {
                 vol.Required("ha_user_selection"): vol.In(user_options),
-                vol.Optional(CONF_HA_USER_ID): cv.string,
                 vol.Required(CONF_TASKTRACKER_USERNAME): cv.string,
                 vol.Optional("add_another_user", default=False): cv.boolean,
             }

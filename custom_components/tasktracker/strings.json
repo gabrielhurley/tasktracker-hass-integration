@@ -15,14 +15,16 @@
                 "description": "Map Home Assistant users to TaskTracker usernames\n\nCurrently configured users:\n{configured_users}",
                 "data": {
                     "ha_user_selection": "Home Assistant User",
-                    "ha_user_id": "Manual HA User ID (if not in dropdown)",
+                    "ha_user_id": "Home Assistant User ID",
                     "tasktracker_username": "TaskTracker Username",
                     "add_another_user": "Add another user mapping"
                 }
             }
         },
         "error": {
-            "cannot_connect": "Failed to connect to TaskTracker API"
+            "cannot_connect": "Failed to connect to TaskTracker API",
+            "missing_ha_user_id": "Please select a Home Assistant user or enter a manual user ID",
+            "missing_tasktracker_username": "TaskTracker username is required"
         },
         "abort": {
             "already_configured": "TaskTracker is already configured"
