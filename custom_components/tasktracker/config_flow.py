@@ -86,6 +86,7 @@ class TaskTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if ha_user_selection:
                 import re
+
                 match = re.match(r".*\(([^)]+)\)$", ha_user_selection)
                 if match:
                     ha_user_id = match.group(1)
