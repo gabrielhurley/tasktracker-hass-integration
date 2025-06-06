@@ -2,6 +2,9 @@
 
 from typing import Final
 
+# Version
+VERSION: Final = "1.0.6"
+
 # Integration domain
 DOMAIN: Final = "tasktracker"
 
@@ -10,27 +13,32 @@ JSMODULES = [
     {
         "name": "TaskTracker Recommended Tasks Card",
         "filename": "tasktracker-recommended-tasks-card.js",
-        "version": "1.0.0",
+        "version": VERSION,
     },
     {
         "name": "TaskTracker Leftovers Card",
         "filename": "tasktracker-leftovers-card.js",
-        "version": "1.0.0",
+        "version": VERSION,
     },
     {
         "name": "TaskTracker Recent Tasks Card",
         "filename": "tasktracker-recent-tasks-card.js",
-        "version": "1.0.0",
+        "version": VERSION,
     },
     {
         "name": "TaskTracker Available Tasks Card",
         "filename": "tasktracker-available-tasks-card.js",
-        "version": "1.0.0",
+        "version": VERSION,
     },
     {
         "name": "TaskTracker Complete Task Card",
         "filename": "tasktracker-complete-task-card.js",
-        "version": "1.0.0",
+        "version": VERSION,
+    },
+    {
+        "name": "TaskTracker Time Spent Card",
+        "filename": "tasktracker-time-spent-card.js",
+        "version": VERSION,
     },
 ]
 

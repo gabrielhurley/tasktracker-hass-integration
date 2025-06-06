@@ -74,6 +74,9 @@ class JSModuleRegistration:
         """Register modules if not already registered."""
         _LOGGER.debug("Installing javascript modules")
 
+        # First, clean up any duplicate or malformed registrations
+        await self._async_cleanup_duplicate_registrations()
+
         # Get resources already registered
         resources = [
             resource
@@ -87,11 +90,13 @@ class JSModuleRegistration:
             card_registered = False
 
             for resource in resources:
-                url = resource["url"]  # type: ignore[report-type-mismatch]
-                if self._get_resource_path(url) == url:
+                resource_url = resource["url"]  # type: ignore[report-type-mismatch]
+                if self._get_resource_path(resource_url) == url:
                     card_registered = True
                     # check version
-                    if self._get_resource_version(url) != module.get("version"):
+                    if self._get_resource_version(resource_url) != module.get(
+                        "version"
+                    ):
                         # Update card version
                         _LOGGER.debug(
                             "Updating %s to version %s",
@@ -126,13 +131,28 @@ class JSModuleRegistration:
                         "url": url + "?v=" + module.get("version", "0"),
                     }
                 )
+            else:
+                _LOGGER.debug(
+                    "Skipping %s as it is already registered as version %s",
+                    module.get("name"),
+                    module.get("version"),
+                )
 
     def _get_resource_path(self, url: str) -> str:
         return url.split("?")[0]
 
     def _get_resource_version(self, url: str) -> str:
-        if version := url.split("?")[1].replace("v=", ""):
-            return version
+        if "?" in url and "v=" in url:
+            # Split by ? and get the query parameters
+            query_params = url.split("?", 1)[1]
+            # Look for v= parameter in the query string
+            if "v=" in query_params:
+                # Extract just the version part after v=
+                # Handle cases where there might be other parameters after
+                version_part = query_params.split("v=", 1)[1]
+                # Get just the version value, split on both & and ? to handle malformed URLs  # noqa: E501
+                version = version_part.split("&")[0].split("?")[0]
+                return version  # noqa: RET504
         return "0"
 
     async def async_unregister(self) -> None:
@@ -154,19 +174,92 @@ class JSModuleRegistration:
 
     def remove_gzip_files(self) -> None:
         """Remove cached gzip files."""
-        path = self.hass.config.path("custom_components/tasktracker/www")
+        path = Path(__file__).parent
 
         gzip_files = [
-            filename for filename in Path(path).iterdir() if filename.suffix == ".gz"
+            filename for filename in path.iterdir() if filename.suffix == ".gz"
         ]
 
         for file in gzip_files:
             try:
-                if (
-                    Path(f"{path}/{file}").stat().st_mtime
-                    < Path(f"{path}/{file.with_suffix('')}.gz").stat().st_mtime
-                ):
+                if (path / file).stat().st_mtime < (
+                    path / f"{file.with_suffix('')}.gz"
+                ).stat().st_mtime:
                     _LOGGER.debug("Removing older gzip file - %s", file)
-                    Path(f"{path}/{file}").unlink()
+                    (path / file).unlink()
             except OSError:
                 pass
+
+    async def _async_cleanup_duplicate_registrations(self) -> None:
+        """Clean up duplicate or malformed TaskTracker resource registrations."""
+        _LOGGER.debug("Cleaning up duplicate TaskTracker resource registrations")
+
+        # Get all TaskTracker resources
+        all_tasktracker_resources = [
+            resource
+            for resource in self.lovelace.resources.async_items()
+            if resource["url"].startswith(URL_BASE)
+        ]
+
+        if not all_tasktracker_resources:
+            return
+
+        # Group resources by base filename
+        resources_by_file = {}
+        for resource in all_tasktracker_resources:
+            resource_url = resource["url"]
+            base_path = self._get_resource_path(resource_url)
+
+            if base_path not in resources_by_file:
+                resources_by_file[base_path] = []
+            resources_by_file[base_path].append(resource)
+
+        # Clean up each file group
+        total_removed = 0
+        for base_path, resource_list in resources_by_file.items():
+            if len(resource_list) <= 1:
+                continue  # No duplicates for this file
+
+            _LOGGER.debug(
+                "Found %d registrations for %s, cleaning up duplicates",
+                len(resource_list),
+                base_path,
+            )
+
+            # Find the best registration (prefer clean version format)
+            best_resource = None
+            resources_to_remove = []
+
+            for resource in resource_list:
+                resource_url = resource["url"]
+
+                # Check if this is a clean version format (single ?v=)
+                is_clean = "?v=" in resource_url and resource_url.count("?v=") == 1
+
+                if best_resource is None or (
+                    is_clean and not best_resource.get("_is_clean", False)
+                ):
+                    if best_resource is not None:
+                        resources_to_remove.append(best_resource)
+                    best_resource = resource
+                    best_resource["_is_clean"] = is_clean
+                else:
+                    resources_to_remove.append(resource)
+
+            # Remove duplicate/malformed resources
+            for resource in resources_to_remove:
+                try:
+                    await self.lovelace.resources.async_delete_item(resource.get("id"))
+                    total_removed += 1
+                except Exception as e:  # noqa: BLE001
+                    _LOGGER.warning(
+                        "Failed to remove duplicate resource %s: %s",
+                        resource.get("url"),
+                        e,
+                    )
+
+        if total_removed > 0:
+            _LOGGER.info(
+                "Cleaned up %d duplicate TaskTracker resource registrations",
+                total_removed,
+            )

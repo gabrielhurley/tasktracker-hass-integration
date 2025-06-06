@@ -1,46 +1,47 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
 
 /**
- * TaskTracker Recent Tasks Card
+ * TaskTracker Time Spent Card
  *
- * A custom Lovelace card for displaying recent task completions:
- * - Shows completion history with timestamps
- * - Displays completion notes where available
+ * A custom Lovelace card for displaying time spent on tasks recently:
+ * - Shows total time spent from recent completions
  * - Configurable time range and result limit
  * - Real-time API integration for completion data
+ * - Human-friendly time formatting
  */
 
-class TaskTrackerRecentTasksCard extends HTMLElement {
+class TaskTrackerTimeSpentCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
     this._completions = [];
+    this._totalMinutes = 0;
     this._loading = false;
     this._initialLoad = true;
     this._refreshing = false;
     this._error = null;
     this._refreshInterval = null;
-    this._availableUsers = []; // Add available users tracking
+    this._availableUsers = [];
+    this._enhancedUsers = [];
     this._default_days = 7;
-    this._default_limit = 10;
+    this._default_limit = 100; // Higher default to capture more time data
     this._default_refresh_interval = 300;
-    this._eventCleanup = null; // Store event listener cleanup function
+    this._eventCleanup = null;
   }
 
   static getConfigElement() {
-    return document.createElement('tasktracker-recent-tasks-card-editor');
+    return document.createElement('tasktracker-time-spent-card-editor');
   }
 
   static getStubConfig() {
     return {
-      days: this._default_days,
-      limit: this._default_limit,
-      show_notes: true,
+      days: 7,
+      limit: 100,
       show_header: true,
-      refresh_interval: this._default_refresh_interval,
-      user_filter_mode: 'all', // 'all', 'current', 'explicit'
+      refresh_interval: 300,
+      user_filter_mode: 'explicit', // 'current', 'explicit', 'all'
       explicit_user: null
     };
   }
@@ -49,12 +50,11 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     this._config = {
       days: config.days || this._default_days,
       limit: config.limit || this._default_limit,
-      show_notes: config.show_notes !== false,
       show_header: config.show_header !== false,
-      refresh_interval: config.refresh_interval || this._default_refresh_interval, // seconds
-      user_filter_mode: config.user_filter_mode || 'all',
+      refresh_interval: config.refresh_interval || this._default_refresh_interval,
+      user_filter_mode: config.user_filter_mode || 'explicit',
       explicit_user: config.explicit_user || null,
-      // Legacy support for old 'user' config
+      // Legacy support
       user: config.user || null,
       ...config
     };
@@ -78,7 +78,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
 
     // Only fetch initial data on first hass assignment
     if (!wasInitialized && hass) {
-      this._fetchRecentCompletions();
+      this._fetchTimeSpentData();
     }
   }
 
@@ -91,9 +91,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       clearInterval(this._refreshInterval);
     }
     if (this._eventCleanup) {
-      // Handle async cleanup
       this._eventCleanup().catch(error => {
-        // Suppress "not_found" errors which are common during dashboard editing
         if (error?.code !== 'not_found') {
           console.warn('Error cleaning up TaskTracker event listener:', error);
         }
@@ -108,7 +106,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     }
 
     this._refreshInterval = TaskTrackerUtils.setupAutoRefresh(() => {
-      this._fetchRecentCompletions();
+      this._fetchTimeSpentData();
     }, this._config.refresh_interval);
   }
 
@@ -119,16 +117,28 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   async _fetchAvailableUsers() {
     try {
       this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
+      this._enhancedUsers = await TaskTrackerUtils.getEnhancedUsers(this._hass);
     } catch (error) {
       console.warn('Failed to fetch available users:', error);
-      this._availableUsers = []; // fallback to empty array
+      this._availableUsers = [];
+      this._enhancedUsers = [];
     }
   }
 
-  async _fetchRecentCompletions() {
-    // Fetch available users if not already loaded and we're in current user mode
-    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
-      await this._fetchAvailableUsers();
+  async _fetchTimeSpentData() {
+    await this._fetchAvailableUsers();
+
+    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
+
+    if (!hasValidUserConfig) {
+      this._error = "No user configured. Please set user in card configuration.";
+      this._completions = [];
+      this._totalMinutes = 0;
+      this._loading = false;
+      this._refreshing = false;
+      this._initialLoad = false;
+      this._render();
+      return;
     }
 
     // Only show full loading on initial load, use refreshing for subsequent calls
@@ -157,13 +167,18 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       const response = await this._hass.callService('tasktracker', 'get_recent_completions', params, {}, true, true);
 
       let newCompletions = [];
-      if (response && response.response && response.response.data && response.response.data.items) {
+      let newTotalMinutes = 0;
+
+      console.log('response', response);
+      if (response && response.response && response.response.data) {
+        newTotalMinutes = response.response.data.total_duration;
         newCompletions = response.response.data.items;
       }
 
-      // Always update completions and re-render on initial load, only compare for subsequent refreshes
-      if (this._initialLoad || !this._completionsEqual(this._completions, newCompletions)) {
+      // Always update data and re-render on initial load, only compare for subsequent refreshes
+      if (this._initialLoad || !this._dataEqual(this._completions, newCompletions, this._totalMinutes, newTotalMinutes)) {
         this._completions = newCompletions;
+        this._totalMinutes = newTotalMinutes;
         this._loading = false;
         this._refreshing = false;
         this._initialLoad = false;
@@ -175,9 +190,10 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
         this._render();
       }
     } catch (error) {
-      console.error('Failed to fetch recent completions:', error);
-      this._error = `Failed to fetch recent completions: ${error.message}`;
+      console.error('Failed to fetch time spent data:', error);
+      this._error = `Failed to fetch time spent data: ${error.message}`;
       this._completions = [];
+      this._totalMinutes = 0;
       this._loading = false;
       this._refreshing = false;
       this._initialLoad = false;
@@ -185,21 +201,12 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     }
   }
 
-  _completionsEqual(completions1, completions2) {
-    return TaskTrackerUtils.arraysEqual(completions1, completions2, (c1, c2) => {
+  _dataEqual(completions1, completions2, total1, total2) {
+    return total1 === total2 && TaskTrackerUtils.arraysEqual(completions1, completions2, (c1, c2) => {
       return c1.task_name === c2.task_name &&
         c1.completed_at === c2.completed_at &&
-        c1.completed_by === c2.completed_by &&
-        c1.notes === c2.notes;
+        c1.duration_minutes === c2.duration_minutes;
     });
-  }
-
-  _formatDateTime(dateString) {
-    return TaskTrackerUtils.formatDateTime(dateString);
-  }
-
-  _formatDuration(minutes) {
-    return TaskTrackerUtils.formatDuration(minutes);
   }
 
   _render() {
@@ -210,29 +217,24 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       <style>
         ${TaskTrackerUtils.getCommonCardStyles()}
 
-        .completion-details {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          margin-bottom: 4px;
+        .compact-time {
+          text-align: center;
+          color: var(--primary-text-color);
+          font-size: 1em;
         }
 
-        .completion-notes {
-          font-size: 0.8em;
+        .no-time {
+          text-align: center;
+          padding: 24px 16px;
           color: var(--secondary-text-color);
-          font-style: italic;
-          margin-top: 4px;
-          padding: 4px 8px;
-          background: var(--card-background-color);
-          border-radius: 4px;
-          border: 1px solid var(--divider-color);
         }
       </style>
 
       <div class="card">
         ${this._config.show_header ? `
           <div class="header">
-            <h3 class="title">Recent Completions</h3>
-            <button class="refresh-btn" title="Refresh completions">
+            <h3 class="title">Time Spent${username ? ` - ${TaskTrackerUtils.capitalize(username)}` : ''}</h3>
+            <button class="refresh-btn" title="Refresh time data">
               <ha-icon icon="mdi:refresh"></ha-icon>
             </button>
             ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
@@ -250,61 +252,46 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => this._fetchRecentCompletions());
+      refreshBtn.addEventListener('click', () => this._fetchTimeSpentData());
     }
   }
 
   _renderContent() {
     // Only show loading state on initial load
     if (this._loading && this._initialLoad) {
-      return '<div class="loading">Loading recent completions...</div>';
+      return '<div class="loading">Loading time spent data...</div>';
     }
 
     if (this._error) {
       return `<div class="error">${this._error}</div>`;
     }
 
-    if (!this._completions || this._completions.length === 0) {
-      return '<div class="no-completions">No recent task completions found</div>';
+    if (this._totalMinutes === 0) {
+      return `
+        <div class="no-time">
+          No time spent on tasks in the last ${this._config.days} day${this._config.days !== 1 ? 's' : ''}
+        </div>
+      `;
     }
 
-    return this._completions.map(completion => this._renderCompletionItem(completion)).join('');
-  }
-
-  _renderCompletionItem(completion) {
-    const taskName = completion.task_name || completion.name;
-    const completedBy = TaskTrackerUtils.capitalize(completion.completed_by) || 'Unknown';
-    const time = this._formatDateTime(completion.completed_at);
-
-    // Build metadata line with pipes
-    const metadataParts = [];
-    metadataParts.push(`Completed by ${completedBy}`);
-    if (time) metadataParts.push(time);
+    const formattedTime = TaskTrackerUtils.formatDuration(this._totalMinutes);
+    const dayText = this._config.days === 1 ? 'day' : 'days';
 
     return `
-      <div class="task-item completion-item completed">
-        <div class="task-content completion-content">
-          <div class="task-header completion-header">
-            <div class="task-name">${taskName}</div>
-          </div>
-          <div class="task-metadata completion-details">${metadataParts.join(' ')}</div>
-          ${this._config.show_notes && completion.notes ? `
-            <div class="completion-notes">"${completion.notes}"</div>
-          ` : ''}
-        </div>
+      <div class="compact-time">
+        ${formattedTime} spent on tasks in the last ${this._config.days} ${dayText}
       </div>
     `;
   }
 
   getCardSize() {
-    return Math.min(4, Math.max(1, Math.ceil(this._completions.length / 5)));
+    return 2;
   }
 
   _setupEventListeners() {
     // Clean up any existing listener
     if (this._eventCleanup) {
       this._eventCleanup().catch(error => {
-        // Suppress "not_found" errors which are common during dashboard editing
         if (error?.code !== 'not_found') {
           console.warn('Error cleaning up existing TaskTracker event listener:', error);
         }
@@ -319,7 +306,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
         const shouldRefresh = this._shouldRefreshForUser(eventData.username);
         if (shouldRefresh) {
           setTimeout(() => {
-            this._fetchRecentCompletions();
+            this._fetchTimeSpentData();
           }, 500);
         }
       }
@@ -331,7 +318,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
         const shouldRefresh = this._shouldRefreshForUser(eventData.username);
         if (shouldRefresh) {
           setTimeout(() => {
-            this._fetchRecentCompletions();
+            this._fetchTimeSpentData();
           }, 500);
         }
       }
@@ -364,17 +351,16 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   }
 }
 
-class TaskTrackerRecentTasksCardEditor extends HTMLElement {
+class TaskTrackerTimeSpentCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
-    this._debounceTimers = {};
   }
 
   setConfig(config) {
-    this._config = { ...TaskTrackerRecentTasksCard.getStubConfig(), ...config };
+    this._config = { ...TaskTrackerTimeSpentCard.getStubConfig(), ...config };
     this._render();
   }
 
@@ -401,54 +387,48 @@ class TaskTrackerRecentTasksCardEditor extends HTMLElement {
         <div class="section-title">Display Settings</div>
 
         ${TaskTrackerUtils.createConfigRow(
-      'Time Range (days)',
-      'Number of days back to fetch completions',
-      TaskTrackerUtils.createNumberInput(this._config.days, 'days', 1, 90)
-    )}
+          'Time Range (days)',
+          'Number of days back to fetch completions',
+          TaskTrackerUtils.createNumberInput(this._config.days, 'days', 1, 90)
+        )}
 
         ${TaskTrackerUtils.createConfigRow(
-      'Maximum Results',
-      'Maximum number of completions to display',
-      TaskTrackerUtils.createNumberInput(this._config.limit, 'limit', 1, 50)
-    )}
+          'Maximum Results',
+          'Maximum number of completions to analyze for time calculation',
+          TaskTrackerUtils.createNumberInput(this._config.limit, 'limit', 1, 500)
+        )}
 
         ${TaskTrackerUtils.createConfigRow(
-      'Show Notes',
-      'Display completion notes where available',
-      TaskTrackerUtils.createCheckboxInput(this._config.show_notes, 'show_notes')
-    )}
-
-        ${TaskTrackerUtils.createConfigRow(
-      'Show Header',
-      'Display card header with title and refresh button',
-      TaskTrackerUtils.createCheckboxInput(this._config.show_header, 'show_header')
-    )}
+          'Show Header',
+          'Display card header with title and refresh button',
+          TaskTrackerUtils.createCheckboxInput(this._config.show_header, 'show_header')
+        )}
 
         <div class="section-title">User Settings</div>
 
         ${TaskTrackerUtils.createConfigRow(
-      'User Filter Mode',
-      'Which completions to display',
-      TaskTrackerUtils.createSelectInput(this._config.user_filter_mode, 'user_filter_mode', [
-        { value: 'all', label: 'All Users' },
-        { value: 'current', label: 'Current User' },
-        { value: 'explicit', label: 'Specific User' }
-      ])
-    )}
+          'User Filter Mode',
+          'Which completions to include in time calculation',
+          TaskTrackerUtils.createSelectInput(this._config.user_filter_mode, 'user_filter_mode', [
+            { value: 'all', label: 'All Users' },
+            { value: 'current', label: 'Current User' },
+            { value: 'explicit', label: 'Specific User' }
+          ])
+        )}
 
         ${this._config.user_filter_mode === 'explicit' ? TaskTrackerUtils.createConfigRow(
-      'Username',
-      'Specific username to filter completions',
-      TaskTrackerUtils.createTextInput(this._config.explicit_user, 'explicit_user', 'Enter username')
-    ) : ''}
+          'Username',
+          'Specific username to calculate time for',
+          TaskTrackerUtils.createTextInput(this._config.explicit_user, 'explicit_user', 'Enter username')
+        ) : ''}
 
         <div class="section-title">Behavior Settings</div>
 
         ${TaskTrackerUtils.createConfigRow(
-      'Refresh Interval (seconds)',
-      'How often to automatically refresh completion data',
-      TaskTrackerUtils.createNumberInput(this._config.refresh_interval, 'refresh_interval', 10, 3600, 10)
-    )}
+          'Refresh Interval (seconds)',
+          'How often to automatically refresh time data',
+          TaskTrackerUtils.createNumberInput(this._config.refresh_interval, 'refresh_interval', 10, 3600, 10)
+        )}
       </div>
     `;
 
@@ -481,19 +461,19 @@ class TaskTrackerRecentTasksCardEditor extends HTMLElement {
   }
 }
 
-if (!customElements.get('tasktracker-recent-tasks-card')) {
-  customElements.define('tasktracker-recent-tasks-card', TaskTrackerRecentTasksCard);
+if (!customElements.get('tasktracker-time-spent-card')) {
+  customElements.define('tasktracker-time-spent-card', TaskTrackerTimeSpentCard);
 }
-if (!customElements.get('tasktracker-recent-tasks-card-editor')) {
-  customElements.define('tasktracker-recent-tasks-card-editor', TaskTrackerRecentTasksCardEditor);
+if (!customElements.get('tasktracker-time-spent-card-editor')) {
+  customElements.define('tasktracker-time-spent-card-editor', TaskTrackerTimeSpentCardEditor);
 }
 
 window.customCards = window.customCards || [];
-if (!window.customCards.find(card => card.type === 'tasktracker-recent-tasks-card')) {
+if (!window.customCards.find(card => card.type === 'tasktracker-time-spent-card')) {
   window.customCards.push({
-    type: 'tasktracker-recent-tasks-card',
-    name: 'TaskTracker Recent Tasks',
-    description: 'Display recent task completion history with notes',
+    type: 'tasktracker-time-spent-card',
+    name: 'TaskTracker Time Spent',
+    description: 'Display total time spent on recently completed tasks',
     preview: true,
     documentationURL: 'https://github.com/gabrielhurley/TaskTracker',
   });

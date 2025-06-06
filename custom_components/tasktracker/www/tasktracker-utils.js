@@ -318,7 +318,7 @@ export class TaskTrackerUtils {
     // Only include assigned_to if username is provided
     // If null, let backend handle user mapping via call context
     if (username) {
-      serviceData.assigned_to = username;
+      serviceData.completed_by = username;
     }
 
     if (notes) {
