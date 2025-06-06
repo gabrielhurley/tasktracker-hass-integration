@@ -37,10 +37,13 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     return {
       categorize_by_safety: true,
       show_disposal_actions: true,
+      show_disposal_notes: true,
+      show_header: true,
       refresh_interval: this._default_refresh_interval,
       max_items: this._default_max_items,
       show_age: true,
-      user_filter_mode: 'all'
+      user_filter_mode: 'all',
+      explicit_user: null
     };
   }
 
@@ -48,10 +51,13 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     this._config = {
       categorize_by_safety: config.categorize_by_safety !== false,
       show_disposal_actions: config.show_disposal_actions !== false,
+      show_disposal_notes: config.show_disposal_notes !== false,
+      show_header: config.show_header !== false,
       refresh_interval: config.refresh_interval || this._default_refresh_interval, // seconds
       max_items: config.max_items || this._default_max_items,
       show_age: config.show_age !== false,
-      user_filter_mode: config.user_filter_mode || this._default_user_filter_mode,
+      user_filter_mode: config.user_filter_mode || 'all',
+      explicit_user: config.explicit_user || null,
       ...config
     };
 
@@ -376,13 +382,15 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       </style>
 
       <div class="card">
-        <div class="header">
-          <h3 class="title">Leftovers</h3>
-          <button class="refresh-btn" title="Refresh leftovers">
-            <ha-icon icon="mdi:refresh"></ha-icon>
-          </button>
-          ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
-        </div>
+        ${this._config.show_header ? `
+          <div class="header">
+            <h3 class="title">Leftovers</h3>
+            <button class="refresh-btn" title="Refresh leftovers">
+              <ha-icon icon="mdi:refresh"></ha-icon>
+            </button>
+            ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
+          </div>
+        ` : ''}
 
         ${!hasValidUserConfig ? `
           <div class="no-user-warning">
@@ -556,6 +564,18 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
       'How often to automatically refresh leftover data',
       TaskTrackerUtils.createNumberInput(this._config.refresh_interval, 'refresh_interval', 10, 3600, 10)
     )}
+
+        ${TaskTrackerUtils.createConfigRow(
+          'Show Disposal Notes',
+          'Display disposal notes field in modal',
+          TaskTrackerUtils.createCheckboxInput(this._config.show_disposal_notes, 'show_disposal_notes')
+        )}
+
+        ${TaskTrackerUtils.createConfigRow(
+          'Show Header',
+          'Display card header with title and refresh button',
+          TaskTrackerUtils.createCheckboxInput(this._config.show_header, 'show_header')
+        )}
       </div>
     `;
 

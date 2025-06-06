@@ -38,6 +38,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       days: this._default_days,
       limit: this._default_limit,
       show_notes: true,
+      show_header: true,
       refresh_interval: this._default_refresh_interval,
       user_filter_mode: 'all', // 'all', 'current', 'explicit'
       explicit_user: null
@@ -49,6 +50,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       days: config.days || this._default_days,
       limit: config.limit || this._default_limit,
       show_notes: config.show_notes !== false,
+      show_header: config.show_header !== false,
       refresh_interval: config.refresh_interval || this._default_refresh_interval, // seconds
       user_filter_mode: config.user_filter_mode || 'all',
       explicit_user: config.explicit_user || null,
@@ -227,13 +229,15 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       </style>
 
       <div class="card">
-        <div class="header">
-          <h3 class="title">Recent Completions</h3>
-          <button class="refresh-btn" title="Refresh completions">
-            <ha-icon icon="mdi:refresh"></ha-icon>
-          </button>
-          ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
-        </div>
+        ${this._config.show_header ? `
+          <div class="header">
+            <h3 class="title">Recent Completions</h3>
+            <button class="refresh-btn" title="Refresh completions">
+              <ha-icon icon="mdi:refresh"></ha-icon>
+            </button>
+            ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
+          </div>
+        ` : ''}
 
         ${!hasValidUserConfig ? `
           <div class="no-user-warning">
@@ -413,6 +417,12 @@ class TaskTrackerRecentTasksCardEditor extends HTMLElement {
       'Show Notes',
       'Display completion notes where available',
       TaskTrackerUtils.createCheckboxInput(this._config.show_notes, 'show_notes')
+    )}
+
+        ${TaskTrackerUtils.createConfigRow(
+      'Show Header',
+      'Display card header with title and refresh button',
+      TaskTrackerUtils.createCheckboxInput(this._config.show_header, 'show_header')
     )}
 
         <div class="section-title">User Settings</div>

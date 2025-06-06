@@ -32,6 +32,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
   static getStubConfig() {
     return {
       show_task_details: true,
+      show_header: true,
       default_user_mode: 'current', // 'current', 'explicit', 'none'
       default_user: null
     };
@@ -40,6 +41,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
   setConfig(config) {
     this._config = {
       show_task_details: config.show_task_details !== false,
+      show_header: config.show_header !== false,
       default_user_mode: config.default_user_mode || 'current',
       default_user: config.default_user || null,
       ...config
@@ -415,9 +417,11 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
       </style>
 
       <div class="tasktracker-complete-task-card card">
-        <div class="header">
-          <h3 class="title">Complete Task</h3>
-        </div>
+        ${this._config.show_header ? `
+          <div class="header">
+            <h3 class="title">Complete Task</h3>
+          </div>
+        ` : ''}
 
         ${this._renderContent()}
       </div>
@@ -664,6 +668,18 @@ class TaskTrackerCompleteTaskCardEditor extends HTMLElement {
             type="checkbox"
             ${this._config.show_task_details ? 'checked' : ''}
             data-config-key="show_task_details"
+          />
+        </div>
+
+        <div class="config-row">
+          <label>
+            Show Header
+            <div class="config-description">Display card header with title</div>
+          </label>
+          <input
+            type="checkbox"
+            ${this._config.show_header ? 'checked' : ''}
+            data-config-key="show_header"
           />
         </div>
 
