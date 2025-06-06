@@ -154,36 +154,16 @@ class TaskTrackerAPI:
     # Task update methods
     async def update_task(
         self,
-        task_id: int,
+        task_id: str,
         task_type: str,
-        assigned_to: str,
-        duration_minutes: int | None = None,
-        priority: int | None = None,
-        next_due: str | None = None,
-        frequency_days: int | None = None,
-        name: str | None = None,
-        notes: str | None = None,
+        **kwargs: dict[str, Any],
     ) -> dict[str, Any]:
         """Update a task's details."""
         data: dict[str, Any] = {
             "task_id": task_id,
             "task_type": task_type,
-            "assigned_to": assigned_to,
+            **kwargs,
         }
-
-        if duration_minutes is not None:
-            data["duration_minutes"] = duration_minutes
-        if priority is not None:
-            data["priority"] = priority
-        if next_due is not None:
-            data["next_due"] = next_due
-        if frequency_days is not None:
-            data["frequency_days"] = frequency_days
-        if name is not None:
-            data["name"] = name
-        if notes is not None:
-            data["notes"] = notes
-
         return await self._request("POST", ENDPOINT_UPDATE_TASK, data=data)
 
     # Task query methods

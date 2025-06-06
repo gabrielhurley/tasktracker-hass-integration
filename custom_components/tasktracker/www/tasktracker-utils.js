@@ -506,9 +506,6 @@ export class TaskTrackerUtils {
 
   // Modal creation utilities
   static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null) {
-    console.log('availableUsers', availableUsers);
-    console.log('enhancedUsers', enhancedUsers);
-
     // Use enhanced users if provided, otherwise fallback to basic users
     const usersToDisplay = enhancedUsers && enhancedUsers.length > 0 ? enhancedUsers :
       availableUsers.map(username => ({

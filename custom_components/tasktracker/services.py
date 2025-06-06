@@ -11,6 +11,9 @@ from homeassistant.helpers import config_validation as cv
 
 from .api import TaskTrackerAPI, TaskTrackerAPIError
 from .const import (
+    CONF_HA_USER_ID,
+    CONF_TASKTRACKER_USERNAME,
+    CONF_USERS,
     DOMAIN,
     SERVICE_COMPLETE_TASK,
     SERVICE_COMPLETE_TASK_BY_NAME,
@@ -24,9 +27,6 @@ from .const import (
     SERVICE_LIST_LEFTOVERS,
     SERVICE_QUERY_TASK,
     SERVICE_UPDATE_TASK,
-    CONF_USERS,
-    CONF_TASKTRACKER_USERNAME,
-    CONF_HA_USER_ID,
 )
 from .utils import (
     get_available_tasktracker_usernames,
@@ -118,7 +118,7 @@ GET_ALL_TASKS_SCHEMA = vol.Schema(
 
 UPDATE_TASK_SCHEMA = vol.Schema(
     {
-        vol.Required("task_id"): cv.positive_int,
+        vol.Required("task_id"): cv.string,
         vol.Required("task_type"): cv.string,
         vol.Required("assigned_to"): cv.string,
         vol.Optional("duration_minutes"): cv.positive_int,
@@ -453,11 +453,12 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 enhanced_users = []
 
                 # Get HA users for display names
-                try:
-                    ha_users = await hass.auth.async_get_users()
-                    ha_user_map = {user.id: user.name for user in ha_users if user.is_active and user.name}
-                except Exception:
-                    ha_user_map = {}
+                ha_users = await hass.auth.async_get_users()
+                ha_user_map = {
+                    user.id: user.name
+                    for user in ha_users
+                    if user.is_active and user.name
+                }
 
                 for username in usernames:
                     # Find the corresponding HA user info
@@ -471,11 +472,13 @@ async def async_setup_services(  # noqa: C901, PLR0915
                                 display_name = ha_user_map[ha_user_id]
                             break
 
-                    enhanced_users.append({
-                        'username': username,
-                        'display_name': display_name,
-                        'ha_user_id': ha_user_id
-                    })
+                    enhanced_users.append(
+                        {
+                            "username": username,
+                            "display_name": display_name,
+                            "ha_user_id": ha_user_id,
+                        }
+                    )
 
                 _LOGGER.debug("Available TaskTracker usernames: %s", usernames)
                 _LOGGER.debug("Enhanced user data: %s", enhanced_users)
@@ -485,7 +488,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     "spoken_response": f"Available users: {', '.join(usernames)}",
                     "data": {
                         "users": usernames,  # Keep for backward compatibility
-                        "enhanced_users": enhanced_users  # New enhanced data
+                        "enhanced_users": enhanced_users,  # New enhanced data
                     },
                 }
                 return result  # noqa: TRY300, RET504
@@ -512,7 +515,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 result = await api.update_task(
                     task_id=call.data["task_id"],
                     task_type=call.data["task_type"],
-                    **updates
+                    **updates,
                 )
 
                 # Fire custom event if update was successful

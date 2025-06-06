@@ -202,8 +202,7 @@ update_task:
       required: true
       example: "123"
       selector:
-        number:
-          min: 1
+        text:
     task_type:
       required: true
       example: "RecurringTask"
