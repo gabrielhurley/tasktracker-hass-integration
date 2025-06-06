@@ -3,7 +3,7 @@
 from typing import Final
 
 # Version
-VERSION: Final = "1.0.6"
+VERSION: Final = "1.0.7"
 
 # Integration domain
 DOMAIN: Final = "tasktracker"
