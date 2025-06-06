@@ -111,7 +111,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
     } catch (error) {
       console.warn('Failed to fetch available users:', error);
-      this._availableUsers = ['gabriel', 'katie', 'admin']; // fallback
+      this._availableUsers = [];
     }
   }
 

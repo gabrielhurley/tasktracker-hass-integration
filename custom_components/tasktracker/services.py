@@ -23,6 +23,10 @@ from .const import (
     SERVICE_GET_RECOMMENDED_TASKS,
     SERVICE_LIST_LEFTOVERS,
     SERVICE_QUERY_TASK,
+    SERVICE_UPDATE_TASK,
+    CONF_USERS,
+    CONF_TASKTRACKER_USERNAME,
+    CONF_HA_USER_ID,
 )
 from .utils import (
     get_available_tasktracker_usernames,
@@ -35,7 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 COMPLETE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.positive_int,
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("completed_by"): cv.string,
         vol.Optional("notes"): cv.string,
     }
 )
@@ -43,7 +47,7 @@ COMPLETE_TASK_SCHEMA = vol.Schema(
 COMPLETE_TASK_BY_NAME_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("completed_by"): cv.string,
         vol.Optional("notes"): cv.string,
         vol.Optional("event_type"): vol.In(["task_completed", "leftover_disposed"]),
     }
@@ -112,6 +116,18 @@ GET_ALL_TASKS_SCHEMA = vol.Schema(
     }
 )
 
+UPDATE_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("task_id"): cv.positive_int,
+        vol.Required("task_type"): cv.string,
+        vol.Required("assigned_to"): cv.string,
+        vol.Optional("duration_minutes"): cv.positive_int,
+        vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+        vol.Optional("next_due"): cv.string,
+        vol.Optional("frequency_days"): cv.positive_int,
+    }
+)
+
 
 async def async_setup_services(  # noqa: C901, PLR0915
     hass: HomeAssistant, api: TaskTrackerAPI, config: dict[str, Any]
@@ -133,21 +149,21 @@ async def async_setup_services(  # noqa: C901, PLR0915
         async def complete_task_service(call: ServiceCall) -> dict[str, Any]:
             """Complete a task by ID."""
             try:
-                assigned_to = call.data.get("assigned_to")
-                if not assigned_to:
+                completed_by = call.data.get("completed_by")
+                if not completed_by:
                     # Handle case where user_id might be None
                     user_id = call.context.user_id if call.context else None
                     current_config = get_current_config()
-                    assigned_to = get_tasktracker_username_for_ha_user(
+                    completed_by = get_tasktracker_username_for_ha_user(
                         hass, user_id, current_config
                     )
-                    if not assigned_to:
-                        msg = "No assigned_to provided and could not determine from user context"  # noqa: E501
+                    if not completed_by:
+                        msg = "No completed_by provided and could not determine from user context"  # noqa: E501
                         raise TaskTrackerAPIError(msg)  # noqa: TRY301
 
                 result = await api.complete_task(
                     task_id=call.data["task_id"],
-                    assigned_to=assigned_to,
+                    completed_by=completed_by,
                     notes=call.data.get("notes"),
                 )
 
@@ -157,7 +173,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                         "tasktracker_task_completed",
                         {
                             "task_id": call.data["task_id"],
-                            "username": assigned_to,
+                            "username": completed_by,
                             "notes": call.data.get("notes"),
                             "completion_data": result.get("data"),
                         },
@@ -175,22 +191,22 @@ async def async_setup_services(  # noqa: C901, PLR0915
         async def complete_task_by_name_service(call: ServiceCall) -> dict[str, Any]:
             """Complete a task by name."""
             try:
-                assigned_to = call.data.get("assigned_to")
-                if not assigned_to:
+                completed_by = call.data.get("completed_by")
+                if not completed_by:
                     # Handle case where user_id might be None
                     user_id = call.context.user_id if call.context else None
                     current_config = get_current_config()
-                    assigned_to = get_tasktracker_username_for_ha_user(
+                    completed_by = get_tasktracker_username_for_ha_user(
                         hass, user_id, current_config
                     )
-                    if not assigned_to:
-                        msg = "No assigned_to provided and could not determine from user context"  # noqa: E501
+                    if not completed_by:
+                        msg = "No completed_by provided and could not determine from user context"  # noqa: E501
                         raise TaskTrackerAPIError(msg)  # noqa: TRY301
 
                 _LOGGER.debug("Completing task by name: %s", call.data["name"])
                 result = await api.complete_task_by_name(
                     name=call.data["name"],
-                    assigned_to=assigned_to,
+                    completed_by=completed_by,
                     notes=call.data.get("notes"),
                 )
 
@@ -203,7 +219,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                             f"tasktracker_{event_type}",
                             {
                                 "leftover_name": call.data["name"],
-                                "username": assigned_to,
+                                "username": completed_by,
                                 "notes": call.data.get("notes"),
                                 "disposal_data": result.get("data"),
                             },
@@ -213,7 +229,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                             f"tasktracker_{event_type}",
                             {
                                 "task_name": call.data["name"],
-                                "username": assigned_to,
+                                "username": completed_by,
                                 "notes": call.data.get("notes"),
                                 "completion_data": result.get("data"),
                             },
@@ -425,20 +441,98 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 raise
 
         async def get_available_users_service(call: ServiceCall) -> dict[str, Any]:  # noqa: ARG001
-            """Get available TaskTracker usernames."""
+            """Get available TaskTracker usernames with mapping information."""
             try:
                 current_config = get_current_config()
                 usernames = get_available_tasktracker_usernames(current_config)
 
+                # Get user mappings for display names
+                user_mappings = current_config.get(CONF_USERS, [])
+
+                # Create enhanced user data with display names
+                enhanced_users = []
+
+                # Get HA users for display names
+                try:
+                    ha_users = await hass.auth.async_get_users()
+                    ha_user_map = {user.id: user.name for user in ha_users if user.is_active and user.name}
+                except Exception:
+                    ha_user_map = {}
+
+                for username in usernames:
+                    # Find the corresponding HA user info
+                    display_name = username  # Default fallback
+                    ha_user_id = None
+
+                    for mapping in user_mappings:
+                        if mapping.get(CONF_TASKTRACKER_USERNAME) == username:
+                            ha_user_id = mapping.get(CONF_HA_USER_ID)
+                            if ha_user_id and ha_user_id in ha_user_map:
+                                display_name = ha_user_map[ha_user_id]
+                            break
+
+                    enhanced_users.append({
+                        'username': username,
+                        'display_name': display_name,
+                        'ha_user_id': ha_user_id
+                    })
+
                 _LOGGER.debug("Available TaskTracker usernames: %s", usernames)
+                _LOGGER.debug("Enhanced user data: %s", enhanced_users)
+
                 result = {
                     "success": True,
                     "spoken_response": f"Available users: {', '.join(usernames)}",
-                    "data": {"users": usernames},
+                    "data": {
+                        "users": usernames,  # Keep for backward compatibility
+                        "enhanced_users": enhanced_users  # New enhanced data
+                    },
                 }
                 return result  # noqa: TRY300, RET504
             except Exception:
                 _LOGGER.exception("Unexpected error in get_available_users_service")
+                raise
+
+        async def update_task_service(call: ServiceCall) -> dict[str, Any]:
+            """Update a task's details."""
+            try:
+                # Extract update fields from call data
+                updates = {}
+                if "duration_minutes" in call.data:
+                    updates["duration_minutes"] = call.data["duration_minutes"]
+                if "priority" in call.data:
+                    updates["priority"] = call.data["priority"]
+                if "next_due" in call.data:
+                    updates["next_due"] = call.data["next_due"]
+                if "assigned_to" in call.data:
+                    updates["assigned_to"] = call.data["assigned_to"]
+                if "frequency_days" in call.data:
+                    updates["frequency_days"] = call.data["frequency_days"]
+
+                result = await api.update_task(
+                    task_id=call.data["task_id"],
+                    task_type=call.data["task_type"],
+                    **updates
+                )
+
+                # Fire custom event if update was successful
+                if result.get("success"):
+                    hass.bus.fire(
+                        "tasktracker_task_updated",
+                        {
+                            "task_id": call.data["task_id"],
+                            "updates": updates,
+                            "update_data": result.get("data"),
+                        },
+                    )
+
+                _LOGGER.info("Task updated successfully: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to update task")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in update_task_service")
                 raise
 
         # Register services
@@ -538,6 +632,15 @@ async def async_setup_services(  # noqa: C901, PLR0915
         )
         _LOGGER.debug("Registered service: %s", SERVICE_GET_AVAILABLE_USERS)
 
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_UPDATE_TASK,
+            update_task_service,
+            schema=UPDATE_TASK_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_UPDATE_TASK)
+
         _LOGGER.info("TaskTracker services registered successfully")
 
     except Exception:
@@ -559,6 +662,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_LIST_LEFTOVERS,
         SERVICE_GET_ALL_TASKS,
         SERVICE_GET_AVAILABLE_USERS,
+        SERVICE_UPDATE_TASK,
     ]
 
     for service in services_to_remove:

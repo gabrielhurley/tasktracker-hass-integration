@@ -18,6 +18,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     this._hass = null;
     this._tasks = [];
     this._availableUsers = [];
+    this._enhancedUsers = []; // Track enhanced user mappings
     this._availableMinutes = 30;
     this._loading = false;
     this._initialLoad = true;
@@ -120,18 +121,18 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
 
   async _fetchAvailableUsers() {
     try {
+      // Fetch both basic users (for backward compatibility) and enhanced users
       this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
+      this._enhancedUsers = await TaskTrackerUtils.getEnhancedUsers(this._hass);
     } catch (error) {
       console.warn('Failed to fetch available users:', error);
-      this._availableUsers = ['gabriel', 'katie', 'admin']; // fallback
+      this._availableUsers = [];
+      this._enhancedUsers = [];
     }
   }
 
   async _fetchRecommendedTasks() {
-    // Fetch available users if not already loaded and we're in current user mode
-    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
-      await this._fetchAvailableUsers();
-    }
+    await this._fetchAvailableUsers();
 
     const username = this._getCurrentUsername();
     const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
@@ -210,9 +211,18 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   }
 
   _showTaskModal(task, taskIndex) {
-    const modal = TaskTrackerUtils.createTaskModal(task, this._config, async (notes) => {
-      await this._completeTask(task, notes);
-    });
+    const modal = TaskTrackerUtils.createTaskModal(
+      task,
+      this._config,
+      async (notes) => {
+        await this._completeTask(task, notes);
+      },
+      async (updates) => {
+        await this._saveTask(task, updates);
+      },
+      this._availableUsers,
+      this._enhancedUsers
+    );
     TaskTrackerUtils.showModal(modal);
   }
 
@@ -243,6 +253,28 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     } catch (error) {
       console.error('Failed to complete task:', error);
       TaskTrackerUtils.showError(`Failed to complete task: ${error.message}`);
+    }
+  }
+
+  async _saveTask(task, updates) {
+    try {
+      const response = await TaskTrackerUtils.updateTask(this._hass, task.id, task.task_type, task.assigned_to, updates);
+
+      if (response && response.response && response.response.success) {
+        TaskTrackerUtils.showSuccess('Task updated successfully');
+      } else {
+        const errorMsg = (response && response.response && response.response.message) || 'Unknown error';
+        TaskTrackerUtils.showError(`Failed to update task: ${errorMsg}`);
+      }
+
+      // Refresh tasks after update
+      setTimeout(() => {
+        this._fetchRecommendedTasks();
+      }, 100);
+
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      TaskTrackerUtils.showError(`Failed to update task: ${error.message}`);
     }
   }
 
@@ -474,11 +506,22 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       }
     );
 
+    const updateCleanup = TaskTrackerUtils.setupTaskUpdateListener(
+      this._hass,
+      (eventData) => {
+        // Refresh when any task is updated as it may affect recommendations
+        setTimeout(() => {
+          this._fetchRecommendedTasks();
+        }, 500);
+      }
+    );
+
     // Combined cleanup function
     this._eventCleanup = async () => {
       await Promise.all([
         completionCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion cleanup error:', err)),
-        creationCleanup().catch(err => err.code !== 'not_found' && console.warn('Creation cleanup error:', err))
+        creationCleanup().catch(err => err.code !== 'not_found' && console.warn('Creation cleanup error:', err)),
+        updateCleanup().catch(err => err.code !== 'not_found' && console.warn('Update cleanup error:', err))
       ]);
     };
   }

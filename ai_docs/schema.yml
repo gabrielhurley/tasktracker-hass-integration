@@ -858,6 +858,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/UpdateNextDueResponse'
           description: ''
+  /api/tasks/update-task/:
+    post:
+      operationId: tasks_update_task_create
+      description: Update a RecurringTask or AdHocTask with partial field updates
+      summary: Update task
+      tags:
+      - tasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTask'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateTaskResponse'
+          description: ''
 components:
   schemas:
     AdHocTask:
@@ -935,7 +957,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/TaskDataResponse'
+            $ref: '#/components/schemas/TaskData'
         count:
           type: integer
       required:
@@ -967,7 +989,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/TaskDataResponse'
+            $ref: '#/components/schemas/TaskData'
         count:
           type: integer
         total_duration:
@@ -1003,7 +1025,7 @@ components:
           type: integer
         task_type:
           type: string
-        assigned_to:
+        completed_by:
           type: string
         notes:
           type: string
@@ -1018,12 +1040,12 @@ components:
       properties:
         name:
           type: string
-        assigned_to:
+        completed_by:
           type: string
         notes:
           type: string
       required:
-      - assigned_to
+      - completed_by
       - name
     CompleteTaskData:
       type: object
@@ -1054,7 +1076,8 @@ components:
       - success
     CompletionData:
       type: object
-      description: Completion data structure returned by service layer
+      description: Model serializer for Completion and completed tasks that handles
+        data transformation
       properties:
         id:
           type: integer
@@ -1118,7 +1141,7 @@ components:
       description: Data structure for create_adhoc_task endpoint
       properties:
         task:
-          $ref: '#/components/schemas/TaskDataResponse'
+          $ref: '#/components/schemas/TaskData'
       required:
       - task
     CreateAdHocTaskResponse:
@@ -1160,7 +1183,7 @@ components:
       description: Data structure for create_leftover endpoint
       properties:
         leftover:
-          $ref: '#/components/schemas/TaskDataResponse'
+          $ref: '#/components/schemas/TaskData'
         leftover_type:
           $ref: '#/components/schemas/LeftoverTypeData'
       required:
@@ -1281,81 +1304,6 @@ components:
       - name
       - tags
       - updated_at
-    LeftoverDataResponse:
-      type: object
-      description: Extended leftover data structure for list_leftovers
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        task_type:
-          type: string
-        assigned_to:
-          type: string
-          nullable: true
-        leftover_type:
-          type: string
-        shelf_life_days:
-          type: integer
-        days_old:
-          type: integer
-        is_safe_to_eat:
-          type: boolean
-        days_overdue:
-          type: integer
-          nullable: true
-        is_overdue:
-          type: boolean
-        created_at:
-          type: string
-          nullable: true
-        is_completed:
-          type: boolean
-        date_completed:
-          type: string
-          nullable: true
-        is_active:
-          type: boolean
-        due_date:
-          type: string
-          nullable: true
-        notes:
-          type: string
-          nullable: true
-        tags:
-          type: array
-          items:
-            type: string
-        duration_minutes:
-          type: integer
-          nullable: true
-        priority:
-          type: string
-          nullable: true
-        priority_value:
-          type: integer
-          nullable: true
-      required:
-      - assigned_to
-      - created_at
-      - date_completed
-      - days_old
-      - days_overdue
-      - due_date
-      - duration_minutes
-      - id
-      - is_active
-      - is_completed
-      - is_overdue
-      - is_safe_to_eat
-      - leftover_type
-      - name
-      - notes
-      - priority
-      - priority_value
-      - shelf_life_days
-      - task_type
     LeftoverType:
       type: object
       properties:
@@ -1417,7 +1365,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/LeftoverDataResponse'
+            $ref: '#/components/schemas/TaskData'
         count:
           type: integer
         overdue_count:
@@ -1733,7 +1681,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/TaskDataResponse'
+            $ref: '#/components/schemas/TaskData'
         count:
           type: integer
         total_duration:
@@ -1847,7 +1795,7 @@ components:
       description: Data structure for get_task_by_name endpoint
       properties:
         task:
-          $ref: '#/components/schemas/TaskDataResponse'
+          $ref: '#/components/schemas/TaskData'
       required:
       - task
     TaskByNameResponse:
@@ -1869,9 +1817,11 @@ components:
       required:
       - data
       - success
-    TaskDataResponse:
+    TaskData:
       type: object
-      description: Task data structure returned by service layer
+      description: |-
+        Unified serializer that works with any task type (RecurringTask, AdHocTask, Leftover)
+        and produces the standardized task data structure.
       properties:
         id:
           type: integer
@@ -1880,15 +1830,6 @@ components:
         task_type:
           type: string
         assigned_to:
-          type: string
-          nullable: true
-        frequency_days:
-          type: integer
-          nullable: true
-        frequency:
-          type: string
-          nullable: true
-        due_date:
           type: string
           nullable: true
         duration_minutes:
@@ -1911,19 +1852,28 @@ components:
         notes:
           type: string
           nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        due_date:
+          type: string
+          nullable: true
+        frequency_days:
+          type: integer
+          nullable: true
+        frequency:
+          type: string
+          nullable: true
         last_completion_notes:
           type: string
           nullable: true
-        tags:
+        alternate_names:
           type: array
           items:
             type: string
         is_active:
           type: boolean
-        alternate_names:
-          type: array
-          items:
-            type: string
         created_at:
           type: string
           nullable: true
@@ -1941,7 +1891,7 @@ components:
         days_old:
           type: integer
           nullable: true
-        is_safe_to_eat:
+        is_safe:
           type: boolean
       required:
       - assigned_to
@@ -1952,7 +1902,7 @@ components:
       description: Data structure for task_query endpoint
       properties:
         task:
-          $ref: '#/components/schemas/TaskDataResponse'
+          $ref: '#/components/schemas/TaskData'
       required:
       - task
     TaskQueryResponse:
@@ -1974,6 +1924,14 @@ components:
       required:
       - data
       - success
+    TaskTypeEnum:
+      enum:
+      - RecurringTask
+      - AdHocTask
+      type: string
+      description: |-
+        * `RecurringTask` - RecurringTask
+        * `AdHocTask` - AdHocTask
     UpdateNextDue:
       type: object
       properties:
@@ -2002,6 +1960,64 @@ components:
           items:
             type: string
       required:
+      - success
+    UpdateTask:
+      type: object
+      properties:
+        task_id:
+          type: integer
+        task_type:
+          $ref: '#/components/schemas/TaskTypeEnum'
+        assigned_to:
+          type: string
+        name:
+          type: string
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        duration_minutes:
+          type: integer
+          minimum: 1
+        notes:
+          type: string
+        next_due:
+          type: string
+        frequency_days:
+          $ref: '#/components/schemas/FrequencyDaysEnum'
+      required:
+      - assigned_to
+      - task_id
+      - task_type
+    UpdateTaskData:
+      type: object
+      description: Data structure for update_task endpoint
+      properties:
+        task:
+          $ref: '#/components/schemas/TaskData'
+        updated_fields:
+          type: array
+          items:
+            type: string
+      required:
+      - task
+      - updated_fields
+    UpdateTaskResponse:
+      type: object
+      description: Response for update_task endpoint
+      properties:
+        success:
+          type: boolean
+        spoken_response:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          $ref: '#/components/schemas/UpdateTaskData'
+      required:
+      - data
       - success
   securitySchemes:
     cookieAuth:

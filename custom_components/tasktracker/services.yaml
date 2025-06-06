@@ -7,7 +7,7 @@ complete_task:
       example: "123"
       selector:
         text:
-    assigned_to:
+    completed_by:
       required: false
       example: "john_doe"
       selector:
@@ -26,7 +26,7 @@ complete_task_by_name:
       example: "Take out trash"
       selector:
         text:
-    assigned_to:
+    completed_by:
       required: false
       example: "john_doe"
       selector:
@@ -195,3 +195,70 @@ get_all_tasks:
         text:
 
 get_available_users:
+
+update_task:
+  fields:
+    task_id:
+      required: true
+      example: "123"
+      selector:
+        number:
+          min: 1
+    task_type:
+      required: true
+      example: "RecurringTask"
+      selector:
+        select:
+          options:
+            - "RecurringTask"
+            - "AdHocTask"
+    assigned_to:
+      required: true
+      example: "john_doe"
+      selector:
+        text:
+    duration_minutes:
+      required: false
+      example: 45
+      selector:
+        number:
+          min: 5
+          max: 480
+          unit_of_measurement: "minutes"
+    priority:
+      required: false
+      example: "2"
+      selector:
+        select:
+          options:
+            - label: "High (1)"
+              value: "1"
+            - label: "Medium (2)"
+              value: "2"
+            - label: "Low (3)"
+              value: "3"
+    next_due:
+      required: false
+      example: "2024-01-15T14:30:00"
+      selector:
+        datetime:
+    frequency_days:
+      required: false
+      example: 7
+      selector:
+        select:
+          options:
+            - label: "Daily (1 day)"
+              value: 1
+            - label: "Twice Weekly (3 days)"
+              value: 3
+            - label: "Weekly (7 days)"
+              value: 7
+            - label: "Biweekly (14 days)"
+              value: 14
+            - label: "Monthly (30 days)"
+              value: 30
+            - label: "Quarterly (90 days)"
+              value: 90
+            - label: "Yearly (365 days)"
+              value: 365

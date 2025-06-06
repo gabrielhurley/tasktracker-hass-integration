@@ -20,6 +20,48 @@ export class TaskTrackerUtils {
     return [];
   }
 
+  // Enhanced user management utilities
+  static async getEnhancedUsers(hass) {
+    try {
+      const response = await hass.callService('tasktracker', 'get_available_users', {}, {}, true, true);
+      if (response && response.response && response.response.data) {
+        // Return enhanced users if available, otherwise fallback to basic users
+        if (response.response.data.enhanced_users) {
+          return response.response.data.enhanced_users;
+        } else if (response.response.data.users) {
+          // Create basic enhanced user objects from usernames
+          return response.response.data.users.map(username => ({
+            username: username,
+            display_name: username,
+            ha_user_id: null
+          }));
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch enhanced users:', error);
+    }
+    // Fallback to empty array if service fails
+    return [];
+  }
+
+  static getUserDisplayName(username, enhancedUsers) {
+    if (!enhancedUsers || !Array.isArray(enhancedUsers)) {
+      return username;
+    }
+
+    const userMapping = enhancedUsers.find(user => user.username === username);
+    return userMapping ? userMapping.display_name : username;
+  }
+
+  static getUsernameFromDisplayName(displayName, enhancedUsers) {
+    if (!enhancedUsers || !Array.isArray(enhancedUsers)) {
+      return displayName;
+    }
+
+    const userMapping = enhancedUsers.find(user => user.display_name === displayName);
+    return userMapping ? userMapping.username : displayName;
+  }
+
   static getCurrentUsername(config, hass, availableUsers = null) {
     switch (config.user_filter_mode) {
       case 'explicit':
@@ -244,6 +286,29 @@ export class TaskTrackerUtils {
     }
   }
 
+  // Priority normalization - converts string priorities to integer values
+  static normalizePriority(priority) {
+    const priorityStringMap = {
+      'High': 1,
+      'Medium': 2,
+      'Low': 3,
+      'Very Low': 4,
+      'Minimal': 5
+    };
+
+    if (typeof priority === 'string' && priority in priorityStringMap) {
+      return priorityStringMap[priority];
+    }
+
+    // If it's already a number, return as-is
+    if (typeof priority === 'number') {
+      return priority;
+    }
+
+    // Fallback to null if we can't determine the priority
+    return null;
+  }
+
   // Task completion utility
   static async completeTask(hass, taskName, username, notes) {
     const serviceData = {
@@ -269,6 +334,29 @@ export class TaskTrackerUtils {
         username: username,
         notes: notes,
         completion_data: response.response.data
+      });
+    }
+
+    return response;
+  }
+
+  // Task update utility
+  static async updateTask(hass, taskId, taskType, assignedTo, updates) {
+    const serviceData = {
+      task_id: taskId,
+      task_type: taskType,
+      assigned_to: assignedTo,
+      ...updates
+    };
+
+    const response = await hass.callService('tasktracker', 'update_task', serviceData, {}, true, true);
+
+    // Fire a custom event to notify other cards
+    if (response && response.response && response.response.success) {
+      await TaskTrackerUtils.fireTaskEvent(hass, 'task_updated', {
+        task_id: taskId,
+        updates: updates,
+        update_data: response.response.data
       });
     }
 
@@ -327,6 +415,11 @@ export class TaskTrackerUtils {
     return TaskTrackerUtils.setupEventListener(hass, 'leftover_created', callback);
   }
 
+  // Event listening utility for task update events
+  static setupTaskUpdateListener(hass, callback) {
+    return TaskTrackerUtils.setupEventListener(hass, 'task_updated', callback);
+  }
+
   // Generic event listening utility for cross-card communication
   static setupEventListener(hass, eventType, callback) {
     // Use Home Assistant's event bus to listen for custom events
@@ -374,8 +467,56 @@ export class TaskTrackerUtils {
     }
   }
 
+  // Utility functions for task editing
+  static formatDateTimeForInput(dateString) {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      // Format as YYYY-MM-DDTHH:MM for datetime-local input
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    } catch {
+      return '';
+    }
+  }
+
+  static getPriorityOptions() {
+    return [
+      { value: 1, label: 'High' },
+      { value: 2, label: 'Medium' },
+      { value: 3, label: 'Low' }
+    ];
+  }
+
+  static getFrequencyDaysOptions() {
+    return [
+      { value: 1, label: 'Daily (1 day)' },
+      { value: 3, label: 'Twice Weekly (3 days)' },
+      { value: 7, label: 'Weekly (7 days)' },
+      { value: 14, label: 'Biweekly (14 days)' },
+      { value: 30, label: 'Monthly (30 days)' },
+      { value: 90, label: 'Quarterly (90 days)' },
+      { value: 365, label: 'Yearly (365 days)' }
+    ];
+  }
+
   // Modal creation utilities
-  static createTaskModal(task, config, onComplete) {
+  static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null) {
+    console.log('availableUsers', availableUsers);
+    console.log('enhancedUsers', enhancedUsers);
+
+    // Use enhanced users if provided, otherwise fallback to basic users
+    const usersToDisplay = enhancedUsers && enhancedUsers.length > 0 ? enhancedUsers :
+      availableUsers.map(username => ({
+        username: username,
+        display_name: username,
+        ha_user_id: null
+      }));
+
     const modal = document.createElement('div');
     modal.className = 'task-modal';
     modal.style.cssText = `
@@ -408,7 +549,45 @@ export class TaskTrackerUtils {
       border: 1px solid var(--divider-color);
     `;
 
+    const priorityOptions = TaskTrackerUtils.getPriorityOptions()
+      .map(opt => `<option value="${opt.value}" ${TaskTrackerUtils.normalizePriority(task.priority) === opt.value ? 'selected' : ''}>${opt.label}</option>`)
+      .join('');
+
+    const frequencyOptions = TaskTrackerUtils.getFrequencyDaysOptions()
+      .map(opt => `<option value="${opt.value}" ${task.frequency_days === opt.value ? 'selected' : ''}>${opt.label}</option>`)
+      .join('');
+
+    const userOptions = usersToDisplay.length > 0
+      ? ['<option value="">Unassigned</option>']
+          .concat(usersToDisplay.map(user => {
+            // Use the actual TaskTracker username for the value, but display the friendly name
+            const isSelected = task.assigned_to === user.username ? 'selected' : '';
+            return `<option value="${user.username}" ${isSelected}>${user.display_name}</option>`;
+          })).join('')
+      : '';
+
     modalContent.innerHTML = `
+      <style>
+        .modal-content .edit-form-element {
+          padding: 4px 8px;
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          font-size: 0.8em;
+          margin-top: 4px;
+          font-family: inherit;
+        }
+
+        .modal-content input.edit-form-element {
+          max-width: 100px;
+        }
+
+        .modal-content select.edit-form-element {
+          max-width: 150px;
+        }
+      </style>
+
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--divider-color);">
         <h2 style="margin: 0; color: var(--primary-text-color); font-size: 1.1em; font-weight: 500;">${task.name}</h2>
         <button class="close-btn" style="
@@ -425,21 +604,56 @@ export class TaskTrackerUtils {
       <div class="task-details" style="margin-bottom: 16px;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
           <div>
-            <strong style="color: var(--primary-text-color); font-size: 0.9em;">Duration:</strong>
-            <div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.duration_minutes} minutes</div>
+            <strong style="color: var(--primary-text-color); font-size: 0.9em;">Duration (minutes):</strong>
+            ${onSave ? `
+              <input
+                type="number"
+                class="edit-duration edit-form-element"
+                value="${task.duration_minutes || ''}"
+                min="1"
+              />
+            ` : `<div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.duration_minutes} minutes</div>`}
           </div>
           <div>
             <strong style="color: var(--primary-text-color); font-size: 0.9em;">Priority:</strong>
-            <div style="color: var(--secondary-text-color); font-size: 0.8em;">${TaskTrackerUtils.formatPriority(task.priority)}</div>
+            ${onSave ? `
+              <select class="edit-priority edit-form-element">
+                ${priorityOptions}
+              </select>
+            ` : `<div style="color: var(--secondary-text-color); font-size: 0.8em;">${TaskTrackerUtils.formatPriority(task.priority)}</div>`}
           </div>
+          ${onSave && task.next_due ? `
+            <div style="grid-column: 1 / -1;">
+              <strong style="color: var(--primary-text-color); font-size: 0.9em;">Next Due:</strong>
+              <input
+                type="datetime-local"
+                class="edit-next-due edit-form-element"
+                value="${TaskTrackerUtils.formatDateTimeForInput(task.next_due)}"
+              />
+            </div>
+          ` : ''}
+          ${onSave && usersToDisplay.length > 0 ? `
+            <div style="grid-column: 1 / -1;">
+              <strong style="color: var(--primary-text-color); font-size: 0.9em;">Assigned To:</strong>
+              <select class="edit-assigned-to edit-form-element">
+                ${userOptions}
+              </select>
+            </div>
+          ` : ''}
           <div>
             <strong style="color: var(--primary-text-color); font-size: 0.9em;">Frequency:</strong>
-            <div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.frequency || 'N/A'}</div>
+            ${onSave && task.task_type === 'RecurringTask' ? `
+              <select class="edit-frequency edit-form-element">
+                ${frequencyOptions}
+              </select>
+            ` : `<div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.frequency || 'N/A'}</div>`}
           </div>
-          <div>
-            <strong style="color: var(--primary-text-color); font-size: 0.9em;">Last Completed:</strong>
-            <div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.last_completed ? TaskTrackerUtils.formatDate(task.last_completed) : 'Never'}</div>
-          </div>
+          ${task.task_type === 'RecurringTask' ? `
+            <div>
+              <strong style="color: var(--primary-text-color); font-size: 0.9em;">Last Completed:</strong>
+              <div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.last_completed ? TaskTrackerUtils.formatDate(task.last_completed) : 'Never'}</div>
+            </div>
+          ` : ''}
         </div>
 
         ${task.notes ? `
@@ -493,6 +707,18 @@ export class TaskTrackerUtils {
           font-family: inherit;
           font-size: 0.8em;
         ">Cancel</button>
+        ${onSave ? `
+          <button class="save-btn" style="
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--secondary-text-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8em;
+          ">Save</button>
+        ` : ''}
         <button class="complete-btn" style="
           padding: 6px 12px;
           border: none;
@@ -511,6 +737,7 @@ export class TaskTrackerUtils {
     // Event listeners
     const closeBtn = modalContent.querySelector('.close-btn');
     const cancelBtn = modalContent.querySelector('.cancel-btn');
+    const saveBtn = modalContent.querySelector('.save-btn');
     const completeBtn = modalContent.querySelector('.complete-btn');
     const notesTextarea = modalContent.querySelector('.completion-notes');
 
@@ -528,6 +755,63 @@ export class TaskTrackerUtils {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
     });
+
+    if (saveBtn && onSave) {
+      saveBtn.addEventListener('click', async () => {
+        const updates = {};
+
+        const durationInput = modalContent.querySelector('.edit-duration');
+        if (durationInput) {
+          const duration = parseInt(durationInput.value, 10);
+          if (!isNaN(duration) && duration > 0) {
+            updates.duration_minutes = duration;
+          }
+        }
+
+        const priorityInput = modalContent.querySelector('.edit-priority');
+        if (priorityInput) {
+          const priority = parseInt(priorityInput.value, 10);
+          if (!isNaN(priority)) {
+            updates.priority = priority;
+          }
+        }
+
+        const nextDueInput = modalContent.querySelector('.edit-next-due');
+        if (nextDueInput && nextDueInput.value) {
+          // Convert datetime-local value to ISO string
+          updates.next_due = new Date(nextDueInput.value).toISOString();
+        }
+
+        const assignedToInput = modalContent.querySelector('.edit-assigned-to');
+        if (assignedToInput) {
+          updates.assigned_to = assignedToInput.value || null;
+        }
+
+        const frequencyInput = modalContent.querySelector('.edit-frequency');
+        if (frequencyInput && frequencyInput.value) {
+          const frequencyDays = parseInt(frequencyInput.value, 10);
+          if (!isNaN(frequencyDays)) {
+            updates.frequency_days = frequencyDays;
+          }
+        }
+
+        // Only proceed if there are actual changes
+        if (Object.keys(updates).length > 0) {
+          await onSave(updates);
+        }
+        closeModal();
+      });
+
+      // Style save button on hover
+      saveBtn.addEventListener('mouseenter', () => {
+        saveBtn.style.background = 'var(--divider-color)';
+        saveBtn.style.color = 'var(--primary-text-color)';
+      });
+      saveBtn.addEventListener('mouseleave', () => {
+        saveBtn.style.background = 'transparent';
+        saveBtn.style.color = 'var(--secondary-text-color)';
+      });
+    }
 
     completeBtn.addEventListener('click', async () => {
       const notes = notesTextarea ? notesTextarea.value.trim() : '';
