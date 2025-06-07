@@ -158,10 +158,7 @@ class CompleteTaskIntentHandler(BaseTaskTrackerIntentHandler):
         if not task_completed_by:
             task_completed_by = get_user_context(self.hass, intent_obj.context.user_id)
             if not task_completed_by:
-                response.async_set_speech(
-                    "Task completed by is required. Try rephrasing your request."
-                )
-                return response
+                task_completed_by = "Anonymous"
 
         if not task_name:
             response.async_set_speech("Task name is required.")
