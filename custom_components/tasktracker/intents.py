@@ -96,10 +96,7 @@ class AddLeftoverIntentHandler(BaseTaskTrackerIntentHandler):
                 self.hass, intent_obj.context.user_id
             )
             if not leftover_assigned_to:
-                response.async_set_speech(
-                    "Leftover assignee is required. Try rephrasing your request."
-                )
-                return response
+                leftover_assigned_to = "Anonymous"
 
         shelf_life_days = intent_obj.slots.get("leftover_shelf_life", {}).get(
             "value", ""
