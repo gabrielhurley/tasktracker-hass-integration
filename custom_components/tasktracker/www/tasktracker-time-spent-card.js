@@ -169,7 +169,6 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
       let newCompletions = [];
       let newTotalMinutes = 0;
 
-      console.log('response', response);
       if (response && response.response && response.response.data) {
         newTotalMinutes = response.response.data.total_duration;
         newCompletions = response.response.data.items;

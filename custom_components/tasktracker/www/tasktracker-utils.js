@@ -197,7 +197,13 @@ export class TaskTrackerUtils {
       const dueDate = new Date(dueDateString);
       const now = new Date();
       const diffMs = dueDate - now;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      // Use calendar day difference instead of 24-hour periods
+      // This accounts for timezone boundaries properly
+      const dueDateLocal = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffDays = Math.floor((dueDateLocal - nowLocal) / (1000 * 60 * 60 * 24));
+
       const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
       if (diffMs < 0) {
@@ -228,7 +234,13 @@ export class TaskTrackerUtils {
       const date = new Date(dateString);
       const now = new Date();
       const diffMs = now - date;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      // Use calendar day difference instead of 24-hour periods
+      // This accounts for timezone boundaries properly
+      const dateLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffDays = Math.floor((nowLocal - dateLocal) / (1000 * 60 * 60 * 24));
+
       const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -1073,6 +1085,7 @@ export class TaskTrackerUtils {
 
       .category-title {
         font-size: 1.1em;
+        margin-bottom: 8px;
       }
     `;
   }
