@@ -66,7 +66,7 @@ SERVICE_UPDATE_TASK: Final = "update_task"
 # API endpoints
 ENDPOINT_COMPLETE_TASK: Final = "/api/completions/complete_task/"
 ENDPOINT_COMPLETE_TASK_BY_NAME: Final = "/api/completions/complete_task_by_name/"
-ENDPOINT_CREATE_LEFTOVER: Final = "/api/tasks/create-leftover/"
+ENDPOINT_CREATE_LEFTOVER: Final = "/api/leftovers/create-leftover/"
 ENDPOINT_CREATE_ADHOC_TASK: Final = "/api/tasks/create-adhoc-task/"
 ENDPOINT_QUERY_TASK: Final = "/api/tasks/task-query/"
 ENDPOINT_RECOMMENDED_TASKS: Final = "/api/recommendations/recommended-tasks/"
