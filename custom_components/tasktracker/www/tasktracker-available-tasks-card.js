@@ -346,10 +346,11 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     if (hasValidUserConfig) {
       // Task item click handlers
       const taskItems = this.shadowRoot.querySelectorAll('.task-item');
-      taskItems.forEach((item, index) => {
+      taskItems.forEach((item) => {
         item.addEventListener('click', () => {
-          if (this._tasks[index]) {
-            this._showTaskModal(this._tasks[index], index);
+          const taskIndex = parseInt(item.dataset.taskIndex, 10);
+          if (this._tasks[taskIndex]) {
+            this._showTaskModal(this._tasks[taskIndex], taskIndex);
           }
         });
       });
@@ -423,7 +424,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     metadataParts.push(dueDate);
 
     return `
-      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}">
+      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}" data-task-index="${originalIndex}">
         <div class="task-content">
           <div class="task-name">${task.name}</div>
           <div class="task-metadata">${metadataParts.join(' | ')}</div>
