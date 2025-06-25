@@ -281,10 +281,10 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     try {
       const response = await TaskTrackerUtils.disposeLeftover(this._hass, leftover.name, username, notes);
 
-      if (response && response.response && response.response.success) {
-        TaskTrackerUtils.showSuccess(response.response.spoken_response || `Leftover "${leftover.name}" disposed successfully`);
+      if (response && response.success) {
+        TaskTrackerUtils.showSuccess(response.spoken_response || `Leftover "${leftover.name}" disposed successfully`);
       } else {
-        const errorMsg = (response && response.response && response.response.message) || 'Unknown error';
+        const errorMsg = (response && response.message) || 'Unknown error';
         TaskTrackerUtils.showError(`Failed to dispose leftover: ${errorMsg}`);
       }
 
