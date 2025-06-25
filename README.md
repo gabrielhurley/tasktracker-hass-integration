@@ -26,7 +26,7 @@ TaskTracker is a task management system with deep Home Assistant integration, of
 
 ### Configuration
 
-- **Host**: TaskTracker API endpoint (default: `https://tasks.thornhill.cloud`)
+- **Host**: TaskTracker API endpoint
 - **API Key**: Your TaskTracker API authentication key
 - **User Mapping**: Configure Home Assistant user IDs to TaskTracker usernames
 

@@ -19,6 +19,7 @@ from .const import (
     SERVICE_COMPLETE_TASK_BY_NAME,
     SERVICE_CREATE_ADHOC_TASK,
     SERVICE_CREATE_LEFTOVER,
+    SERVICE_DELETE_COMPLETION,
     SERVICE_GET_ALL_TASKS,
     SERVICE_GET_AVAILABLE_TASKS,
     SERVICE_GET_AVAILABLE_USERS,
@@ -26,6 +27,7 @@ from .const import (
     SERVICE_GET_RECOMMENDED_TASKS,
     SERVICE_LIST_LEFTOVERS,
     SERVICE_QUERY_TASK,
+    SERVICE_UPDATE_COMPLETION,
     SERVICE_UPDATE_TASK,
 )
 from .utils import (
@@ -125,6 +127,21 @@ UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
         vol.Optional("next_due"): cv.string,
         vol.Optional("frequency_days"): cv.positive_int,
+    }
+)
+
+DELETE_COMPLETION_SCHEMA = vol.Schema(
+    {
+        vol.Required("completion_id"): cv.positive_int,
+    }
+)
+
+UPDATE_COMPLETION_SCHEMA = vol.Schema(
+    {
+        vol.Required("completion_id"): cv.positive_int,
+        vol.Optional("completed_by"): cv.string,
+        vol.Optional("notes"): cv.string,
+        vol.Optional("completed_at"): cv.string,
     }
 )
 
@@ -538,6 +555,66 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Unexpected error in update_task_service")
                 raise
 
+        async def delete_completion_service(call: ServiceCall) -> dict[str, Any]:
+            """Delete/undo a completion record."""
+            try:
+                result = await api.delete_completion(
+                    completion_id=call.data["completion_id"]
+                )
+
+                # Fire custom event if deletion was successful
+                if result.get("success"):
+                    hass.bus.fire(
+                        "tasktracker_completion_deleted",
+                        {
+                            "completion_id": call.data["completion_id"],
+                            "deletion_data": result.get("data"),
+                        },
+                    )
+
+                _LOGGER.info("Completion deleted successfully: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to delete completion")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in delete_completion_service")
+                raise
+
+        async def update_completion_service(call: ServiceCall) -> dict[str, Any]:
+            """Update a completion record."""
+            try:
+                result = await api.update_completion(
+                    completion_id=call.data["completion_id"],
+                    completed_by=call.data.get("completed_by"),
+                    notes=call.data.get("notes"),
+                    completed_at=call.data.get("completed_at"),
+                )
+
+                # Fire custom event if update was successful
+                if result.get("success"):
+                    hass.bus.fire(
+                        "tasktracker_completion_updated",
+                        {
+                            "completion_id": call.data["completion_id"],
+                            "updates": {
+                                k: v
+                                for k, v in call.data.items()
+                                if k != "completion_id" and v is not None
+                            },
+                            "update_data": result.get("data"),
+                        },
+                    )
+
+                _LOGGER.info("Completion updated successfully: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to update completion")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in update_completion_service")
+                raise
+
         # Register services
         _LOGGER.debug("Registering individual services...")
 
@@ -644,6 +721,24 @@ async def async_setup_services(  # noqa: C901, PLR0915
         )
         _LOGGER.debug("Registered service: %s", SERVICE_UPDATE_TASK)
 
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_DELETE_COMPLETION,
+            delete_completion_service,
+            schema=DELETE_COMPLETION_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_DELETE_COMPLETION)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_UPDATE_COMPLETION,
+            update_completion_service,
+            schema=UPDATE_COMPLETION_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_UPDATE_COMPLETION)
+
         _LOGGER.info("TaskTracker services registered successfully")
 
     except Exception:
@@ -666,6 +761,8 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_GET_ALL_TASKS,
         SERVICE_GET_AVAILABLE_USERS,
         SERVICE_UPDATE_TASK,
+        SERVICE_DELETE_COMPLETION,
+        SERVICE_UPDATE_COMPLETION,
     ]
 
     for service in services_to_remove:

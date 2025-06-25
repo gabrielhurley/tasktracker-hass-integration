@@ -321,35 +321,80 @@ export class TaskTrackerUtils {
     return null;
   }
 
-  // Task completion utility
+  // Task and leftover completion methods
   static async completeTask(hass, taskName, username, notes) {
-    const serviceData = {
-      name: taskName
-    };
+    try {
+      const params = {
+        name: taskName
+      };
 
-    // Only include assigned_to if username is provided
-    // If null, let backend handle user mapping via call context
-    if (username) {
-      serviceData.completed_by = username;
+      // Only include completed_by if username is provided
+      // If null, let backend handle user mapping via call context
+      if (username) {
+        params.completed_by = username;
+      }
+
+      if (notes) {
+        params.notes = notes;
+      }
+
+      const response = await hass.callService('tasktracker', 'complete_task_by_name', params, {}, true, true);
+
+      if (response && response.response && response.response.success) {
+        TaskTrackerUtils.showSuccess(response.response.spoken_response || 'Task completed successfully');
+        return response.response;
+      } else {
+        throw new Error('Failed to complete task');
+      }
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      TaskTrackerUtils.showError('Failed to complete task: ' + error.message);
+      throw error;
     }
+  }
 
-    if (notes) {
-      serviceData.notes = notes;
+  // Completion editing methods
+  static async deleteCompletion(hass, completionId) {
+    try {
+      const params = {
+        completion_id: completionId
+      };
+
+      const response = await hass.callService('tasktracker', 'delete_completion', params, {}, true, true);
+
+      if (response && response.response && response.response.success) {
+        TaskTrackerUtils.showSuccess(response.response.spoken_response || 'Completion deleted successfully');
+        return response.response;
+      } else {
+        throw new Error('Failed to delete completion');
+      }
+    } catch (error) {
+      console.error('Failed to delete completion:', error);
+      TaskTrackerUtils.showError('Failed to delete completion: ' + error.message);
+      throw error;
     }
+  }
 
-    const response = await hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
+  static async updateCompletion(hass, completionId, updates) {
+    try {
+      const params = {
+        completion_id: completionId,
+        ...updates
+      };
 
-    // Fire a custom event to notify other cards
-    if (response && response.response && response.response.success) {
-      await TaskTrackerUtils.fireTaskEvent(hass, 'task_completed', {
-        task_name: taskName,
-        username: username,
-        notes: notes,
-        completion_data: response.response.data
-      });
+      const response = await hass.callService('tasktracker', 'update_completion', params, {}, true, true);
+
+      if (response && response.response && response.response.success) {
+        TaskTrackerUtils.showSuccess(response.response.spoken_response || 'Completion updated successfully');
+        return response.response;
+      } else {
+        throw new Error('Failed to update completion');
+      }
+    } catch (error) {
+      console.error('Failed to update completion:', error);
+      TaskTrackerUtils.showError('Failed to update completion: ' + error.message);
+      throw error;
     }
-
-    return response;
   }
 
   // Task update utility
@@ -372,7 +417,7 @@ export class TaskTrackerUtils {
       });
     }
 
-    return response;
+    return response.response;
   }
 
   // Leftover disposal utility
@@ -404,7 +449,7 @@ export class TaskTrackerUtils {
       });
     }
 
-    return response;
+    return response.response;
   }
 
   // Event listening utility for cross-card communication
@@ -430,6 +475,11 @@ export class TaskTrackerUtils {
   // Event listening utility for task update events
   static setupTaskUpdateListener(hass, callback) {
     return TaskTrackerUtils.setupEventListener(hass, 'task_updated', callback);
+  }
+
+  // Event listening utility for completion deletion events
+  static setupCompletionDeletionListener(hass, callback) {
+    return TaskTrackerUtils.setupEventListener(hass, 'completion_deleted', callback);
   }
 
   // Generic event listening utility for cross-card communication
@@ -517,326 +567,793 @@ export class TaskTrackerUtils {
   }
 
   // Modal creation utilities
-  static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null) {
-    // Use enhanced users if provided, otherwise fallback to basic users
-    const usersToDisplay = enhancedUsers && enhancedUsers.length > 0 ? enhancedUsers :
-      availableUsers.map(username => ({
-        username: username,
-        display_name: username,
-        ha_user_id: null
-      }));
+  static createStyledButton(text, type = 'default', onClick = null) {
+    const button = document.createElement('button');
+    button.textContent = text;
 
+    if (type === 'error') {
+      button.style.cssText = `
+        padding: 6px 12px;
+        border: 1px solid var(--error-color, #f44336);
+        border-radius: 4px;
+        background: transparent;
+        color: var(--error-color, #f44336);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.8em;
+      `;
+
+      // Error button hover effect
+      button.addEventListener('mouseenter', () => {
+        button.style.background = 'var(--error-color, #f44336)';
+        button.style.color = 'white';
+      });
+      button.addEventListener('mouseleave', () => {
+        button.style.background = 'transparent';
+        button.style.color = 'var(--error-color, #f44336)';
+      });
+    } else {
+      // Default button styling
+      button.style.cssText = `
+        padding: 6px 12px;
+        border: none;
+        background: transparent;
+        color: var(--secondary-text-color);
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.8em;
+      `;
+
+      // Default button hover effect
+      button.addEventListener('mouseenter', () => {
+        button.style.background = 'var(--divider-color)';
+        button.style.color = 'var(--primary-text-color)';
+      });
+      button.addEventListener('mouseleave', () => {
+        button.style.background = 'transparent';
+        button.style.color = 'var(--secondary-text-color)';
+      });
+    }
+
+    if (onClick) {
+      button.addEventListener('click', onClick);
+    }
+
+    return button;
+  }
+
+  static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null) {
     const modal = document.createElement('div');
     modal.className = 'task-modal';
     modal.style.cssText = `
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.5);
       z-index: 10000;
-      opacity: 0;
-      transition: opacity 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: center;
     `;
 
     const modalContent = document.createElement('div');
-    modalContent.className = 'modal-content';
     modalContent.style.cssText = `
       background: var(--card-background-color);
-      border-radius: 4px;
-      padding: 16px;
-      max-width: 500px;
+      border-radius: 8px;
+      padding: 24px;
       width: 90%;
-      max-height: 80vh;
+      max-width: 500px;
+      max-height: 90%;
       overflow-y: auto;
-      transition: transform 0.3s ease;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      border: 1px solid var(--divider-color);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      font-family: var(--primary-font-family);
     `;
 
-    const priorityOptions = TaskTrackerUtils.getPriorityOptions()
-      .map(opt => `<option value="${opt.value}" ${TaskTrackerUtils.normalizePriority(task.priority) === opt.value ? 'selected' : ''}>${opt.label}</option>`)
-      .join('');
+    const taskName = task.name || task.task_name;
+    const taskDuration = task.duration_minutes || task.task_duration_minutes || 0;
+    const taskPriority = task.priority || task.task_priority_value || 2;
+    const taskFrequencyDays = task.frequency_days || task.task_frequency_days;
+    const assignedTo = task.assigned_to;
+    const dueDate = task.next_due || task.due_date;
 
-    const frequencyOptions = TaskTrackerUtils.getFrequencyDaysOptions()
-      .map(opt => `<option value="${opt.value}" ${task.frequency_days === opt.value ? 'selected' : ''}>${opt.label}</option>`)
-      .join('');
+    // Format due date for datetime-local input
+    const formattedDueDate = dueDate ? TaskTrackerUtils.formatDateTimeForInput(dueDate) : '';
 
-    const userOptions = usersToDisplay.length > 0
-      ? ['<option value="">Unassigned</option>']
-          .concat(usersToDisplay.map(user => {
-            // Use the actual TaskTracker username for the value, but display the friendly name
-            const isSelected = task.assigned_to === user.username ? 'selected' : '';
-            return `<option value="${user.username}" ${isSelected}>${user.display_name}</option>`;
-          })).join('')
-      : '';
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    `;
 
-    modalContent.innerHTML = `
-      <style>
-        .modal-content .edit-form-element {
-          padding: 4px 8px;
+    const title = document.createElement('h3');
+    title.textContent = taskName;
+    title.style.cssText = `
+      margin: 0;
+      color: var(--primary-text-color);
+      font-size: 1.5em;
+      font-weight: 500;
+    `;
+
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--secondary-text-color);
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    header.appendChild(title);
+    header.appendChild(closeButton);
+
+    // Task details grid
+    const detailsGrid = document.createElement('div');
+    detailsGrid.style.cssText = `
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    `;
+
+    // Duration field (editable if onSave is provided)
+    const durationField = document.createElement('div');
+    durationField.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+    const durationLabel = document.createElement('label');
+    durationLabel.textContent = 'Duration';
+    durationLabel.style.cssText = `
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+
+    let durationControl;
+    if (onSave) {
+      durationControl = document.createElement('input');
+      durationControl.type = 'number';
+      durationControl.value = taskDuration;
+      durationControl.min = '1';
+      durationControl.style.cssText = `
+        padding: 8px;
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        background: var(--card-background-color);
+        color: var(--primary-text-color);
+        font-size: 14px;
+      `;
+    } else {
+      durationControl = document.createElement('span');
+      durationControl.textContent = TaskTrackerUtils.formatDuration(taskDuration);
+      durationControl.style.cssText = `
+        padding: 8px;
+        color: var(--primary-text-color);
+        font-size: 14px;
+      `;
+    }
+
+    durationField.appendChild(durationLabel);
+    durationField.appendChild(durationControl);
+
+    // Priority field (editable if onSave is provided)
+    const priorityField = document.createElement('div');
+    priorityField.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+    const priorityLabel = document.createElement('label');
+    priorityLabel.textContent = 'Priority';
+    priorityLabel.style.cssText = `
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+
+    let priorityControl;
+    if (onSave) {
+      priorityControl = document.createElement('select');
+      priorityControl.style.cssText = `
+        padding: 8px;
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        background: var(--card-background-color);
+        color: var(--primary-text-color);
+        font-size: 14px;
+      `;
+      TaskTrackerUtils.getPriorityOptions().forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.label;
+        optionElement.selected = option.value === taskPriority;
+        priorityControl.appendChild(optionElement);
+      });
+    } else {
+      priorityControl = document.createElement('span');
+      priorityControl.textContent = TaskTrackerUtils.formatPriority(taskPriority);
+      priorityControl.style.cssText = `
+        padding: 8px;
+        color: var(--primary-text-color);
+        font-size: 14px;
+      `;
+    }
+
+    priorityField.appendChild(priorityLabel);
+    priorityField.appendChild(priorityControl);
+
+    detailsGrid.appendChild(durationField);
+    detailsGrid.appendChild(priorityField);
+
+    // Due date field (editable if onSave is provided and task is recurring)
+    if (taskFrequencyDays) {
+      const dueDateField = document.createElement('div');
+      dueDateField.style.cssText = 'display: flex; flex-direction: column; gap: 4px; grid-column: 1 / -1;';
+      const dueDateLabel = document.createElement('label');
+      dueDateLabel.textContent = 'Due Date';
+      dueDateLabel.style.cssText = `
+        font-size: 0.85em;
+        color: var(--secondary-text-color);
+        font-weight: 500;
+      `;
+
+      let dueDateControl;
+      if (onSave) {
+        dueDateControl = document.createElement('input');
+        dueDateControl.type = 'datetime-local';
+        dueDateControl.value = formattedDueDate;
+        dueDateControl.style.cssText = `
+          padding: 8px;
           border: 1px solid var(--divider-color);
           border-radius: 4px;
           background: var(--card-background-color);
           color: var(--primary-text-color);
-          font-size: 0.8em;
-          margin-top: 4px;
-          font-family: inherit;
-        }
+          font-size: 14px;
+        `;
+      } else {
+        dueDateControl = document.createElement('span');
+        dueDateControl.textContent = dueDate ? TaskTrackerUtils.formatDateTime(dueDate) : 'Not set';
+        dueDateControl.style.cssText = `
+          padding: 8px;
+          color: var(--primary-text-color);
+          font-size: 14px;
+        `;
+      }
 
-        .modal-content input.edit-form-element {
-          max-width: 100px;
-        }
+      dueDateField.appendChild(dueDateLabel);
+      dueDateField.appendChild(dueDateControl);
+      detailsGrid.appendChild(dueDateField);
+    }
 
-        .modal-content select.edit-form-element {
-          max-width: 150px;
-        }
-      </style>
+    // Assignment field (editable if onSave is provided and users available)
+    if (onSave && availableUsers && availableUsers.length > 0) {
+      const assignmentField = document.createElement('div');
+      assignmentField.style.cssText = 'display: flex; flex-direction: column; gap: 4px; grid-column: 1 / -1;';
+      const assignmentLabel = document.createElement('label');
+      assignmentLabel.textContent = 'Assigned To';
+      assignmentLabel.style.cssText = `
+        font-size: 0.85em;
+        color: var(--secondary-text-color);
+        font-weight: 500;
+      `;
 
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--divider-color);">
-        <h2 style="margin: 0; color: var(--primary-text-color); font-size: 1.1em; font-weight: 500;">${task.name}</h2>
-        <button class="close-btn" style="
-          background: none;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          padding: 6px;
-          cursor: pointer;
-          color: var(--secondary-text-color);
-          font-size: 16px;
-        ">&times;</button>
-      </div>
+      const assignmentControl = document.createElement('select');
+      assignmentControl.style.cssText = `
+        padding: 8px;
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        background: var(--card-background-color);
+        color: var(--primary-text-color);
+        font-size: 14px;
+      `;
 
-      <div class="task-details" style="margin-bottom: 16px;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-          <div>
-            <strong style="color: var(--primary-text-color); font-size: 0.9em;">Duration (minutes):</strong>
-            ${onSave ? `
-              <input
-                type="number"
-                class="edit-duration edit-form-element"
-                value="${task.duration_minutes || ''}"
-                min="1"
-              />
-            ` : `<div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.duration_minutes} minutes</div>`}
-          </div>
-          <div>
-            <strong style="color: var(--primary-text-color); font-size: 0.9em;">Priority:</strong>
-            ${onSave ? `
-              <select class="edit-priority edit-form-element">
-                ${priorityOptions}
-              </select>
-            ` : `<div style="color: var(--secondary-text-color); font-size: 0.8em;">${TaskTrackerUtils.formatPriority(task.priority)}</div>`}
-          </div>
-          ${onSave && task.next_due ? `
-            <div style="grid-column: 1 / -1;">
-              <strong style="color: var(--primary-text-color); font-size: 0.9em;">Next Due:</strong>
-              <input
-                type="datetime-local"
-                class="edit-next-due edit-form-element"
-                value="${TaskTrackerUtils.formatDateTimeForInput(task.next_due)}"
-              />
-            </div>
-          ` : ''}
-          ${onSave && usersToDisplay.length > 0 ? `
-            <div style="grid-column: 1 / -1;">
-              <strong style="color: var(--primary-text-color); font-size: 0.9em;">Assigned To:</strong>
-              <select class="edit-assigned-to edit-form-element">
-                ${userOptions}
-              </select>
-            </div>
-          ` : ''}
-          <div>
-            <strong style="color: var(--primary-text-color); font-size: 0.9em;">Frequency:</strong>
-            ${onSave && task.task_type === 'RecurringTask' ? `
-              <select class="edit-frequency edit-form-element">
-                ${frequencyOptions}
-              </select>
-            ` : `<div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.frequency || 'N/A'}</div>`}
-          </div>
-          ${task.task_type === 'RecurringTask' ? `
-            <div>
-              <strong style="color: var(--primary-text-color); font-size: 0.9em;">Last Completed:</strong>
-              <div style="color: var(--secondary-text-color); font-size: 0.8em;">${task.last_completed ? TaskTrackerUtils.formatDate(task.last_completed) : 'Never'}</div>
-            </div>
-          ` : ''}
-        </div>
+      availableUsers.forEach(username => {
+        const optionElement = document.createElement('option');
+        optionElement.value = username;
+        optionElement.textContent = TaskTrackerUtils.getUserDisplayName(username, enhancedUsers);
+        optionElement.selected = username === assignedTo;
+        assignmentControl.appendChild(optionElement);
+      });
 
-        ${task.notes ? `
-          <div style="margin-bottom: 12px;">
-            <strong style="color: var(--primary-text-color); font-size: 0.9em;">Notes:</strong>
-            <div style="color: var(--secondary-text-color); margin-top: 4px; font-size: 0.8em;">${task.notes}</div>
-          </div>
-        ` : ''}
+      assignmentField.appendChild(assignmentLabel);
+      assignmentField.appendChild(assignmentControl);
+      detailsGrid.appendChild(assignmentField);
+    }
 
-        ${task.last_completion_notes ? `
-          <div style="margin-bottom: 12px;">
-            <strong style="color: var(--primary-text-color); font-size: 0.9em;">Last Completion Notes:</strong>
-            <div style="color: var(--secondary-text-color); margin-top: 4px; font-size: 0.8em;">${task.last_completion_notes}</div>
-          </div>
-        ` : ''}
-      </div>
+    // Notes section
+    const notesSection = document.createElement('div');
+    notesSection.style.cssText = 'margin-bottom: 20px;';
 
-      ${config.show_completion_notes ? `
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 8px; color: var(--primary-text-color); font-weight: 500; font-size: 0.9em;">
-            Completion Notes (optional):
-          </label>
-          <textarea
-            class="completion-notes"
-            placeholder="Add any notes about completing this task..."
-            style="
-              width: 100%;
-              min-height: 60px;
-              padding: 8px;
-              border: 1px solid var(--divider-color);
-              border-radius: 4px;
-              background: var(--card-background-color);
-              color: var(--primary-text-color);
-              font-family: inherit;
-              font-size: 0.8em;
-              resize: vertical;
-              box-sizing: border-box;
-            "
-          ></textarea>
-        </div>
-      ` : ''}
-
-      <div style="display: flex; gap: 8px; justify-content: flex-end;">
-        <button class="cancel-btn" style="
-          padding: 6px 12px;
-          border: none;
-          background: transparent;
-          color: var(--secondary-text-color);
-          border-radius: 4px;
-          cursor: pointer;
-          font-family: inherit;
-          font-size: 0.8em;
-        ">Cancel</button>
-        ${onSave ? `
-          <button class="save-btn" style="
-            padding: 6px 12px;
-            border: none;
-            background: transparent;
-            color: var(--secondary-text-color);
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 0.8em;
-          ">Save</button>
-        ` : ''}
-        <button class="complete-btn" style="
-          padding: 6px 12px;
-          border: none;
-          background: transparent;
-          color: var(--secondary-text-color);
-          border-radius: 4px;
-          cursor: pointer;
-          font-family: inherit;
-          font-size: 0.8em;
-        ">Complete</button>
-      </div>
+    const notesLabel = document.createElement('label');
+    notesLabel.textContent = 'Task Notes';
+    notesLabel.style.cssText = `
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
     `;
+
+    const taskNotes = document.createElement('div');
+    taskNotes.textContent = task.notes;
+    taskNotes.style.cssText = `
+      padding: 12px;
+      background: var(--secondary-background-color);
+      border-radius: 4px;
+      color: var(--primary-text-color);
+      font-size: 14px;
+      line-height: 1.4;
+      margin-bottom: 16px;
+      min-height: 40px;
+    `;
+
+    const completionNotesLabel = document.createElement('label');
+    completionNotesLabel.textContent = config.show_completion_notes !== false ? 'Completion Notes (Optional)' : '';
+    completionNotesLabel.style.cssText = `
+      display: ${config.show_completion_notes !== false ? 'block' : 'none'};
+      margin-bottom: 8px;
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+
+    const completionNotesTextarea = document.createElement('textarea');
+    completionNotesTextarea.placeholder = 'Add completion notes...';
+    completionNotesTextarea.style.cssText = `
+      width: 100%;
+      min-height: 80px;
+      padding: 12px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: var(--card-background-color);
+      color: var(--primary-text-color);
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      box-sizing: border-box;
+      display: ${config.show_completion_notes !== false ? 'block' : 'none'};
+    `;
+
+    notesSection.appendChild(notesLabel);
+    notesSection.appendChild(taskNotes);
+    notesSection.appendChild(completionNotesLabel);
+    notesSection.appendChild(completionNotesTextarea);
+
+    // Buttons
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    `;
+
+    const cancelButton = TaskTrackerUtils.createStyledButton('Cancel');
+
+    // Save button (only if onSave callback provided)
+    let saveButton;
+    if (onSave) {
+      saveButton = TaskTrackerUtils.createStyledButton('Save');
+    }
+
+    const completeButton = TaskTrackerUtils.createStyledButton('Complete');
+
+    // Append buttons in correct order: Cancel, Save (if exists), Complete
+    buttonContainer.appendChild(cancelButton);
+    if (saveButton) {
+      buttonContainer.appendChild(saveButton);
+    }
+    buttonContainer.appendChild(completeButton);
+
+    // Assemble modal content
+    modalContent.appendChild(header);
+    modalContent.appendChild(detailsGrid);
+    modalContent.appendChild(notesSection);
+    modalContent.appendChild(buttonContainer);
 
     modal.appendChild(modalContent);
 
-    // Event listeners
-    const closeBtn = modalContent.querySelector('.close-btn');
-    const cancelBtn = modalContent.querySelector('.cancel-btn');
-    const saveBtn = modalContent.querySelector('.save-btn');
-    const completeBtn = modalContent.querySelector('.complete-btn');
-    const notesTextarea = modalContent.querySelector('.completion-notes');
-
     const closeModal = () => {
-      modal.style.opacity = '0';
-      setTimeout(() => {
-        if (modal.parentNode) {
-          modal.parentNode.removeChild(modal);
-        }
-      }, 300);
+      if (modal.parentNode) {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+          if (modal.parentNode) {
+            modal.parentNode.removeChild(modal);
+          }
+        }, 200);
+      }
     };
 
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
+    // Event handlers
+    closeButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModal);
+
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
+      if (e.target === modal) {
+        closeModal();
+      }
     });
 
-    if (saveBtn && onSave) {
-      saveBtn.addEventListener('click', async () => {
+    // Escape key handler
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escapeHandler);
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
+
+    // Save button handler
+    if (saveButton && onSave) {
+      saveButton.addEventListener('click', async () => {
         const updates = {};
 
-        const durationInput = modalContent.querySelector('.edit-duration');
-        if (durationInput) {
-          const duration = parseInt(durationInput.value, 10);
-          if (!isNaN(duration) && duration > 0) {
-            updates.duration_minutes = duration;
+        // Collect duration changes
+        if (durationControl.value && parseInt(durationControl.value) !== taskDuration) {
+          updates.duration_minutes = parseInt(durationControl.value);
+        }
+
+        // Collect priority changes
+        if (priorityControl.value && parseInt(priorityControl.value) !== taskPriority) {
+          updates.priority = parseInt(priorityControl.value);
+        }
+
+        // Collect due date changes (if applicable)
+        if (taskFrequencyDays && dueDateControl.value) {
+          const newDueDate = new Date(dueDateControl.value).toISOString();
+          if (newDueDate !== dueDate) {
+            updates.next_due = newDueDate;
           }
         }
 
-        const priorityInput = modalContent.querySelector('.edit-priority');
-        if (priorityInput) {
-          const priority = parseInt(priorityInput.value, 10);
-          if (!isNaN(priority)) {
-            updates.priority = priority;
-          }
+        // Collect assignment changes (if applicable)
+        const assignmentSelect = assignmentField?.querySelector('select');
+        if (assignmentSelect && assignmentSelect.value !== assignedTo) {
+          updates.assigned_to = assignmentSelect.value;
         }
 
-        const nextDueInput = modalContent.querySelector('.edit-next-due');
-        if (nextDueInput && nextDueInput.value) {
-          // Convert datetime-local value to ISO string
-          updates.next_due = new Date(nextDueInput.value).toISOString();
-        }
-
-        const assignedToInput = modalContent.querySelector('.edit-assigned-to');
-        if (assignedToInput) {
-          updates.assigned_to = assignedToInput.value || null;
-        }
-
-        const frequencyInput = modalContent.querySelector('.edit-frequency');
-        if (frequencyInput && frequencyInput.value) {
-          const frequencyDays = parseInt(frequencyInput.value, 10);
-          if (!isNaN(frequencyDays)) {
-            updates.frequency_days = frequencyDays;
-          }
-        }
-
-        // Only proceed if there are actual changes
         if (Object.keys(updates).length > 0) {
-          await onSave(updates);
+          try {
+            await onSave(updates);
+            closeModal();
+          } catch (error) {
+            console.error('Failed to save task:', error);
+            // Error handling is done in the onSave callback
+          }
+        } else {
+          closeModal();
         }
-        closeModal();
-      });
-
-      // Style save button on hover
-      saveBtn.addEventListener('mouseenter', () => {
-        saveBtn.style.background = 'var(--divider-color)';
-        saveBtn.style.color = 'var(--primary-text-color)';
-      });
-      saveBtn.addEventListener('mouseleave', () => {
-        saveBtn.style.background = 'transparent';
-        saveBtn.style.color = 'var(--secondary-text-color)';
       });
     }
 
-    completeBtn.addEventListener('click', async () => {
-      const notes = notesTextarea ? notesTextarea.value.trim() : '';
-      await onComplete(notes);
-      closeModal();
+    // Complete button handler
+    completeButton.addEventListener('click', async () => {
+      const notes = completionNotesTextarea.value.trim();
+      try {
+        await onComplete(notes);
+        closeModal();
+      } catch (error) {
+        console.error('Failed to complete task:', error);
+        // Error handling is done in the onComplete callback
+      }
     });
 
-    // Style complete button on hover
-    completeBtn.addEventListener('mouseenter', () => {
-      completeBtn.style.background = 'var(--divider-color)';
-      completeBtn.style.color = 'var(--primary-text-color)';
+    // Apply fade-in animation
+    modal.style.opacity = '0';
+    setTimeout(() => {
+      modal.style.transition = 'opacity 0.2s ease';
+      modal.style.opacity = '1';
+    }, 10);
+
+    return modal;
+  }
+
+  static createCompletionEditModal(completion, config, onDelete, onUpdate, availableUsers = [], enhancedUsers = null) {
+    const modal = document.createElement('div');
+    modal.className = 'completion-edit-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: var(--card-background-color);
+      border-radius: 8px;
+      padding: 24px;
+      width: 90%;
+      max-width: 450px;
+      max-height: 90%;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      font-family: var(--primary-font-family);
+    `;
+
+    const taskName = completion.task_name || completion.name;
+    const completedBy = completion.completed_by;
+    const completedAt = completion.completed_at;
+    const notes = completion.notes || '';
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = `Edit Completion`;
+    title.style.cssText = `
+      margin: 0;
+      color: var(--primary-text-color);
+      font-size: 1.3em;
+      font-weight: 500;
+    `;
+
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--secondary-text-color);
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    header.appendChild(title);
+    header.appendChild(closeButton);
+
+    // Task name display
+    const taskNameField = document.createElement('div');
+    taskNameField.style.cssText = 'margin-bottom: 16px;';
+    const taskNameLabel = document.createElement('label');
+    taskNameLabel.textContent = 'Task Name';
+    taskNameLabel.style.cssText = `
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+    const taskNameValue = document.createElement('div');
+    taskNameValue.textContent = taskName;
+    taskNameValue.style.cssText = `
+      padding: 8px;
+      background: var(--secondary-background-color);
+      border-radius: 4px;
+      color: var(--primary-text-color);
+      font-size: 14px;
+    `;
+    taskNameField.appendChild(taskNameLabel);
+    taskNameField.appendChild(taskNameValue);
+
+    // Completed by field (editable if users are available)
+    const completedByField = document.createElement('div');
+    completedByField.style.cssText = 'margin-bottom: 16px;';
+    const completedByLabel = document.createElement('label');
+    completedByLabel.textContent = 'Completed By';
+    completedByLabel.style.cssText = `
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+
+    let completedByControl;
+    if (availableUsers && availableUsers.length > 0) {
+      completedByControl = document.createElement('select');
+      completedByControl.style.cssText = `
+        width: 100%;
+        padding: 8px;
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        background: var(--card-background-color);
+        color: var(--primary-text-color);
+        font-size: 14px;
+      `;
+
+      availableUsers.forEach(username => {
+        const optionElement = document.createElement('option');
+        optionElement.value = username;
+        optionElement.textContent = TaskTrackerUtils.getUserDisplayName(username, enhancedUsers);
+        optionElement.selected = username === completedBy;
+        completedByControl.appendChild(optionElement);
+      });
+    } else {
+      completedByControl = document.createElement('div');
+      completedByControl.textContent = TaskTrackerUtils.getUserDisplayName(completedBy, enhancedUsers);
+      completedByControl.style.cssText = `
+        padding: 8px;
+        background: var(--secondary-background-color);
+        border-radius: 4px;
+        color: var(--primary-text-color);
+        font-size: 14px;
+      `;
+    }
+
+    completedByField.appendChild(completedByLabel);
+    completedByField.appendChild(completedByControl);
+
+    // Completion date display
+    const completedAtField = document.createElement('div');
+    completedAtField.style.cssText = 'margin-bottom: 16px;';
+    const completedAtLabel = document.createElement('label');
+    completedAtLabel.textContent = 'Completed At';
+    completedAtLabel.style.cssText = `
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+    const completedAtValue = document.createElement('div');
+    completedAtValue.textContent = TaskTrackerUtils.formatDateTime(completedAt);
+    completedAtValue.style.cssText = `
+      padding: 8px;
+      background: var(--secondary-background-color);
+      border-radius: 4px;
+      color: var(--primary-text-color);
+      font-size: 14px;
+    `;
+    completedAtField.appendChild(completedAtLabel);
+    completedAtField.appendChild(completedAtValue);
+
+    // Notes field (editable)
+    const notesField = document.createElement('div');
+    notesField.style.cssText = 'margin-bottom: 20px;';
+    const notesLabel = document.createElement('label');
+    notesLabel.textContent = 'Notes';
+    notesLabel.style.cssText = `
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+    const notesTextarea = document.createElement('textarea');
+    notesTextarea.value = notes;
+    notesTextarea.placeholder = 'Add notes about this completion...';
+    notesTextarea.style.cssText = `
+      width: 100%;
+      min-height: 80px;
+      padding: 8px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: var(--card-background-color);
+      color: var(--primary-text-color);
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      box-sizing: border-box;
+    `;
+    notesField.appendChild(notesLabel);
+    notesField.appendChild(notesTextarea);
+
+    // Buttons
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+      margin-top: 24px;
+    `;
+
+    const undoButton = TaskTrackerUtils.createStyledButton('Undo Completion', 'error');
+
+    const rightButtons = document.createElement('div');
+    rightButtons.style.cssText = 'display: flex; gap: 8px;';
+
+    const cancelButton = TaskTrackerUtils.createStyledButton('Cancel');
+    const updateButton = TaskTrackerUtils.createStyledButton('Update');
+
+    rightButtons.appendChild(cancelButton);
+    rightButtons.appendChild(updateButton);
+    buttonContainer.appendChild(undoButton);
+    buttonContainer.appendChild(rightButtons);
+
+    // Assemble modal content
+    modalContent.appendChild(header);
+    modalContent.appendChild(taskNameField);
+    modalContent.appendChild(completedByField);
+    modalContent.appendChild(completedAtField);
+    modalContent.appendChild(notesField);
+    modalContent.appendChild(buttonContainer);
+
+    modal.appendChild(modalContent);
+
+    const closeModal = () => {
+      if (modal.parentNode) {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+          if (modal.parentNode) {
+            modal.parentNode.removeChild(modal);
+          }
+        }, 200);
+      }
+    };
+
+    // Event handlers
+    closeButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
     });
-    completeBtn.addEventListener('mouseleave', () => {
-      completeBtn.style.background = 'transparent';
-      completeBtn.style.color = 'var(--secondary-text-color)';
+
+    // Escape key handler
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escapeHandler);
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
+
+    // Undo button handler
+    undoButton.addEventListener('click', async () => {
+      try {
+        await onDelete();
+        closeModal();
+      } catch (error) {
+        console.error('Failed to delete completion:', error);
+        // Error handling is done in the onDelete callback
+      }
     });
+
+    // Update button handler
+    updateButton.addEventListener('click', async () => {
+      const updates = {};
+
+      // Check for completed_by changes
+      if (availableUsers && availableUsers.length > 0 && completedByControl.value !== completedBy) {
+        updates.completed_by = completedByControl.value;
+      }
+
+      // Check for notes changes
+      if (notesTextarea.value !== notes) {
+        updates.notes = notesTextarea.value;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        try {
+          await onUpdate(updates);
+          closeModal();
+        } catch (error) {
+          console.error('Failed to update completion:', error);
+          // Error handling is done in the onUpdate callback
+        }
+      } else {
+        closeModal();
+      }
+    });
+
+    // Apply fade-in animation
+    modal.style.opacity = '0';
+    setTimeout(() => {
+      modal.style.transition = 'opacity 0.2s ease';
+      modal.style.opacity = '1';
+    }, 10);
 
     return modal;
   }

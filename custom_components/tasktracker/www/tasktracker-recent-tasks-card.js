@@ -226,6 +226,10 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
           border-radius: 4px;
           border: 1px solid var(--divider-color);
         }
+
+
+
+
       </style>
 
       <div class="card">
@@ -252,6 +256,16 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this._fetchRecentCompletions());
     }
+
+    // Add event listeners for edit buttons
+    const editButtons = this.shadowRoot.querySelectorAll('.complete-btn[data-completion-id]');
+    editButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const completionId = parseInt(btn.getAttribute('data-completion-id'));
+        this._showEditCompletionModal(completionId);
+      });
+    });
   }
 
   _renderContent() {
@@ -281,17 +295,25 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     metadataParts.push(`Completed by ${completedBy}`);
     if (time) metadataParts.push(time);
 
+    // Only show edit button for completions with an ID (only recurring task completions have edit capability)
+    const showEditButton = completion.id && completion.id !== null;
+
     return `
       <div class="task-item completion-item completed">
         <div class="task-content completion-content">
-          <div class="task-header completion-header">
-            <div class="task-name">${taskName}</div>
-          </div>
+          <div class="task-name">${taskName}</div>
           <div class="task-metadata completion-details">${metadataParts.join(' ')}</div>
           ${this._config.show_notes && completion.notes ? `
             <div class="completion-notes">"${completion.notes}"</div>
           ` : ''}
         </div>
+        ${showEditButton ? `
+          <div class="task-actions completion-actions">
+            <button class="complete-btn" data-completion-id="${completion.id}" title="Edit completion">
+              Edit
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
   }
@@ -337,11 +359,34 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       }
     );
 
+    // Set up listeners for completion edits
+    const completionDeletedCleanup = TaskTrackerUtils.setupEventListener(
+      this._hass,
+      'tasktracker_completion_deleted',
+      () => {
+        setTimeout(() => {
+          this._fetchRecentCompletions();
+        }, 500);
+      }
+    );
+
+    const completionUpdatedCleanup = TaskTrackerUtils.setupEventListener(
+      this._hass,
+      'tasktracker_completion_updated',
+      () => {
+        setTimeout(() => {
+          this._fetchRecentCompletions();
+        }, 500);
+      }
+    );
+
     // Combined cleanup function
     this._eventCleanup = async () => {
       await Promise.all([
         taskCleanup().catch(err => err.code !== 'not_found' && console.warn('Task cleanup error:', err)),
-        leftoverCleanup().catch(err => err.code !== 'not_found' && console.warn('Leftover cleanup error:', err))
+        leftoverCleanup().catch(err => err.code !== 'not_found' && console.warn('Leftover cleanup error:', err)),
+        completionDeletedCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion deleted cleanup error:', err)),
+        completionUpdatedCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion updated cleanup error:', err))
       ]);
     };
   }
@@ -361,6 +406,44 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
 
     // Default to refreshing
     return true;
+  }
+
+  async _showEditCompletionModal(completionId) {
+    // Find the completion by ID
+    const completion = this._completions.find(c => c.id === completionId);
+    if (!completion) {
+      TaskTrackerUtils.showError('Completion not found');
+      return;
+    }
+
+    // Fetch available users for user selection
+    let availableUsers = [];
+    let enhancedUsers = [];
+    try {
+      availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
+      enhancedUsers = await TaskTrackerUtils.getEnhancedUsers(this._hass);
+    } catch (error) {
+      console.warn('Failed to fetch users for completion editing:', error);
+    }
+
+    const modal = TaskTrackerUtils.createCompletionEditModal(
+      completion,
+      this._config,
+      async () => {
+        // Delete/undo completion
+        await TaskTrackerUtils.deleteCompletion(this._hass, completionId);
+        this._fetchRecentCompletions();
+      },
+      async (updates) => {
+        // Update completion
+        await TaskTrackerUtils.updateCompletion(this._hass, completionId, updates);
+        this._fetchRecentCompletions();
+      },
+      availableUsers,
+      enhancedUsers
+    );
+
+    TaskTrackerUtils.showModal(modal);
   }
 }
 

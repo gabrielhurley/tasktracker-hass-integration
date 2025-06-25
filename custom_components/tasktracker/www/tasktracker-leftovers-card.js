@@ -356,10 +356,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     }
   }
 
-  _showLeftoverModal(leftover, leftoverIndex) {
-    const modal = this._createLeftoverModal(leftover, leftoverIndex);
-    TaskTrackerUtils.showModal(modal);
-  }
+
 
   _render() {
     const username = this._getCurrentUsername();
@@ -407,21 +404,11 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     }
 
     if (hasValidUserConfig) {
-      // Leftover item click handlers
-      const leftoverItems = this.shadowRoot.querySelectorAll('.leftover-item');
-      leftoverItems.forEach((item, index) => {
-        item.addEventListener('click', () => {
-          if (this._leftovers[index]) {
-            this._showLeftoverModal(this._leftovers[index], index);
-          }
-        });
-      });
-
       // Dispose button click handlers
       const disposeButtons = this.shadowRoot.querySelectorAll('.dispose-btn');
       disposeButtons.forEach(button => {
         button.addEventListener('click', (e) => {
-          e.stopPropagation(); // Prevent event bubbling to parent leftover item
+          e.stopPropagation(); // Prevent event bubbling if needed
           const leftoverIndex = parseInt(button.dataset.leftoverIndex, 10);
           if (this._leftovers[leftoverIndex]) {
             this._disposeLeftover(this._leftovers[leftoverIndex], '');

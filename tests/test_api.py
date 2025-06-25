@@ -39,7 +39,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.complete_task(
-            task_id=123, assigned_to="testuser", notes="Test completion"
+            task_id=123, completed_by="testuser", notes="Test completion"
         )
 
         assert result["success"] is True
@@ -54,7 +54,7 @@ class TestTaskTrackerAPI:
             json={
                 "task_id": 123,
                 "task_type": "recurring",
-                "assigned_to": "testuser",
+                "completed_by": "testuser",
                 "notes": "Test completion",
             },
         )
@@ -75,7 +75,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.complete_task_by_name(
-            name="trash", assigned_to="testuser"
+            name="trash", completed_by="testuser"
         )
 
         assert result["success"] is True
@@ -379,7 +379,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         with pytest.raises(TaskTrackerAPIError) as exc_info:
-            await api_client.complete_task(task_id=-1, assigned_to="testuser")
+            await api_client.complete_task(task_id=-1, completed_by="testuser")
 
         assert "API request failed with status 400" in str(exc_info.value)
 
@@ -395,7 +395,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         with pytest.raises(TaskTrackerAPIError) as exc_info:
-            await api_client.complete_task(task_id=123, assigned_to="testuser")
+            await api_client.complete_task(task_id=123, completed_by="testuser")
 
         assert "API request failed with status 500" in str(exc_info.value)
 
@@ -405,7 +405,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.side_effect = ClientError("Network error")
 
         with pytest.raises(TaskTrackerAPIError) as exc_info:
-            await api_client.complete_task(task_id=123, assigned_to="testuser")
+            await api_client.complete_task(task_id=123, completed_by="testuser")
 
         assert "Network error" in str(exc_info.value)
 
@@ -417,7 +417,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.side_effect = ClientError("Request timed out")
 
         with pytest.raises(TaskTrackerAPIError) as exc_info:
-            await api_client.complete_task(task_id=123, assigned_to="testuser")
+            await api_client.complete_task(task_id=123, completed_by="testuser")
 
         assert "Network error" in str(exc_info.value)
 
@@ -477,7 +477,7 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.complete_task(task_id=123, assigned_to="testuser")
+        result = await api_client.complete_task(task_id=123, completed_by="testuser")
 
         assert result["success"] is True
 
@@ -497,7 +497,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.complete_task_by_name(
-            name="trash", assigned_to="testuser"
+            name="trash", completed_by="testuser"
         )
 
         assert result["success"] is True

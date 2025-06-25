@@ -76,7 +76,7 @@ class TestTaskTrackerServices:
 
             # Verify API was called
             mock_api.complete_task.assert_called_once_with(
-                task_id=123, assigned_to="testuser", notes="Completed via test"
+                task_id=123, completed_by="testuser", notes="Completed via test"
             )
 
     @pytest.mark.asyncio
@@ -101,7 +101,7 @@ class TestTaskTrackerServices:
             SERVICE_COMPLETE_TASK,
             {
                 "task_id": 123,
-                "assigned_to": "explicituser",
+                "completed_by": "explicituser",
                 "notes": "Completed via test",
             },
             blocking=True,
@@ -110,7 +110,7 @@ class TestTaskTrackerServices:
 
         # Verify API was called with explicit username
         mock_api.complete_task.assert_called_once_with(
-            task_id=123, assigned_to="explicituser", notes="Completed via test"
+            task_id=123, completed_by="explicituser", notes="Completed via test"
         )
 
     @pytest.mark.asyncio
@@ -145,7 +145,7 @@ class TestTaskTrackerServices:
 
             # Verify API was called
             mock_api.complete_task_by_name.assert_called_once_with(
-                name="Test Task", assigned_to="testuser", notes="Completed by name"
+                name="Test Task", completed_by="testuser", notes="Completed by name"
             )
 
     @pytest.mark.asyncio
@@ -184,7 +184,7 @@ class TestTaskTrackerServices:
             # Verify API was called with mapped username
             mock_api.complete_task_by_name.assert_called_once_with(
                 name="Test Task",
-                assigned_to="mapped_user",
+                completed_by="mapped_user",
                 notes="Completed without assigned_to",
             )
 

@@ -3,7 +3,7 @@
 from typing import Final
 
 # Version
-VERSION: Final = "1.0.11"
+VERSION: Final = "1.0.12"
 
 # Integration domain
 DOMAIN: Final = "tasktracker"
@@ -62,6 +62,8 @@ SERVICE_LIST_LEFTOVERS: Final = "list_leftovers"
 SERVICE_GET_ALL_TASKS: Final = "get_all_tasks"
 SERVICE_GET_AVAILABLE_USERS: Final = "get_available_users"
 SERVICE_UPDATE_TASK: Final = "update_task"
+SERVICE_DELETE_COMPLETION: Final = "delete_completion"
+SERVICE_UPDATE_COMPLETION: Final = "update_completion"
 
 # API endpoints
 ENDPOINT_COMPLETE_TASK: Final = "/api/completions/complete_task/"
@@ -75,6 +77,8 @@ ENDPOINT_RECENT_COMPLETIONS: Final = "/api/completions/recent_completions/"
 ENDPOINT_LIST_LEFTOVERS: Final = "/api/leftovers/list-leftovers/"
 ENDPOINT_ALL_TASKS: Final = "/api/tasks/all-tasks/"
 ENDPOINT_UPDATE_TASK: Final = "/api/tasks/update-task/"
+ENDPOINT_DELETE_COMPLETION: Final = "/api/completions/delete_completion/"
+ENDPOINT_UPDATE_COMPLETION: Final = "/api/completions/update_completion/"
 
 # Default values
 DEFAULT_SCAN_INTERVAL: Final = 300  # 5 minutes

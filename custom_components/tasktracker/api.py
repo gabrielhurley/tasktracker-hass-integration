@@ -14,10 +14,12 @@ from .const import (
     ENDPOINT_COMPLETE_TASK_BY_NAME,
     ENDPOINT_CREATE_ADHOC_TASK,
     ENDPOINT_CREATE_LEFTOVER,
+    ENDPOINT_DELETE_COMPLETION,
     ENDPOINT_LIST_LEFTOVERS,
     ENDPOINT_QUERY_TASK,
     ENDPOINT_RECENT_COMPLETIONS,
     ENDPOINT_RECOMMENDED_TASKS,
+    ENDPOINT_UPDATE_COMPLETION,
     ENDPOINT_UPDATE_TASK,
 )
 
@@ -235,10 +237,34 @@ class TaskTrackerAPI:
         thin: bool = False,  # noqa: FBT001, FBT002
         assigned_to: str | None = None,
     ) -> dict[str, Any]:
-        """Get all tasks."""
-        params: dict[str, Any] = {}
-        params["thin"] = str(thin).lower()  # Convert boolean to lowercase string
+        """Get all tasks with optional filtering."""
+        params: dict[str, Any] = {"thin": str(thin).lower()}
         if assigned_to:
             params["assigned_to"] = assigned_to
 
         return await self._request("GET", ENDPOINT_ALL_TASKS, params=params)
+
+    # Completion editing methods
+    async def delete_completion(self, completion_id: int) -> dict[str, Any]:
+        """Delete/undo a completion record."""
+        data = {"completion_id": completion_id}
+        return await self._request("POST", ENDPOINT_DELETE_COMPLETION, data=data)
+
+    async def update_completion(
+        self,
+        completion_id: int,
+        completed_by: str | None = None,
+        notes: str | None = None,
+        completed_at: str | None = None,
+    ) -> dict[str, Any]:
+        """Update a completion record."""
+        data: dict[str, Any] = {"completion_id": completion_id}
+
+        if completed_by is not None:
+            data["completed_by"] = completed_by
+        if notes is not None:
+            data["notes"] = notes
+        if completed_at is not None:
+            data["completed_at"] = completed_at
+
+        return await self._request("POST", ENDPOINT_UPDATE_COMPLETION, data=data)

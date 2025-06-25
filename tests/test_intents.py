@@ -137,7 +137,7 @@ class TestIntentHandlers:
 
         api_mock.complete_task_by_name.assert_called_once_with(
             name="clean kitchen",
-            assigned_to="jane",
+            completed_by="jane",
         )
         speech_text = get_speech_text(response)
         assert "Task clean kitchen completed successfully" in speech_text
@@ -344,10 +344,24 @@ class TestIntentHandlers:
             "task_name": {"value": "test task"},
         }
 
+                # Mock the API to return success when called with Anonymous
+        api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+        api_mock.complete_task_by_name.return_value = {
+            "success": True,
+            "spoken_response": "Task completed successfully",
+            "data": {},
+        }
+
         response = await handler.async_handle(mock_intent_obj)
 
+        # Should have called the API with "Anonymous" as fallback
+        api_mock.complete_task_by_name.assert_called_once_with(
+            name="test task",
+            completed_by="Anonymous",
+        )
+
         speech_text = get_speech_text(response)
-        assert "Task completed by is required" in speech_text
+        assert "Task completed successfully" in speech_text
 
 
 class TestIntentRegistration:

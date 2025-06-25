@@ -253,10 +253,10 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     try {
       const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes);
 
-      if (response && response.response && response.response.success) {
-        TaskTrackerUtils.showSuccess(response.response.spoken_response || `Task "${task.name}" completed successfully`);
+      if (response && response.success) {
+        TaskTrackerUtils.showSuccess(response.spoken_response || `Task "${task.name}" completed successfully`);
       } else {
-        const errorMsg = (response && response.response && response.response.message) || 'Unknown error';
+        const errorMsg = (response && response.message) || 'Unknown error';
         TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
       }
 
@@ -275,10 +275,10 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     try {
       const response = await TaskTrackerUtils.updateTask(this._hass, task.id, task.task_type, task.assigned_to, updates);
 
-      if (response && response.response && response.response.success) {
+      if (response && response.success) {
         TaskTrackerUtils.showSuccess('Task updated successfully');
       } else {
-        const errorMsg = (response && response.response && response.response.message) || 'Unknown error';
+        const errorMsg = (response && response.message) || 'Unknown error';
         TaskTrackerUtils.showError(`Failed to update task: ${errorMsg}`);
       }
 
@@ -491,12 +491,23 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       }
     );
 
+    const completionDeletionCleanup = TaskTrackerUtils.setupCompletionDeletionListener(
+      this._hass,
+      (eventData) => {
+        // Refresh when any completion is deleted as it may affect task availability
+        setTimeout(() => {
+          this._fetchAvailableTasks();
+        }, 500);
+      }
+    );
+
     // Combined cleanup function
     this._eventCleanup = async () => {
       await Promise.all([
         completionCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion cleanup error:', err)),
         creationCleanup().catch(err => err.code !== 'not_found' && console.warn('Creation cleanup error:', err)),
-        updateCleanup().catch(err => err.code !== 'not_found' && console.warn('Update cleanup error:', err))
+        updateCleanup().catch(err => err.code !== 'not_found' && console.warn('Update cleanup error:', err)),
+        completionDeletionCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion deletion cleanup error:', err))
       ]);
     };
   }

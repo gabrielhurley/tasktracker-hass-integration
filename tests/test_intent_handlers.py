@@ -194,7 +194,7 @@ class TestSpecificIntentHandlers:
         assert isinstance(response, IntentResponse)
         api_mock.complete_task_by_name.assert_called_once_with(
             name="vacuum",
-            assigned_to="sarah",
+            completed_by="sarah",
         )
         speech_text = get_speech_text(response)
         assert "Task vacuum completed successfully" in speech_text
@@ -388,7 +388,7 @@ class TestSpecificIntentHandlers:
         # Should use the user context value
         api_mock.complete_task_by_name.assert_called_once_with(
             name="test task",
-            assigned_to="context_user",
+            completed_by="context_user",
         )
         mock_get_user_context.assert_called_once_with(mock_hass, "test_user")
 

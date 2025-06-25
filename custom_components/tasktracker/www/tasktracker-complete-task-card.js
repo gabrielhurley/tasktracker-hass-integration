@@ -200,13 +200,13 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     try {
       const response = await TaskTrackerUtils.completeTask(this._hass, selectedTask, selectedUsername, notes);
 
-      if (response && response.response && response.response.success) {
-        TaskTrackerUtils.showSuccess(response.response.spoken_response || 'Task completed successfully');
+      if (response && response.success) {
+        TaskTrackerUtils.showSuccess(response.spoken_response || 'Task completed successfully');
 
         // Mark that we should reset the form on next render
         this._shouldResetForm = true;
       } else {
-        const errorMsg = (response && response.response && response.response.message) || 'Unknown error';
+        const errorMsg = (response && response.message) || 'Unknown error';
         TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
       }
 
