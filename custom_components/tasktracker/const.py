@@ -1,9 +1,14 @@
 """Constants for the TaskTracker integration."""
 
+import json
+from pathlib import Path
 from typing import Final
 
-# Version
-VERSION: Final = "1.0.13"
+# Read version from manifest.json
+_manifest_path = Path(__file__).parent / "manifest.json"
+with open(_manifest_path, "r") as f:
+    _manifest = json.load(f)
+VERSION: Final = _manifest["version"]
 
 # Integration domain
 DOMAIN: Final = "tasktracker"

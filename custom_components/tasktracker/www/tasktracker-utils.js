@@ -1699,6 +1699,62 @@ export class TaskTrackerUtils {
     return true;
   }
 
+    // Calculate days overdue for a task
+  static calculateDaysOverdue(dueDateString) {
+    if (!dueDateString) {
+      return 0;
+    }
+
+    try {
+      const dueDate = new Date(dueDateString);
+      const now = new Date();
+
+      // Use calendar day difference instead of 24-hour periods
+      // This accounts for timezone boundaries properly
+      const dueDateLocal = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffDays = Math.floor((nowLocal - dueDateLocal) / (1000 * 60 * 60 * 24));
+
+      return Math.max(0, diffDays);
+    } catch {
+      return 0;
+    }
+  }
+
+  // Calculate overdue color based on days overdue
+  static getOverdueColor(daysOverdue) {
+    if (daysOverdue <= 0) {
+      return null; // Not overdue, use default colors
+    }
+
+    if (daysOverdue <= 7) {
+      return null; // First week, use default colors
+    }
+
+    if (daysOverdue <= 21) {
+      // Week 2-3: Transition from default to orange
+      const progress = (daysOverdue - 7) / 14; // 0 to 1 over 14 days
+      const orangeIntensity = Math.min(progress, 1);
+
+      // Subtle orange color that works with both light and dark themes
+      const red = Math.round(200 + (55 * orangeIntensity));
+      const green = Math.round(140 + (20 * orangeIntensity));
+      const blue = Math.round(60 + (10 * orangeIntensity));
+
+      return `rgb(${red}, ${green}, ${blue})`;
+    }
+
+    // 22+ days: Transition from orange to red
+    const progress = Math.min((daysOverdue - 21) / 14, 1); // 0 to 1 over next 14 days
+
+    // Subtle red color that works with both light and dark themes
+    const red = Math.round(220 + (35 * progress));
+    const green = Math.round(100 - (30 * progress));
+    const blue = Math.round(80 - (40 * progress));
+
+    return `rgb(${red}, ${green}, ${blue})`;
+  }
+
   // Common config value change handler for card editors
   static handleConfigValueChange(ev, editorInstance, updateConfigCallback, optionalFields = ['explicit_user', 'user', 'default_user']) {
     if (!editorInstance._config || !editorInstance._hass) {

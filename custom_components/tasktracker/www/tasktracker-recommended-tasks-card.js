@@ -450,8 +450,13 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       metadataParts.push(`${this._formatDueDate(task.due_date)}`);
     }
 
+    // Calculate overdue color
+    const daysOverdue = TaskTrackerUtils.calculateDaysOverdue(task.due_date);
+    const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue);
+    const borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
+
     return `
-      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}">
+      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}" style="${borderStyle}">
         <div class="task-content">
           <div class="task-name">
             ${task.name}

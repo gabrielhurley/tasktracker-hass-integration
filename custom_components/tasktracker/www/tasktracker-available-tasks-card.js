@@ -423,8 +423,13 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     metadataParts.push(priority);
     metadataParts.push(dueDate);
 
+    // Calculate overdue color
+    const daysOverdue = TaskTrackerUtils.calculateDaysOverdue(task.due_date);
+    const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue);
+    const borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
+
     return `
-      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}" data-task-index="${originalIndex}">
+      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}" data-task-index="${originalIndex}" style="${borderStyle}">
         <div class="task-content">
           <div class="task-name">${task.name}</div>
           <div class="task-metadata">${metadataParts.join(' | ')}</div>
