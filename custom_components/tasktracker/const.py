@@ -6,7 +6,7 @@ from typing import Final
 
 # Read version from manifest.json
 _manifest_path = Path(__file__).parent / "manifest.json"
-with open(_manifest_path, "r") as f:
+with Path(_manifest_path).open() as f:
     _manifest = json.load(f)
 VERSION: Final = _manifest["version"]
 
