@@ -1,0 +1,50 @@
+---
+description: Any time tests need to be run
+alwaysApply: false
+---
+# Testing Rules for TaskTracker Home Assistant Integration
+
+## Always Use the run_tests.py Helper Script
+
+**CRITICAL:** Always use the `run_tests.py` helper script to run tests instead of running pytest directly. This script:
+- Checks for required test dependencies
+- Runs pytest with proper coverage configuration
+- Provides clear error messages for missing dependencies
+- Generates HTML coverage reports
+
+## Running Tests
+
+### Basic Test Execution
+```bash
+python run_tests.py
+```
+
+### Installing Test Dependencies
+If tests fail due to missing dependencies, install them first:
+```bash
+pip install -r requirements-test.txt
+```
+
+### Handling Version Compatibility Issues
+If you encounter version compatibility issues with `pytest-homeassistant-custom-component` (especially requiring Python 3.13+), try:
+1. Use a compatible version: `pip install pytest-homeassistant-custom-component==0.13.205`
+2. Or install without the specific version constraintand
+
+### Test Structure
+- Tests are located in the `tests/` directory
+- Use `pytest` fixtures and patterns consistent with Home Assistant testing
+- Mock external API calls using `aioresponses`
+- Test both success and error scenarios for all service calls
+
+## DO NOT:
+- Run `pytest` directly without using `run_tests.py`
+- Install test dependencies globally if using a virtual environment
+- Skip testing after making changes to service functions
+- Ignore test dependency version conflicts
+
+## Coverage Reports
+The test runner automatically generates:
+- Terminal coverage report
+- HTML coverage report in `htmlcov/index.html`
+
+Always check coverage reports to ensure new code is properly tested.

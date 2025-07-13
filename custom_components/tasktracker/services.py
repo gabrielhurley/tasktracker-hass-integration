@@ -15,6 +15,8 @@ from .const import (
     CONF_TASKTRACKER_USERNAME,
     CONF_USERS,
     DOMAIN,
+    EVENT_DAILY_PLAN,
+    EVENT_MOOD_SET,
     SERVICE_COMPLETE_TASK,
     SERVICE_COMPLETE_TASK_BY_NAME,
     SERVICE_CREATE_ADHOC_TASK,
@@ -23,12 +25,15 @@ from .const import (
     SERVICE_GET_ALL_TASKS,
     SERVICE_GET_AVAILABLE_TASKS,
     SERVICE_GET_AVAILABLE_USERS,
+    SERVICE_GET_DAILY_PLAN,
     SERVICE_GET_RECENT_COMPLETIONS,
     SERVICE_GET_RECOMMENDED_TASKS,
     SERVICE_LIST_LEFTOVERS,
     SERVICE_QUERY_TASK,
+    SERVICE_SET_MOOD,
     SERVICE_UPDATE_COMPLETION,
     SERVICE_UPDATE_TASK,
+    SERVICE_GET_MOOD,
 )
 from .utils import (
     get_available_tasktracker_usernames,
@@ -142,6 +147,28 @@ UPDATE_COMPLETION_SCHEMA = vol.Schema(
         vol.Optional("completed_by"): cv.string,
         vol.Optional("notes"): cv.string,
         vol.Optional("completed_at"): cv.string,
+    }
+)
+
+# New service schemas
+SET_MOOD_SCHEMA = vol.Schema(
+    {
+        vol.Required("mood"): vol.In(["bad", "lazy", "productive", "great"]),
+        vol.Optional("username"): cv.string,
+    }
+)
+
+GET_DAILY_PLAN_SCHEMA = vol.Schema(
+    {
+        vol.Required("available_minutes"): cv.positive_int,
+        vol.Optional("username"): cv.string,
+        vol.Optional("fair_weather"): cv.boolean,
+    }
+)
+
+GET_MOOD_SCHEMA = vol.Schema(
+    {
+        vol.Optional("username"): cv.string,
     }
 )
 
@@ -615,6 +642,116 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Unexpected error in update_completion_service")
                 raise
 
+        async def set_mood_service(call: ServiceCall) -> dict[str, Any]:
+            """Set the user's mood."""
+            try:
+                username = call.data.get("username")
+                if not username:
+                    user_id = call.context.user_id if call.context else None
+                    current_config = get_current_config()
+                    username = get_tasktracker_username_for_ha_user(
+                        hass, user_id, current_config
+                    )
+                    if not username:
+                        msg = "No username provided and could not determine from user context"  # noqa: E501
+                        raise TaskTrackerAPIError(msg)  # noqa: TRY301
+
+                mood = call.data["mood"]
+
+                result = await api.set_mood(username=username, mood=mood)
+
+                if result.get("success"):
+                    # Fire event
+                    hass.bus.fire(
+                        EVENT_MOOD_SET,
+                        {
+                            "username": username,
+                            "mood": mood,
+                            "spoken_response": result.get("spoken_response"),
+                        },
+                    )
+
+                    # Persistent notification feedback
+                    await hass.services.async_call(
+                        "persistent_notification",
+                        "create",
+                        {
+                            "message": result.get("spoken_response", f"Mood set to {mood}"),
+                            "title": "TaskTracker",
+                        },
+                    )
+
+                _LOGGER.info("Mood set successfully: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to set mood")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in set_mood_service")
+                raise
+
+        async def get_daily_plan_service(call: ServiceCall) -> dict[str, Any]:
+            """Get the daily plan for a user."""
+            try:
+                username = call.data.get("username")
+                if not username:
+                    user_id = call.context.user_id if call.context else None
+                    current_config = get_current_config()
+                    username = get_tasktracker_username_for_ha_user(
+                        hass, user_id, current_config
+                    )
+                    # username may remain None, backend will infer by api key mapping
+
+                result = await api.get_daily_plan(
+                    username=username,
+                    available_minutes=call.data["available_minutes"],
+                    fair_weather=call.data.get("fair_weather"),
+                )
+
+                if result.get("success"):
+                    hass.bus.fire(
+                        EVENT_DAILY_PLAN,
+                        {
+                            "username": username,
+                            "available_minutes": call.data["available_minutes"],
+                            "plan": result.get("data"),
+                        },
+                    )
+
+                _LOGGER.debug("Daily plan retrieved: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to get daily plan")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in get_daily_plan_service")
+                raise
+
+        async def get_mood_service(call: ServiceCall) -> dict[str, Any]:
+            """Get current mood for a user."""
+            try:
+                username = call.data.get("username")
+                if not username:
+                    user_id = call.context.user_id if call.context else None
+                    current_config = get_current_config()
+                    username = get_tasktracker_username_for_ha_user(
+                        hass, user_id, current_config
+                    )
+                    if not username:
+                        msg = "No username provided and could not determine from user context"  # noqa: E501
+                        raise TaskTrackerAPIError(msg)  # noqa: TRY301
+
+                result = await api.get_mood(username=username)
+
+                _LOGGER.debug("Mood retrieved: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to get mood")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in get_mood_service")
+                raise
+
         # Register services
         _LOGGER.debug("Registering individual services...")
 
@@ -739,6 +876,34 @@ async def async_setup_services(  # noqa: C901, PLR0915
         )
         _LOGGER.debug("Registered service: %s", SERVICE_UPDATE_COMPLETION)
 
+        # New services
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_MOOD,
+            set_mood_service,
+            schema=SET_MOOD_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_SET_MOOD)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_GET_DAILY_PLAN,
+            get_daily_plan_service,
+            schema=GET_DAILY_PLAN_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_GET_DAILY_PLAN)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_GET_MOOD,
+            get_mood_service,
+            schema=GET_MOOD_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_GET_MOOD)
+
         _LOGGER.info("TaskTracker services registered successfully")
 
     except Exception:
@@ -763,6 +928,9 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_UPDATE_TASK,
         SERVICE_DELETE_COMPLETION,
         SERVICE_UPDATE_COMPLETION,
+        SERVICE_SET_MOOD,
+        SERVICE_GET_DAILY_PLAN,
+        SERVICE_GET_MOOD,
     ]
 
     for service in services_to_remove:

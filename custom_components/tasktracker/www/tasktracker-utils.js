@@ -229,6 +229,22 @@ export class TaskTrackerUtils {
     }
   }
 
+  // Mood icon helper
+  static moodToIcon(mood) {
+    switch ((mood || '').toLowerCase()) {
+      case 'bad':
+        return { icon: 'mdi:emoticon-sad', color: '#f44336', label: 'Bad' };
+      case 'lazy':
+        return { icon: 'mdi:emoticon-neutral', color: '#ff9800', label: 'Lazy' };
+      case 'productive':
+        return { icon: 'mdi:emoticon-happy', color: '#4caf50', label: 'Productive' };
+      case 'great':
+        return { icon: 'mdi:emoticon-excited', color: '#2196f3', label: 'Great' };
+      default:
+        return { icon: 'mdi:emoticon-neutral', color: 'var(--disabled-text-color)', label: mood || 'Unknown' };
+    }
+  }
+
   static formatDateTime(dateString) {
     try {
       const date = new Date(dateString);

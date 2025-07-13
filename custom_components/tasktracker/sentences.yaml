@@ -156,6 +156,15 @@ intents:
           question_type:
             value: "general"
 
+  SetMood:
+    data:
+      - sentences:
+          - "(I am|I'm) having a {mood} day"
+          - "[Today] (I|I'm|I am) (feel|feeling) {mood} [today]"
+        slots:
+          mood:
+            required: true
+
 lists:
   task_name:
     wildcard: true
@@ -183,3 +192,9 @@ lists:
         out: 2
       - in: (low | minimum | lowest)
         out: 3
+  mood:
+    values:
+      - bad
+      - lazy
+      - productive
+      - great

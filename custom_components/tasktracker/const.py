@@ -45,6 +45,16 @@ JSMODULES = [
         "filename": "tasktracker-time-spent-card.js",
         "version": VERSION,
     },
+    {
+        "name": "TaskTracker Daily Plan Card",
+        "filename": "tasktracker-daily-plan-card.js",
+        "version": VERSION,
+    },
+    {
+        "name": "TaskTracker Mood Card",
+        "filename": "tasktracker-mood-card.js",
+        "version": VERSION,
+    },
 ]
 
 # Configuration keys
@@ -69,6 +79,13 @@ SERVICE_GET_AVAILABLE_USERS: Final = "get_available_users"
 SERVICE_UPDATE_TASK: Final = "update_task"
 SERVICE_DELETE_COMPLETION: Final = "delete_completion"
 SERVICE_UPDATE_COMPLETION: Final = "update_completion"
+SERVICE_SET_MOOD: Final = "set_mood"
+SERVICE_GET_DAILY_PLAN: Final = "get_daily_plan"
+SERVICE_GET_MOOD: Final = "get_mood"
+
+# Event names
+EVENT_MOOD_SET: Final = "tasktracker_mood_set"
+EVENT_DAILY_PLAN: Final = "tasktracker_daily_plan"
 
 # API endpoints
 ENDPOINT_COMPLETE_TASK: Final = "/api/completions/complete_task/"
@@ -84,6 +101,11 @@ ENDPOINT_ALL_TASKS: Final = "/api/tasks/all-tasks/"
 ENDPOINT_UPDATE_TASK: Final = "/api/tasks/update-task/"
 ENDPOINT_DELETE_COMPLETION: Final = "/api/completions/delete_completion/"
 ENDPOINT_UPDATE_COMPLETION: Final = "/api/completions/update_completion/"
+
+# New API endpoints
+ENDPOINT_SET_MOOD: Final = "/api/set-mood/"
+ENDPOINT_DAILY_PLAN: Final = "/api/daily-plan/"
+ENDPOINT_GET_MOOD: Final = "/api/get-mood/"
 
 # Default values
 DEFAULT_SCAN_INTERVAL: Final = 300  # 5 minutes

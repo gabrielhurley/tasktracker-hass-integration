@@ -14,13 +14,16 @@ from .const import (
     ENDPOINT_COMPLETE_TASK_BY_NAME,
     ENDPOINT_CREATE_ADHOC_TASK,
     ENDPOINT_CREATE_LEFTOVER,
+    ENDPOINT_DAILY_PLAN,
     ENDPOINT_DELETE_COMPLETION,
     ENDPOINT_LIST_LEFTOVERS,
     ENDPOINT_QUERY_TASK,
     ENDPOINT_RECENT_COMPLETIONS,
     ENDPOINT_RECOMMENDED_TASKS,
+    ENDPOINT_SET_MOOD,
     ENDPOINT_UPDATE_COMPLETION,
     ENDPOINT_UPDATE_TASK,
+    ENDPOINT_GET_MOOD,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -268,3 +271,30 @@ class TaskTrackerAPI:
             data["completed_at"] = completed_at
 
         return await self._request("POST", ENDPOINT_UPDATE_COMPLETION, data=data)
+
+    # Mood & Daily Plan
+
+    async def set_mood(self, username: str, mood: str) -> dict[str, Any]:
+        """Set the user's current mood."""
+        data = {"username": username, "mood": mood}
+        return await self._request("POST", ENDPOINT_SET_MOOD, data=data)
+
+    async def get_daily_plan(
+        self,
+        username: str | None,
+        available_minutes: int,
+        fair_weather: bool | None = None,
+    ) -> dict[str, Any]:
+        """Retrieve the daily plan for a user."""
+        params: dict[str, Any] = {"available_minutes": available_minutes}
+        if username:
+            params["username"] = username
+        if fair_weather is not None:
+            params["fair_weather"] = str(fair_weather).lower()
+
+        return await self._request("GET", ENDPOINT_DAILY_PLAN, params=params)
+
+    async def get_mood(self, username: str) -> dict[str, Any]:
+        """Retrieve current mood for a user."""
+        params = {"username": username}
+        return await self._request("GET", ENDPOINT_GET_MOOD, params=params)
