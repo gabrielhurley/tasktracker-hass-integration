@@ -15,7 +15,9 @@ from .const import (
     ENDPOINT_CREATE_ADHOC_TASK,
     ENDPOINT_CREATE_LEFTOVER,
     ENDPOINT_DAILY_PLAN,
+    ENDPOINT_DAILY_STATE,
     ENDPOINT_DELETE_COMPLETION,
+    ENDPOINT_GET_MOOD,
     ENDPOINT_LIST_LEFTOVERS,
     ENDPOINT_QUERY_TASK,
     ENDPOINT_RECENT_COMPLETIONS,
@@ -23,7 +25,6 @@ from .const import (
     ENDPOINT_SET_MOOD,
     ENDPOINT_UPDATE_COMPLETION,
     ENDPOINT_UPDATE_TASK,
-    ENDPOINT_GET_MOOD,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -298,3 +299,36 @@ class TaskTrackerAPI:
         """Retrieve current mood for a user."""
         params = {"username": username}
         return await self._request("GET", ENDPOINT_GET_MOOD, params=params)
+
+    async def get_daily_state(self, username: str) -> dict[str, Any]:
+        """Retrieve the daily state for a user."""
+        params = {"username": username}
+        return await self._request("GET", ENDPOINT_DAILY_STATE, params=params)
+
+    async def set_daily_state(
+        self,
+        username: str,
+        energy: int | None = None,
+        motivation: int | None = None,
+        focus: int | None = None,
+        pain: int | None = None,
+        mood: int | None = None,
+        free_time: int | None = None,
+    ) -> dict[str, Any]:
+        """Set/update the daily state for a user."""
+        data: dict[str, Any] = {"username": username}
+
+        if energy is not None:
+            data["energy"] = energy
+        if motivation is not None:
+            data["motivation"] = motivation
+        if focus is not None:
+            data["focus"] = focus
+        if pain is not None:
+            data["pain"] = pain
+        if mood is not None:
+            data["mood"] = mood
+        if free_time is not None:
+            data["free_time"] = free_time
+
+        return await self._request("POST", ENDPOINT_DAILY_STATE, data=data)

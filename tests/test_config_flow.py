@@ -1,5 +1,6 @@
 """Tests for TaskTracker config flow."""
 
+import asyncio
 from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
@@ -14,6 +15,16 @@ from custom_components.tasktracker.const import DOMAIN
 
 class TestTaskTrackerConfigFlow:
     """Test TaskTracker config flow."""
+
+    @pytest.fixture(autouse=True)
+    async def cleanup_after_test(self):
+        """Ensure proper cleanup after each test."""
+        yield
+        # Force cleanup of any lingering background tasks
+        await asyncio.sleep(0.2)
+        # Force garbage collection to clean up any remaining objects
+        import gc
+        gc.collect()
 
     @pytest.fixture
     def mock_setup_entry(self) -> Generator[AsyncMock]:
@@ -175,6 +186,12 @@ class TestTaskTrackerConfigFlow:
             assert "host" in data_schema.schema
             assert "api_key" in data_schema.schema
             assert "action" in data_schema.schema
+
+        # Ensure proper cleanup by waiting for any pending tasks
+        await hass.async_block_till_done()
+
+        # Give any remaining background tasks time to complete
+        await asyncio.sleep(0.1)
 
     @pytest.mark.asyncio
     async def test_options_flow_save_basic(

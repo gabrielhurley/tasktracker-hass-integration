@@ -673,6 +673,9 @@ export class TaskTrackerUtils {
     const assignedTo = task.assigned_to;
     const dueDate = task.next_due || task.due_date;
 
+    // Declare variables for advanced inputs so they are in scope for save handler
+    let energyInput, focusInput, painInput, motivationInput, severitySelect;
+
     // Format due date for datetime-local input
     const formattedDueDate = dueDate ? TaskTrackerUtils.formatDateTimeForInput(dueDate) : '';
 
@@ -880,6 +883,123 @@ export class TaskTrackerUtils {
       detailsGrid.appendChild(assignmentField);
     }
 
+    // -------------------------------------------------------------
+    // Advanced axis cost & overdue severity section (collapsible)
+    // -------------------------------------------------------------
+    if (onSave) {
+      // Toggle
+      const advancedToggle = document.createElement('button');
+      advancedToggle.textContent = 'Advanced';
+      advancedToggle.style.cssText = `
+        margin-top: 8px;
+        padding: 6px 10px;
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        background: var(--card-background-color);
+        color: var(--primary-text-color);
+        font-size: 0.75em;
+        cursor: pointer;
+        grid-column: 1 / -1;
+        justify-self: start;
+      `;
+
+      // Container for advanced inputs
+      const advancedContainer = document.createElement('div');
+      advancedContainer.style.cssText = `
+        display: none;
+        grid-column: 1 / -1;
+        margin-top: 12px;
+        gap: 12px;
+        grid-template-columns: 1fr 1fr;
+      `;
+
+      const makeNumberField = (labelText, initialValue, min, max, step = 1) => {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+
+        const lbl = document.createElement('label');
+        lbl.textContent = labelText;
+        lbl.style.cssText = `
+          font-size: 0.75em;
+          color: var(--secondary-text-color);
+          font-weight: 500;
+        `;
+
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.value = initialValue;
+        inp.min = min;
+        inp.max = max;
+        inp.step = step;
+        inp.style.cssText = `
+          padding: 6px;
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          font-size: 13px;
+        `;
+
+        wrapper.appendChild(lbl);
+        wrapper.appendChild(inp);
+        return { wrapper, input: inp };
+      };
+
+      // Build inputs
+      ({ wrapper: energyInputWrapper, input: energyInput } = makeNumberField('Energy Cost', task.energy_cost ?? 2, 0, 5));
+      ({ wrapper: focusInputWrapper, input: focusInput } = makeNumberField('Focus Cost', task.focus_cost ?? 2, 0, 5));
+      ({ wrapper: painInputWrapper, input: painInput } = makeNumberField('Pain Cost', task.pain_cost ?? 0, 0, 5));
+      ({ wrapper: motivationInputWrapper, input: motivationInput } = makeNumberField('Motivation Boost', task.motivation_boost ?? 0, -5, 5));
+
+      // Overdue severity select
+      const severityWrapper = document.createElement('div');
+      severityWrapper.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+      const sevLbl = document.createElement('label');
+      sevLbl.textContent = 'Overdue Severity';
+      sevLbl.style.cssText = `
+        font-size: 0.75em;
+        color: var(--secondary-text-color);
+        font-weight: 500;
+      `;
+      severitySelect = document.createElement('select');
+      severitySelect.style.cssText = `
+        padding: 6px;
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        background: var(--card-background-color);
+        color: var(--primary-text-color);
+        font-size: 13px;
+      `;
+      [
+        { value: 1, label: 'Low' },
+        { value: 2, label: 'Medium' },
+        { value: 3, label: 'High' }
+      ].forEach(opt => {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt.value;
+        optionEl.textContent = opt.label;
+        optionEl.selected = (task.overdue_severity ?? 2) === opt.value;
+        severitySelect.appendChild(optionEl);
+      });
+      severityWrapper.appendChild(sevLbl);
+      severityWrapper.appendChild(severitySelect);
+
+      // Append to container (two-column grid)
+      advancedContainer.appendChild(energyInputWrapper);
+      advancedContainer.appendChild(focusInputWrapper);
+      advancedContainer.appendChild(painInputWrapper);
+      advancedContainer.appendChild(motivationInputWrapper);
+      advancedContainer.appendChild(severityWrapper);
+
+      // Toggle logic
+      advancedToggle.addEventListener('click', () => {
+        advancedContainer.style.display = advancedContainer.style.display === 'none' ? 'grid' : 'none';
+      });
+
+      detailsGrid.appendChild(advancedToggle);
+      detailsGrid.appendChild(advancedContainer);
+    }
+
     // Notes section
     const notesSection = document.createElement('div');
     notesSection.style.cssText = 'margin-bottom: 20px;';
@@ -1030,6 +1150,23 @@ export class TaskTrackerUtils {
         const assignmentSelect = assignmentField?.querySelector('select');
         if (assignmentSelect && assignmentSelect.value !== assignedTo) {
           updates.assigned_to = assignmentSelect.value;
+        }
+
+        // Advanced fields
+        if (energyInput && parseInt(energyInput.value) !== (task.energy_cost ?? 2)) {
+          updates.energy_cost = parseInt(energyInput.value);
+        }
+        if (focusInput && parseInt(focusInput.value) !== (task.focus_cost ?? 2)) {
+          updates.focus_cost = parseInt(focusInput.value);
+        }
+        if (painInput && parseInt(painInput.value) !== (task.pain_cost ?? 0)) {
+          updates.pain_cost = parseInt(painInput.value);
+        }
+        if (motivationInput && parseInt(motivationInput.value) !== (task.motivation_boost ?? 0)) {
+          updates.motivation_boost = parseInt(motivationInput.value);
+        }
+        if (severitySelect && parseInt(severitySelect.value) !== (task.overdue_severity ?? 2)) {
+          updates.overdue_severity = parseInt(severitySelect.value);
         }
 
         if (Object.keys(updates).length > 0) {
@@ -1821,5 +1958,603 @@ export class TaskTrackerUtils {
       // For non-text inputs (checkboxes, selects, numbers), update immediately
       updateConfigCallback(configKey, value);
     }
+  }
+
+  // Daily State Management Utilities
+  static getDefaultDailyState() {
+    return {
+      energy: 3,
+      motivation: 3,
+      focus: 3,
+      pain: 1,
+      mood: 0,
+      free_time: 3
+    };
+  }
+
+  static getPresetDailyStates() {
+    return {
+      'great': {
+        label: 'Great',
+        values: { energy: 5, motivation: 4, focus: 4, pain: 1, mood: 2, free_time: 4 }
+      },
+      'motivated': {
+        label: 'Motivated',
+        values: { energy: 4, motivation: 5, focus: 3, pain: 1, mood: 1, free_time: 3 }
+      },
+      'normal': {
+        label: 'Normal',
+        values: { energy: 3, motivation: 3, focus: 3, pain: 1, mood: 0, free_time: 3 }
+      },
+      'tired': {
+        label: 'Tired',
+        values: { energy: 2, motivation: 2, focus: 2, pain: 1, mood: -1, free_time: 3 }
+      },
+      'stressed': {
+        label: 'Stressed',
+        values: { energy: 3, motivation: 2, focus: 1, pain: 2, mood: -1, free_time: 1 }
+      },
+      'in_pain': {
+        label: 'In Pain',
+        values: { energy: 2, motivation: 2, focus: 2, pain: 5, mood: -1, free_time: 2 }
+      },
+      'lazy': {
+        label: 'Lazy',
+        values: { energy: 3, motivation: 1, focus: 2, pain: 1, mood: 0, free_time: 4 }
+      },
+      'complicated': {
+        label: 'Complicated',
+        values: null // Special case - switches to advanced mode
+      }
+    };
+  }
+
+  static findMatchingDailyStatePreset(state) {
+    if (!state) return null;
+
+    const presets = TaskTrackerUtils.getPresetDailyStates();
+    for (const [key, preset] of Object.entries(presets)) {
+      if (key === 'complicated' || !preset.values) continue;
+
+      // Check if all values match exactly
+      const matches = Object.keys(preset.values).every(axis =>
+        state[axis] === preset.values[axis]
+      );
+
+      if (matches) {
+        return key;
+      }
+    }
+
+    return 'complicated'; // No exact match found
+  }
+
+  static async fetchDailyState(hass, username) {
+    if (!username) return null;
+
+    try {
+      const resp = await hass.callService('tasktracker', 'get_daily_state', { username }, {}, true, true);
+      if (resp && resp.response && resp.response.data) {
+        return resp.response.data;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch daily state:', e);
+    }
+
+    return null;
+  }
+
+  static async saveDailyState(hass, username, stateValues) {
+    if (!username) return false;
+
+    try {
+      const payload = { username, ...stateValues };
+      await hass.callService('tasktracker', 'set_daily_state', payload, {}, true, true);
+      return true;
+    } catch (e) {
+      console.warn('Failed to set daily state:', e);
+      TaskTrackerUtils.showError('Failed to save daily state');
+      return false;
+    }
+  }
+
+  static getMoodLabel(value, useEmoji = true) {
+    if (!useEmoji) {
+      return value.toString();
+    }
+    const labels = { '-2': '☹️', '-1': '🙁', '0': '😐', '1': '🙂', '2': '😊' };
+    return labels[value.toString()] || value.toString();
+  }
+
+  static getFreeTimeLabel(value) {
+    const labels = { '1': 'Slammed', '2': 'Busy', '3': 'Moderate', '4': 'Available', '5': 'Wide-open' };
+    return labels[value.toString()] || value.toString();
+  }
+
+  static createDailyStateModal(hass, username, config = {}, onSave = null) {
+    const modal = document.createElement('div');
+    modal.className = 'daily-state-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: var(--card-background-color);
+      border-radius: 8px;
+      padding: 24px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90%;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      font-family: var(--primary-font-family);
+    `;
+
+    // State management
+    let currentState = TaskTrackerUtils.getDefaultDailyState();
+    let showAdvanced = false;
+    let loading = true;
+    let saving = false;
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = 'Set Your Daily State';
+    title.style.cssText = `
+      margin: 0;
+      color: var(--primary-text-color);
+      font-size: 1.5em;
+      font-weight: 500;
+    `;
+
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--secondary-text-color);
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    header.appendChild(title);
+    header.appendChild(closeButton);
+
+    // Content container
+    const contentContainer = document.createElement('div');
+    contentContainer.style.cssText = 'min-height: 300px;';
+
+    modalContent.appendChild(header);
+    modalContent.appendChild(contentContainer);
+    modal.appendChild(modalContent);
+
+    const closeModal = () => {
+      if (modal.parentNode) {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+          if (modal.parentNode) {
+            modal.parentNode.removeChild(modal);
+          }
+        }, 200);
+      }
+    };
+
+    const showToast = (message, type = 'success') => {
+      const toast = document.createElement('div');
+      toast.textContent = message;
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? 'var(--success-color, #4caf50)' : 'var(--error-color, #f44336)'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 4px;
+        z-index: 10001;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+      `;
+
+      document.body.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.style.transform = 'translateX(0)';
+      });
+
+      setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+        }, 300);
+      }, 2000);
+    };
+
+    const renderContent = () => {
+      if (loading) {
+        contentContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--secondary-text-color);">Loading...</div>';
+        return;
+      }
+
+      const useEmoji = config.use_emoji_labels !== false;
+      const currentPreset = TaskTrackerUtils.findMatchingDailyStatePreset(currentState);
+
+      contentContainer.innerHTML = `
+        <style>
+          .quick-flow {
+            margin-bottom: 16px;
+          }
+          .quick-prompt {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--primary-text-color);
+            text-align: center;
+          }
+          .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+          }
+          .preset-btn {
+            background: var(--card-background-color);
+            border: 2px solid var(--divider-color);
+            border-radius: 8px;
+            padding: 16px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--primary-text-color);
+            transition: all 0.2s ease;
+            text-align: center;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .preset-btn:hover {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: var(--text-primary-color);
+          }
+          .preset-btn.selected {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: var(--text-primary-color);
+          }
+          .preset-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+          @media (min-width: 500px) {
+            .preset-grid {
+              grid-template-columns: repeat(4, 1fr);
+            }
+          }
+          .advanced-section {
+            margin-top: 16px;
+            border-top: 1px solid var(--divider-color);
+            padding-top: 16px;
+          }
+          .slider-row {
+            display: grid;
+            grid-template-columns: 100px 1fr 60px;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+          }
+          .slider-label {
+            font-weight: 500;
+            color: var(--primary-text-color);
+          }
+          .slider-container {
+            position: relative;
+          }
+          input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--disabled-text-color);
+            outline: none;
+            -webkit-appearance: none;
+          }
+          input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+          }
+          input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            border: none;
+          }
+          .slider-value {
+            text-align: center;
+            font-weight: 500;
+            min-width: 80px;
+            color: var(--primary-text-color);
+          }
+          .button-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+          }
+          .btn {
+            background: var(--primary-color);
+            color: var(--text-primary-color);
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: opacity 0.2s;
+          }
+          .btn:hover {
+            opacity: 0.9;
+          }
+          .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+          .btn-secondary {
+            background: var(--secondary-background-color);
+            color: var(--primary-text-color);
+            border: 1px solid var(--divider-color);
+          }
+          .back-to-simple {
+            background: none;
+            border: none;
+            color: var(--secondary-text-color);
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+          }
+          .back-to-simple:hover {
+            background: var(--secondary-background-color);
+            color: var(--primary-text-color);
+          }
+        </style>
+
+        ${!showAdvanced ? `
+          <div class="quick-flow">
+            <div class="quick-prompt">How are you feeling today?</div>
+            <div class="preset-grid">
+              ${Object.keys(TaskTrackerUtils.getPresetDailyStates()).map(key => {
+                const preset = TaskTrackerUtils.getPresetDailyStates()[key];
+                const isSelected = currentPreset === key;
+                return `
+                  <button class="preset-btn ${isSelected ? 'selected' : ''}"
+                          data-preset="${key}"
+                          ${saving ? 'disabled' : ''}>
+                    ${preset.label}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${showAdvanced ? `
+          <div class="advanced-section">
+            <button class="back-to-simple">← Back to Simple</button>
+            ${TaskTrackerUtils.createSliderRow('energy', 'Energy', currentState.energy, 1, 5, 'Higher energy enables more demanding tasks')}
+            ${TaskTrackerUtils.createSliderRow('motivation', 'Motivation', currentState.motivation, 1, 5, 'Higher motivation suggests more challenging tasks')}
+            ${TaskTrackerUtils.createSliderRow('focus', 'Focus', currentState.focus, 1, 5, 'Higher focus enables detail-oriented work')}
+            ${TaskTrackerUtils.createSliderRow('pain', 'Pain', currentState.pain, 1, 5, 'Higher pain reduces strenuous task suggestions')}
+            ${TaskTrackerUtils.createSliderRow('mood', 'Mood', currentState.mood, -2, 2, 'Mood affects task type and difficulty recommendations', true, useEmoji)}
+            ${TaskTrackerUtils.createSliderRow('free_time', 'Free Time', currentState.free_time, 1, 5, 'More free time allows longer task suggestions', false, false, true)}
+          </div>
+        ` : ''}
+
+        <div class="button-row">
+          <div></div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary">Cancel</button>
+            <button class="btn save-btn" ${saving ? 'disabled' : ''}>
+              ${saving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Add event listeners
+      const presetButtons = contentContainer.querySelectorAll('.preset-btn');
+      presetButtons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const presetKey = btn.dataset.preset;
+          const presets = TaskTrackerUtils.getPresetDailyStates();
+          const preset = presets[presetKey];
+
+          if (presetKey === 'complicated') {
+            showAdvanced = true;
+            renderContent();
+            return;
+          }
+
+          if (preset && preset.values) {
+            saving = true;
+            renderContent();
+
+            const success = await TaskTrackerUtils.saveDailyState(hass, username, preset.values);
+            if (success) {
+              showToast('Daily state saved successfully!');
+              if (onSave) onSave(preset.values);
+              closeModal();
+            } else {
+              saving = false;
+              renderContent();
+            }
+          }
+        });
+      });
+
+      const sliders = contentContainer.querySelectorAll('input[type="range"]');
+      sliders.forEach(slider => {
+        slider.addEventListener('input', (e) => {
+          const axis = e.target.dataset.axis;
+          const val = parseInt(e.target.value);
+          currentState[axis] = val;
+
+          // Update display value
+          const valueDisplay = e.target.parentElement.parentElement.querySelector('.slider-value');
+          if (axis === 'mood') {
+            valueDisplay.textContent = TaskTrackerUtils.getMoodLabel(val, useEmoji);
+          } else if (axis === 'free_time') {
+            valueDisplay.textContent = TaskTrackerUtils.getFreeTimeLabel(val);
+          } else {
+            valueDisplay.textContent = val;
+          }
+        });
+      });
+
+      const backToSimpleBtn = contentContainer.querySelector('.back-to-simple');
+      if (backToSimpleBtn) {
+        backToSimpleBtn.addEventListener('click', () => {
+          showAdvanced = false;
+          renderContent();
+        });
+      }
+
+      const cancelBtn = contentContainer.querySelector('.btn-secondary');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeModal);
+      }
+
+      const saveBtn = contentContainer.querySelector('.save-btn');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', async () => {
+          saving = true;
+          renderContent();
+
+          const success = await TaskTrackerUtils.saveDailyState(hass, username, currentState);
+          if (success) {
+            showToast('Daily state saved successfully!');
+            if (onSave) onSave(currentState);
+            closeModal();
+          } else {
+            saving = false;
+            renderContent();
+          }
+        });
+      }
+    };
+
+    // Load existing state
+    const loadState = async () => {
+      loading = true;
+      renderContent();
+
+      const existingState = await TaskTrackerUtils.fetchDailyState(hass, username);
+      if (existingState) {
+        currentState = existingState;
+        const matchingPreset = TaskTrackerUtils.findMatchingDailyStatePreset(currentState);
+        showAdvanced = matchingPreset === 'complicated';
+      }
+
+      loading = false;
+      renderContent();
+    };
+
+    // Event handlers
+    closeButton.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    // Escape key handler
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escapeHandler);
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
+
+    // Initialize
+    loadState();
+
+    // Apply fade-in animation
+    modal.style.opacity = '0';
+    setTimeout(() => {
+      modal.style.transition = 'opacity 0.2s ease';
+      modal.style.opacity = '1';
+    }, 10);
+
+    return modal;
+  }
+
+  static createSliderRow(key, label, value, min, max, tooltip, isMood = false, useEmoji = true, isFreeTime = false) {
+    let displayValue = value;
+    if (isMood) {
+      displayValue = TaskTrackerUtils.getMoodLabel(value, useEmoji);
+    } else if (isFreeTime) {
+      displayValue = TaskTrackerUtils.getFreeTimeLabel(value);
+    }
+
+    return `
+      <div class="slider-row">
+        <div class="slider-label">${label}</div>
+        <div class="slider-container">
+          <input type="range" min="${min}" max="${max}" step="1" value="${value}" data-axis="${key}">
+          <div class="tooltip" style="
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card-background-color);
+            border: 1px solid var(--divider-color);
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          ">${tooltip}</div>
+        </div>
+        <div class="slider-value">${displayValue}</div>
+      </div>
+    `;
   }
 }

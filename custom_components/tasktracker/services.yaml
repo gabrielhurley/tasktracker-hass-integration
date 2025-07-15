@@ -261,3 +261,61 @@ update_task:
               value: "90"
             - label: "Yearly (365 days)"
               value: "365"
+
+get_daily_state:
+  fields:
+    username:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+
+set_daily_state:
+  fields:
+    username:
+      required: false
+      example: "john_doe"
+      selector:
+        text:
+    energy:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5
+    motivation:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5
+    focus:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5
+    pain:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5
+    mood:
+      required: false
+      example: 0
+      selector:
+        number:
+          min: -2
+          max: 2
+    free_time:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5

@@ -16,6 +16,7 @@ from .const import (
     CONF_USERS,
     DOMAIN,
     EVENT_DAILY_PLAN,
+    EVENT_DAILY_STATE_SET,
     EVENT_MOOD_SET,
     SERVICE_COMPLETE_TASK,
     SERVICE_COMPLETE_TASK_BY_NAME,
@@ -26,14 +27,16 @@ from .const import (
     SERVICE_GET_AVAILABLE_TASKS,
     SERVICE_GET_AVAILABLE_USERS,
     SERVICE_GET_DAILY_PLAN,
+    SERVICE_GET_DAILY_STATE,
+    SERVICE_GET_MOOD,
     SERVICE_GET_RECENT_COMPLETIONS,
     SERVICE_GET_RECOMMENDED_TASKS,
     SERVICE_LIST_LEFTOVERS,
     SERVICE_QUERY_TASK,
+    SERVICE_SET_DAILY_STATE,
     SERVICE_SET_MOOD,
     SERVICE_UPDATE_COMPLETION,
     SERVICE_UPDATE_TASK,
-    SERVICE_GET_MOOD,
 )
 from .utils import (
     get_available_tasktracker_usernames,
@@ -169,6 +172,24 @@ GET_DAILY_PLAN_SCHEMA = vol.Schema(
 GET_MOOD_SCHEMA = vol.Schema(
     {
         vol.Optional("username"): cv.string,
+    }
+)
+
+GET_DAILY_STATE_SCHEMA = vol.Schema(
+    {
+        vol.Optional("username"): cv.string,
+    }
+)
+
+SET_DAILY_STATE_SCHEMA = vol.Schema(
+    {
+        vol.Optional("username"): cv.string,
+        vol.Optional("energy"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+        vol.Optional("motivation"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+        vol.Optional("focus"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+        vol.Optional("pain"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+        vol.Optional("mood"): vol.All(int, vol.Range(min=-2, max=2)),
+        vol.Optional("free_time"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
     }
 )
 
@@ -676,7 +697,9 @@ async def async_setup_services(  # noqa: C901, PLR0915
                         "persistent_notification",
                         "create",
                         {
-                            "message": result.get("spoken_response", f"Mood set to {mood}"),
+                            "message": result.get(
+                                "spoken_response", f"Mood set to {mood}"
+                            ),
                             "title": "TaskTracker",
                         },
                     )
@@ -750,6 +773,82 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 raise
             except Exception:
                 _LOGGER.exception("Unexpected error in get_mood_service")
+                raise
+
+        async def get_daily_state_service(call: ServiceCall) -> dict[str, Any]:
+            """Get the daily state for a user."""
+            try:
+                username = call.data.get("username")
+                if not username:
+                    user_id = call.context.user_id if call.context else None
+                    current_config = get_current_config()
+                    username = get_tasktracker_username_for_ha_user(
+                        hass, user_id, current_config
+                    )
+                    if not username:
+                        msg = "No username provided and could not determine from user context"  # noqa: E501
+                        raise TaskTrackerAPIError(msg)  # noqa: TRY301
+
+                result = await api.get_daily_state(username)
+                _LOGGER.debug("Daily state retrieved: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to get daily state")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in get_daily_state_service")
+                raise
+
+        async def set_daily_state_service(call: ServiceCall) -> dict[str, Any]:
+            """Set/update the daily state for a user."""
+            try:
+                username = call.data.get("username")
+                if not username:
+                    user_id = call.context.user_id if call.context else None
+                    current_config = get_current_config()
+                    username = get_tasktracker_username_for_ha_user(
+                        hass, user_id, current_config
+                    )
+                    if not username:
+                        msg = "No username provided and could not determine from user context"  # noqa: E501
+                        raise TaskTrackerAPIError(msg)  # noqa: TRY301
+
+                # Extract daily state parameters
+                energy = call.data.get("energy")
+                motivation = call.data.get("motivation")
+                focus = call.data.get("focus")
+                pain = call.data.get("pain")
+                mood = call.data.get("mood")
+                free_time = call.data.get("free_time")
+
+                result = await api.set_daily_state(
+                    username=username,
+                    energy=energy,
+                    motivation=motivation,
+                    focus=focus,
+                    pain=pain,
+                    mood=mood,
+                    free_time=free_time,
+                )
+
+                if result.get("success"):
+                    # Fire event for daily state change
+                    state_data = result.get("data", {})
+                    hass.bus.fire(
+                        EVENT_DAILY_STATE_SET,
+                        {
+                            "username": username,
+                            "state": state_data,
+                        },
+                    )
+
+                _LOGGER.debug("Daily state updated: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to set daily state")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in set_daily_state_service")
                 raise
 
         # Register services
@@ -904,6 +1003,24 @@ async def async_setup_services(  # noqa: C901, PLR0915
         )
         _LOGGER.debug("Registered service: %s", SERVICE_GET_MOOD)
 
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_GET_DAILY_STATE,
+            get_daily_state_service,
+            schema=GET_DAILY_STATE_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_GET_DAILY_STATE)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_DAILY_STATE,
+            set_daily_state_service,
+            schema=SET_DAILY_STATE_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_SET_DAILY_STATE)
+
         _LOGGER.info("TaskTracker services registered successfully")
 
     except Exception:
@@ -931,6 +1048,8 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_SET_MOOD,
         SERVICE_GET_DAILY_PLAN,
         SERVICE_GET_MOOD,
+        SERVICE_GET_DAILY_STATE,
+        SERVICE_SET_DAILY_STATE,
     ]
 
     for service in services_to_remove:

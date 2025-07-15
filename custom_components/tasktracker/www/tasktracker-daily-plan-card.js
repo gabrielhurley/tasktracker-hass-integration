@@ -187,6 +187,30 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     TaskTrackerUtils.showModal(modal);
   }
 
+  _handleSetDailyState() {
+    const username = this._getUsername();
+    if (!username) {
+      TaskTrackerUtils.showError('No user configured for daily state');
+      return;
+    }
+
+    const modal = TaskTrackerUtils.createDailyStateModal(
+      this._hass,
+      username,
+      {
+        use_emoji_labels: true // Use emoji labels by default
+      },
+      (savedState) => {
+        // Callback when state is saved - refresh the plan
+        setTimeout(() => {
+          this._fetchPlan();
+        }, 500);
+      }
+    );
+
+    TaskTrackerUtils.showModal(modal);
+  }
+
   async _completeTask(task, notes) {
     const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
 
@@ -235,6 +259,10 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         .section-title:first-child {
           margin-top: 0;
         }
+        .section-title.urgent {
+          color: var(--error-color, #f44336);
+          font-size: 1.1em;
+        }
         .task-list {
           margin-bottom: 16px;
         }
@@ -258,6 +286,73 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           font-weight: 500;
           border: 1px solid rgba(76, 175, 80, 0.3);
         }
+
+        /* Daily state prompt styles */
+        .daily-state-prompt {
+          margin-bottom: 16px;
+        }
+
+        .daily-state-button {
+          background: var(--primary-color);
+          color: var(--text-primary-color);
+          border: none;
+          border-radius: 6px;
+          padding: 10px 16px;
+          font-size: 0.95em;
+          font-weight: 500;
+          cursor: pointer;
+          transition: opacity 0.2s ease;
+          width: 100%;
+          text-align: center;
+        }
+
+        .daily-state-button:hover {
+          opacity: 0.9;
+        }
+
+        .daily-state-help {
+          font-size: 0.8em;
+          color: var(--secondary-text-color);
+          font-style: italic;
+          text-align: center;
+          margin-top: 8px;
+        }
+
+        /* Urgent section styles */
+        .urgent-section {
+          margin-top: 16px;
+        }
+
+        .urgent-description {
+          color: var(--secondary-text-color);
+          font-size: 0.9em;
+          margin-bottom: 12px;
+          font-style: italic;
+        }
+
+        /* All caught up styles */
+        .all-caught-up {
+          text-align: center;
+          padding: 40px 20px;
+          color: var(--secondary-text-color);
+        }
+
+        .caught-up-icon {
+          font-size: 3em;
+          margin-bottom: 12px;
+        }
+
+        .caught-up-message {
+          font-size: 1.1em;
+          font-weight: 500;
+        }
+
+        .no-urgent-tasks {
+          text-align: center;
+          padding: 20px;
+          color: var(--secondary-text-color);
+          font-style: italic;
+        }
       </style>
 
       <div class="card">
@@ -278,6 +373,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this._fetchPlan());
+    }
+
+    // Daily state button handler
+    const dailyStateButton = this.shadowRoot.querySelector('.daily-state-button');
+    if (dailyStateButton) {
+      dailyStateButton.addEventListener('click', () => this._handleSetDailyState());
     }
 
     if (hasValidUserConfig) {
@@ -327,6 +428,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     const selfCare = this._plan?.data?.self_care || [];
     const tasks = this._plan?.data?.tasks || [];
     const notification = this._plan?.notification || {};
+    const usingDefaults = this._plan?.data?.using_defaults || false;
+
+    if (usingDefaults) {
+      return this._renderReducedPlan(tasks, notification);
+    }
 
     const selfCareHtml = selfCare.length > 0
       ? selfCare.map(task => this._renderTaskItem(task, 'self_care')).join('')
@@ -352,6 +458,34 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       <div class="task-list">
         ${tasksHtml}
       </div>
+    `;
+  }
+
+  _renderReducedPlan(tasks, notification) {
+    const tasksHtml = tasks.length > 0
+      ? tasks.map(task => this._renderTaskItem(task, 'task')).join('')
+      : '<div class="no-urgent-tasks">No urgent tasks right now!</div>';
+
+    return `
+      <div class="daily-state-prompt">
+        <button class="daily-state-button">Set Your Daily State</button>
+        <div class="daily-state-help">A daily plan will be available once your state is set</div>
+      </div>
+
+      ${tasks.length > 0 ? `
+        <div class="urgent-section">
+          <div class="section-title urgent">⚠️ Urgent Tasks</div>
+          <div class="urgent-description">These tasks need immediate attention:</div>
+          <div class="task-list">
+            ${tasksHtml}
+          </div>
+        </div>
+      ` : `
+        <div class="all-caught-up">
+          <div class="caught-up-icon">✅</div>
+          <div class="caught-up-message">You're all caught up on urgent tasks!</div>
+        </div>
+      `}
     `;
   }
 
