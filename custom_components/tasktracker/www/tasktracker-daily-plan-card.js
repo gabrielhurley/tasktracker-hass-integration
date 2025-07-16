@@ -333,18 +333,9 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         /* All caught up styles */
         .all-caught-up {
           text-align: center;
-          padding: 40px 20px;
+          padding: 8px;
           color: var(--secondary-text-color);
-        }
-
-        .caught-up-icon {
-          font-size: 3em;
-          margin-bottom: 12px;
-        }
-
-        .caught-up-message {
-          font-size: 1.1em;
-          font-weight: 500;
+          font-size: 0.9em;
         }
 
         .no-urgent-tasks {
@@ -482,8 +473,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         </div>
       ` : `
         <div class="all-caught-up">
-          <div class="caught-up-icon">✅</div>
-          <div class="caught-up-message">You're all caught up on urgent tasks!</div>
+          No urgent tasks right now
         </div>
       `}
     `;
@@ -507,10 +497,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       metadataParts.push(TaskTrackerUtils.formatPriority(task.priority));
     }
 
-    // Add due date if available
+    // Add due date if available with user context for smart formatting
     if (task.due_date || task.next_due) {
       const dueDate = task.due_date || task.next_due;
-      metadataParts.push(TaskTrackerUtils.formatDueDate(dueDate));
+      const userContext = this._plan?.data?.user_context;
+      metadataParts.push(TaskTrackerUtils.formatDueDate(dueDate, userContext, task));
     }
 
     // Calculate overdue color if due date is available

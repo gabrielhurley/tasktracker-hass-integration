@@ -192,10 +192,17 @@ export class TaskTrackerUtils {
     }
   }
 
-  static formatDueDate(dueDateString) {
+  static formatDueDate(dueDateString, userContext = null, task = null) {
     try {
       const dueDate = new Date(dueDateString);
       const now = new Date();
+
+      // For SelfCareTask with time windows and user context, use smart formatting
+      if (task && task.task_type === 'SelfCareTask' && task.time_windows && userContext) {
+        return TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
+      }
+
+      // Fallback to original logic for other task types
       const diffMs = dueDate - now;
 
       // Use calendar day difference instead of 24-hour periods
@@ -226,6 +233,117 @@ export class TaskTrackerUtils {
       }
     } catch {
       return 'Unknown';
+    }
+  }
+
+    static formatSelfCareDueDate(dueDate, now, userContext, task) {
+    try {
+      // Parse user's daily reset time
+      const resetTimeParts = userContext.daily_reset_time.split(':');
+      const resetHour = parseInt(resetTimeParts[0]);
+      const resetMinute = parseInt(resetTimeParts[1]);
+
+      // Calculate logical today and tomorrow boundaries
+      const logicalToday = new Date(now);
+      logicalToday.setHours(resetHour, resetMinute, 0, 0);
+
+      // If current time is before reset time, we're still in yesterday's logical day
+      if (now.getHours() < resetHour || (now.getHours() === resetHour && now.getMinutes() < resetMinute)) {
+        logicalToday.setDate(logicalToday.getDate() - 1);
+      }
+
+      const logicalTomorrow = new Date(logicalToday);
+      logicalTomorrow.setDate(logicalTomorrow.getDate() + 1);
+
+      // Check if due date falls within logical today
+      if (dueDate >= logicalToday && dueDate < logicalTomorrow) {
+        // Find which time window this due date corresponds to
+        const dueHour = dueDate.getHours();
+        const dueMinute = dueDate.getMinutes();
+        const dueTimeStr = `${dueHour.toString().padStart(2, '0')}:${dueMinute.toString().padStart(2, '0')}`;
+
+        for (const [startTime, endTime] of task.time_windows) {
+          // Handle time windows that cross midnight
+          if (endTime < startTime) {
+            // Window crosses midnight (e.g., "17:00" to "02:00")
+            if (dueTimeStr >= startTime || dueTimeStr <= endTime) {
+              const startTime12 = TaskTrackerUtils.convertTo12HourFormat(startTime);
+              const endTime12 = TaskTrackerUtils.convertTo12HourFormat(endTime);
+              return `Today (${startTime12}-${endTime12})`;
+            }
+          } else {
+            // Normal window within same day
+            if (dueTimeStr >= startTime && dueTimeStr <= endTime) {
+              const startTime12 = TaskTrackerUtils.convertTo12HourFormat(startTime);
+              const endTime12 = TaskTrackerUtils.convertTo12HourFormat(endTime);
+              return `Today (${startTime12}-${endTime12})`;
+            }
+          }
+        }
+
+        return 'Today';
+      } else {
+        // Due date is in logical tomorrow or later
+        const daysDiff = Math.floor((dueDate - logicalTomorrow) / (1000 * 60 * 60 * 24));
+
+        if (daysDiff === 0) {
+          // Due tomorrow - check for time window context
+          const dueHour = dueDate.getHours();
+          const dueMinute = dueDate.getMinutes();
+          const dueTimeStr = `${dueHour.toString().padStart(2, '0')}:${dueMinute.toString().padStart(2, '0')}`;
+
+          for (const [startTime, endTime] of task.time_windows) {
+            if (endTime < startTime) {
+              // Cross-midnight window - due time might be early morning of "tomorrow"
+              if (dueTimeStr <= endTime) {
+                const startTime12 = TaskTrackerUtils.convertTo12HourFormat(startTime);
+                const endTime12 = TaskTrackerUtils.convertTo12HourFormat(endTime);
+                return `Tomorrow (${startTime12}-${endTime12})`;
+              }
+            } else if (dueTimeStr >= startTime && dueTimeStr <= endTime) {
+              const startTime12 = TaskTrackerUtils.convertTo12HourFormat(startTime);
+              const endTime12 = TaskTrackerUtils.convertTo12HourFormat(endTime);
+              return `Tomorrow (${startTime12}-${endTime12})`;
+            }
+          }
+
+          return 'Tomorrow';
+        } else if (daysDiff === 1) {
+          return 'In 2 days';
+        } else {
+          return `In ${daysDiff + 1} days`;
+        }
+      }
+    } catch (error) {
+      console.warn('Error in formatSelfCareDueDate:', error);
+      // Fallback to simple relative time
+      const diffMs = dueDate - now;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Tomorrow';
+      return `${diffDays} days`;
+    }
+  }
+
+  static convertTo12HourFormat(time24) {
+    try {
+      const [hours, minutes] = time24.split(':');
+      const hour = parseInt(hours);
+      const minute = minutes;
+
+      if (hour === 0) {
+        return `12:${minute} AM`;
+      } else if (hour < 12) {
+        return `${hour}:${minute} AM`;
+      } else if (hour === 12) {
+        return `12:${minute} PM`;
+      } else {
+        return `${hour - 12}:${minute} PM`;
+      }
+    } catch (error) {
+      // Fallback to original format if conversion fails
+      return time24;
     }
   }
 
@@ -675,6 +793,7 @@ export class TaskTrackerUtils {
 
     // Declare variables for advanced inputs so they are in scope for save handler
     let energyInput, focusInput, painInput, motivationInput, severitySelect;
+    let energyInputWrapper, focusInputWrapper, painInputWrapper, motivationInputWrapper;
 
     // Format due date for datetime-local input
     const formattedDueDate = dueDate ? TaskTrackerUtils.formatDateTimeForInput(dueDate) : '';

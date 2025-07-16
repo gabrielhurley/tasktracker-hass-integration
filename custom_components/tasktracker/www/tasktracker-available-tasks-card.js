@@ -348,9 +348,9 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       const taskItems = this.shadowRoot.querySelectorAll('.task-item');
       taskItems.forEach((item) => {
         item.addEventListener('click', () => {
-          const taskIndex = parseInt(item.dataset.taskIndex, 10);
-          if (this._tasks[taskIndex]) {
-            this._showTaskModal(this._tasks[taskIndex], taskIndex);
+          const taskData = JSON.parse(item.dataset.taskData);
+          if (taskData) {
+            this._showTaskModal(taskData);
           }
         });
       });
@@ -360,9 +360,9 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       completeButtons.forEach(button => {
         button.addEventListener('click', (e) => {
           e.stopPropagation(); // Prevent event bubbling to parent task item
-          const taskIndex = parseInt(button.dataset.taskIndex, 10);
-          if (this._tasks[taskIndex]) {
-            this._completeTask(this._tasks[taskIndex], '');
+          const taskData = JSON.parse(button.dataset.taskData);
+          if (taskData) {
+            this._completeTask(taskData, '');
           }
         });
       });
@@ -429,14 +429,14 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     const borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
 
     return `
-      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}" data-task-index="${originalIndex}" style="${borderStyle}">
+      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}" data-task-data='${JSON.stringify(task)}' style="${borderStyle}">
         <div class="task-content">
           <div class="task-name">${task.name}</div>
           <div class="task-metadata">${metadataParts.join(' | ')}</div>
         </div>
         ${this._config.show_completion_actions ? `
           <div class="task-actions">
-            <button class="complete-btn" data-task-index="${originalIndex}">
+            <button class="complete-btn" data-task-data='${JSON.stringify(task)}'>
               Complete
             </button>
           </div>

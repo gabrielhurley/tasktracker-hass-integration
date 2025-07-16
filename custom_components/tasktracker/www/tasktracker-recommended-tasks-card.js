@@ -411,10 +411,11 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
 
       // Task item click handlers
       const taskItems = this.shadowRoot.querySelectorAll('.task-item');
-      taskItems.forEach((item, index) => {
+      taskItems.forEach((item) => {
         item.addEventListener('click', () => {
-          if (this._tasks[index]) {
-            this._showTaskModal(this._tasks[index], index);
+          const taskData = JSON.parse(item.dataset.taskData);
+          if (taskData) {
+            this._showTaskModal(taskData);
           }
         });
       });
@@ -456,7 +457,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     const borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
 
     return `
-      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}" style="${borderStyle}">
+      <div class="task-item ${task.is_overdue ? 'needs-completion' : ''}" data-task-data='${JSON.stringify(task)}' style="${borderStyle}">
         <div class="task-content">
           <div class="task-name">
             ${task.name}
