@@ -26,7 +26,6 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      available_minutes: 60,
       user_filter_mode: 'explicit',
       explicit_user: null,
       show_notification: true,
@@ -39,7 +38,6 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
   setConfig(config) {
     this._config = {
-      available_minutes: config.available_minutes || 60,
       user_filter_mode: config.user_filter_mode || 'explicit',
       explicit_user: config.explicit_user || null,
       show_notification: config.show_notification !== false,
@@ -102,9 +100,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     await this._fetchAvailableUsers();
     const username = this._getUsername();
 
-    const serviceData = {
-      available_minutes: this._config.available_minutes,
-    };
+    const serviceData = {};
     if (username) {
       serviceData.username = username;
     }
@@ -441,7 +437,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     return `
       ${notificationBodyHtml}
-      <div class="section-title">Self-Care (${this._config.available_minutes} min)</div>
+      <div class="section-title">Self-Care</div>
       <div class="task-list">
         ${selfCareHtml}
       </div>
@@ -586,11 +582,7 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
       <div class="card-config">
         <div class="section-title">Display Settings</div>
 
-        ${TaskTrackerUtils.createConfigRow(
-          'Available Minutes',
-          'Number of minutes available for self-care tasks',
-          TaskTrackerUtils.createNumberInput(this._config.available_minutes, 'available_minutes', 5, 300, 5)
-        )}
+
 
         ${TaskTrackerUtils.createConfigRow(
           'Show Header',

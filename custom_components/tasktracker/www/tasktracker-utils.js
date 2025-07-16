@@ -236,8 +236,17 @@ export class TaskTrackerUtils {
     }
   }
 
-    static formatSelfCareDueDate(dueDate, now, userContext, task) {
+      static formatSelfCareDueDate(dueDate, now, userContext, task) {
     try {
+      // Check if task is overdue first - use the days_overdue field from API
+      if (task.days_overdue && task.days_overdue > 0) {
+        if (task.days_overdue === 1) {
+          return '1 day overdue';
+        } else {
+          return `${task.days_overdue} days overdue`;
+        }
+      }
+
       // Parse user's daily reset time
       const resetTimeParts = userContext.daily_reset_time.split(':');
       const resetHour = parseInt(resetTimeParts[0]);
@@ -255,33 +264,45 @@ export class TaskTrackerUtils {
       const logicalTomorrow = new Date(logicalToday);
       logicalTomorrow.setDate(logicalTomorrow.getDate() + 1);
 
+      // Check completion status for time window display
+      const completedWindowsToday = TaskTrackerUtils.getCompletedTimeWindows(task, logicalToday, logicalTomorrow);
+      const requiredOccurrences = task.required_occurrences || 1;
+      const remainingOccurrences = Math.max(0, requiredOccurrences - (task.today_completions_count || 0));
+
       // Check if due date falls within logical today
       if (dueDate >= logicalToday && dueDate < logicalTomorrow) {
-        // Find which time window this due date corresponds to
-        const dueHour = dueDate.getHours();
-        const dueMinute = dueDate.getMinutes();
-        const dueTimeStr = `${dueHour.toString().padStart(2, '0')}:${dueMinute.toString().padStart(2, '0')}`;
+        // Check if task is complete for today
+        if (remainingOccurrences === 0) {
+          return 'Complete for today';
+        }
 
-        for (const [startTime, endTime] of task.time_windows) {
-          // Handle time windows that cross midnight
-          if (endTime < startTime) {
-            // Window crosses midnight (e.g., "17:00" to "02:00")
-            if (dueTimeStr >= startTime || dueTimeStr <= endTime) {
-              const startTime12 = TaskTrackerUtils.convertTo12HourFormat(startTime);
-              const endTime12 = TaskTrackerUtils.convertTo12HourFormat(endTime);
-              return `Today (${startTime12}-${endTime12})`;
-            }
-          } else {
-            // Normal window within same day
-            if (dueTimeStr >= startTime && dueTimeStr <= endTime) {
-              const startTime12 = TaskTrackerUtils.convertTo12HourFormat(startTime);
-              const endTime12 = TaskTrackerUtils.convertTo12HourFormat(endTime);
+        // For tasks with time windows, find the next incomplete window
+        if (task.time_windows && task.time_windows.length > 0) {
+          const nextIncompleteWindow = TaskTrackerUtils.findNextIncompleteWindow(
+            task.time_windows,
+            now,
+            completedWindowsToday
+          );
+
+          if (nextIncompleteWindow) {
+            const startTime12 = TaskTrackerUtils.convertTo12HourFormat(nextIncompleteWindow[0]);
+            const endTime12 = TaskTrackerUtils.convertTo12HourFormat(nextIncompleteWindow[1]);
+
+            // Show progress for multiple occurrence tasks
+            if (requiredOccurrences > 1) {
+              return `Today (${startTime12}-${endTime12}) - ${remainingOccurrences} left`;
+            } else {
               return `Today (${startTime12}-${endTime12})`;
             }
           }
         }
 
-        return 'Today';
+        // No specific time window found, show general status
+        if (requiredOccurrences > 1) {
+          return `Today - ${remainingOccurrences} left`;
+        } else {
+          return 'Today';
+        }
       } else {
         // Due date is in logical tomorrow or later
         const daysDiff = Math.floor((dueDate - logicalTomorrow) / (1000 * 60 * 60 * 24));
@@ -292,7 +313,7 @@ export class TaskTrackerUtils {
           const dueMinute = dueDate.getMinutes();
           const dueTimeStr = `${dueHour.toString().padStart(2, '0')}:${dueMinute.toString().padStart(2, '0')}`;
 
-          for (const [startTime, endTime] of task.time_windows) {
+          for (const [startTime, endTime] of task.time_windows || []) {
             if (endTime < startTime) {
               // Cross-midnight window - due time might be early morning of "tomorrow"
               if (dueTimeStr <= endTime) {
@@ -347,20 +368,105 @@ export class TaskTrackerUtils {
     }
   }
 
-  // Mood icon helper
-  static moodToIcon(mood) {
-    switch ((mood || '').toLowerCase()) {
-      case 'bad':
-        return { icon: 'mdi:emoticon-sad', color: '#f44336', label: 'Bad' };
-      case 'lazy':
-        return { icon: 'mdi:emoticon-neutral', color: '#ff9800', label: 'Lazy' };
-      case 'productive':
-        return { icon: 'mdi:emoticon-happy', color: '#4caf50', label: 'Productive' };
-      case 'great':
-        return { icon: 'mdi:emoticon-excited', color: '#2196f3', label: 'Great' };
-      default:
-        return { icon: 'mdi:emoticon-neutral', color: 'var(--disabled-text-color)', label: mood || 'Unknown' };
+  static getCompletedTimeWindows(task, logicalToday, logicalTomorrow) {
+    if (!task.today_completions || !task.time_windows) {
+      return [];
     }
+
+    const completedWindows = [];
+
+    task.today_completions.forEach(completionTimeStr => {
+      const completionTime = new Date(completionTimeStr);
+      const compHour = completionTime.getHours();
+      const compMinute = completionTime.getMinutes();
+      const compTimeStr = `${compHour.toString().padStart(2, '0')}:${compMinute.toString().padStart(2, '0')}`;
+
+      task.time_windows.forEach(window => {
+        const [startTime, endTime] = window;
+        if (endTime < startTime) {
+          // Cross-midnight window
+          if (compTimeStr >= startTime || compTimeStr <= endTime) {
+            completedWindows.push(window);
+          }
+        } else {
+          // Normal window
+          if (compTimeStr >= startTime && compTimeStr <= endTime) {
+            completedWindows.push(window);
+          }
+        }
+      });
+    });
+
+    return completedWindows;
+  }
+
+  static isWindowCompleted(window, completedWindows) {
+    return completedWindows.some(completed =>
+      completed[0] === window[0] && completed[1] === window[1]
+    );
+  }
+
+        static findNextIncompleteWindow(timeWindows, now, completedWindows) {
+    const nowHour = now.getHours();
+    const nowMinute = now.getMinutes();
+    const nowTimeStr = `${nowHour.toString().padStart(2, '0')}:${nowMinute.toString().padStart(2, '0')}`;
+
+    // First, try to find a window that hasn't been used for completion yet
+    const unusedWindows = timeWindows.filter(window =>
+      !TaskTrackerUtils.isWindowCompleted(window, completedWindows)
+    );
+
+    // If we have unused windows, prioritize them
+    if (unusedWindows.length > 0) {
+      // Find the next available unused window starting from current time
+      for (const window of unusedWindows) {
+        const [startTime, endTime] = window;
+
+        // Check if this window is current or upcoming today
+        if (endTime < startTime) {
+          // Cross-midnight window
+          if (nowTimeStr >= startTime || nowTimeStr <= endTime) {
+            return window; // Currently in this window
+          } else if (nowTimeStr < startTime) {
+            return window; // Window starts later today
+          }
+        } else {
+          // Normal window
+          if (nowTimeStr >= startTime && nowTimeStr <= endTime) {
+            return window; // Currently in this window
+          } else if (nowTimeStr < startTime) {
+            return window; // Window starts later today
+          }
+        }
+      }
+
+      // If no unused windows are upcoming today, return the first unused window
+      return unusedWindows[0];
+    }
+
+    // If all windows have been used, fall back to any available window
+    // This handles edge cases where more completions than windows exist
+    for (const window of timeWindows) {
+      const [startTime, endTime] = window;
+
+      if (endTime < startTime) {
+        // Cross-midnight window
+        if (nowTimeStr >= startTime || nowTimeStr <= endTime) {
+          return window;
+        } else if (nowTimeStr < startTime) {
+          return window;
+        }
+      } else {
+        // Normal window
+        if (nowTimeStr >= startTime && nowTimeStr <= endTime) {
+          return window;
+        } else if (nowTimeStr < startTime) {
+          return window;
+        }
+      }
+    }
+
+    return timeWindows.length > 0 ? timeWindows[0] : null;
   }
 
   static formatDateTime(dateString) {

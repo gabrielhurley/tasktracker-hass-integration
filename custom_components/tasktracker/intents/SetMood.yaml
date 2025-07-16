@@ -1,8 +1,0 @@
-intents:
-  - trigger:
-      platform: intent
-      intent_type: SetMood
-    action:
-      - service: tasktracker.set_mood
-        data:
-          mood: "{{ mood }}"

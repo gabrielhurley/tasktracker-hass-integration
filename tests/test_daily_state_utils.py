@@ -18,10 +18,7 @@ class TestDailyStateUtils:
         # This would be tested in the JS environment
         assert True
 
-    def test_mood_labels(self):
-        """Test mood label formatting."""
-        # This would be tested in the JS environment
-        assert True
+
 
     def test_free_time_labels(self):
         """Test free time label formatting."""

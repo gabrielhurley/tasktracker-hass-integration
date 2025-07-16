@@ -51,11 +51,6 @@ JSMODULES = [
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Mood Card",
-        "filename": "tasktracker-mood-card.js",
-        "version": VERSION,
-    },
-    {
         "name": "TaskTracker Daily State Card",
         "filename": "tasktracker-daily-state-card.js",
         "version": VERSION,
@@ -84,14 +79,11 @@ SERVICE_GET_AVAILABLE_USERS: Final = "get_available_users"
 SERVICE_UPDATE_TASK: Final = "update_task"
 SERVICE_DELETE_COMPLETION: Final = "delete_completion"
 SERVICE_UPDATE_COMPLETION: Final = "update_completion"
-SERVICE_SET_MOOD: Final = "set_mood"
 SERVICE_GET_DAILY_PLAN: Final = "get_daily_plan"
-SERVICE_GET_MOOD: Final = "get_mood"
 SERVICE_GET_DAILY_STATE: Final = "get_daily_state"
 SERVICE_SET_DAILY_STATE: Final = "set_daily_state"
 
 # Event names
-EVENT_MOOD_SET: Final = "tasktracker_mood_set"
 EVENT_DAILY_PLAN: Final = "tasktracker_daily_plan"
 EVENT_DAILY_STATE_SET: Final = "tasktracker_daily_state_set"
 
@@ -111,9 +103,7 @@ ENDPOINT_DELETE_COMPLETION: Final = "/api/completions/delete_completion/"
 ENDPOINT_UPDATE_COMPLETION: Final = "/api/completions/update_completion/"
 
 # New API endpoints
-ENDPOINT_SET_MOOD: Final = "/api/set-mood/"
 ENDPOINT_DAILY_PLAN: Final = "/api/daily-plan/"
-ENDPOINT_GET_MOOD: Final = "/api/get-mood/"
 ENDPOINT_DAILY_STATE: Final = "/api/daily-state/"
 
 # Default values
