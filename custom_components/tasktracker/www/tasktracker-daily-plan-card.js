@@ -273,6 +273,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           color: var(--error-color, #f44336);
           font-size: 1.1em;
         }
+        .all-done-text {
+          font-weight: normal;
+          font-size: 0.9em;
+          font-style: italic;
+        }
         .task-list {
           margin-bottom: 16px;
         }
@@ -661,7 +666,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     const selfCareHtml = selfCare.length > 0
       ? selfCare.map(task => this._renderTaskItem(task, 'self_care')).join('')
-      : '<div class="no-tasks">None</div>';
+      : null;
 
     const tasksHtml = tasks.length > 0
       ? tasks.map(task => this._renderTaskItem(task, 'task')).join('')
@@ -673,12 +678,19 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       </div>
     ` : '';
 
-    return `
-      ${notificationBodyHtml}
+    // Self-care section - show congratulatory message if no tasks
+    const selfCareSection = selfCare.length > 0 ? `
       <div class="section-title">Self-Care</div>
       <div class="task-list">
         ${selfCareHtml}
       </div>
+    ` : `
+      <div class="section-title">Self-Care <span class="all-done-text">(No tasks)</span></div>
+    `;
+
+    return `
+      ${notificationBodyHtml}
+      ${selfCareSection}
       <div class="section-title">Tasks</div>
       <div class="task-list">
         ${tasksHtml}
@@ -925,7 +937,13 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       }
       const period = hours >= 12 ? 'PM' : 'AM';
       const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+
+      // Only show minutes if they're not zero
+      if (minutes === 0) {
+        return `${displayHours} ${period}`;
+      } else {
+        return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+      }
     } catch (e) {
       console.warn('Failed to format window time:', timeStr, e);
       return timeStr;
