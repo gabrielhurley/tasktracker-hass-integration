@@ -56,6 +56,7 @@ COMPLETE_TASK_BY_NAME_SCHEMA = vol.Schema(
         vol.Required("name"): cv.string,
         vol.Optional("completed_by"): cv.string,
         vol.Optional("notes"): cv.string,
+        vol.Optional("completed_at"): cv.string,
         vol.Optional("event_type"): vol.In(["task_completed", "leftover_disposed"]),
     }
 )
@@ -256,6 +257,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     name=call.data["name"],
                     completed_by=completed_by,
                     notes=call.data.get("notes"),
+                    completed_at=call.data.get("completed_at"),
                 )
 
                 # Fire custom event if completion was successful

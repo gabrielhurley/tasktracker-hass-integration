@@ -145,7 +145,7 @@ class TestTaskTrackerServices:
 
             # Verify API was called
             mock_api.complete_task_by_name.assert_called_once_with(
-                name="Test Task", completed_by="testuser", notes="Completed by name"
+                name="Test Task", completed_by="testuser", notes="Completed by name", completed_at=None
             )
 
     @pytest.mark.asyncio
@@ -186,6 +186,49 @@ class TestTaskTrackerServices:
                 name="Test Task",
                 completed_by="mapped_user",
                 notes="Completed without assigned_to",
+                completed_at=None,
+            )
+
+    @pytest.mark.asyncio
+    async def test_complete_task_by_name_service_with_completed_at(
+        self, hass: HomeAssistant, setup_integration: AsyncMock
+    ) -> None:
+        """Test complete_task_by_name service with completed_at parameter."""
+        mock_api = setup_integration
+        mock_api.complete_task_by_name.return_value = {
+            "success": True,
+            "spoken_response": "Task completed by name successfully",
+            "data": {"completion": {"name": "Test Task"}},
+        }
+
+        with patch(
+            "custom_components.tasktracker.services.get_tasktracker_username_for_ha_user"
+        ) as mock_get_user:
+            mock_get_user.return_value = "testuser"
+
+            from custom_components.tasktracker.services import async_setup_services
+
+            await async_setup_services(hass, mock_api, {})
+
+            # Call the service with completed_at
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_COMPLETE_TASK_BY_NAME,
+                {
+                    "name": "Test Task",
+                    "notes": "Completed in the past",
+                    "completed_at": "2024-01-15T14:30:00",
+                },
+                blocking=True,
+                return_response=True,
+            )
+
+            # Verify API was called with completed_at
+            mock_api.complete_task_by_name.assert_called_once_with(
+                name="Test Task",
+                completed_by="testuser",
+                notes="Completed in the past",
+                completed_at="2024-01-15T14:30:00",
             )
 
     @pytest.mark.asyncio

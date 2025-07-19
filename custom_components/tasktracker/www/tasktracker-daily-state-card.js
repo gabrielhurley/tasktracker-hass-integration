@@ -350,7 +350,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
          .preset-btn:hover {
            border-color: var(--primary-color);
            background: var(--primary-color);
-           color: var(--text-primary-color);
+           color: var(--primary-text-color);
          }
 
          .preset-btn:active {
@@ -365,7 +365,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
           .preset-btn.selected {
             border-color: var(--primary-color);
             background: var(--primary-color);
-            color: var(--text-primary-color);
+            color: var(--primary-text-color);
           }
 
          @media (min-width: 500px) {
@@ -383,7 +383,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
 
         .btn {
           background: var(--primary-color);
-          color: var(--text-primary-color);
+          color: var(--primary-text-color);
           border: none;
           border-radius: 4px;
           padding: 8px 16px;

@@ -105,7 +105,11 @@ class TaskTrackerAPI:
         return await self._request("POST", ENDPOINT_COMPLETE_TASK, data=data)
 
     async def complete_task_by_name(
-        self, name: str, completed_by: str, notes: str | None = None
+        self,
+        name: str,
+        completed_by: str,
+        notes: str | None = None,
+        completed_at: str | None = None,
     ) -> dict[str, Any]:
         """Complete a task by name (supports fuzzy matching across all task types)."""
         data: dict[str, Any] = {
@@ -114,6 +118,8 @@ class TaskTrackerAPI:
         }
         if notes:
             data["notes"] = notes
+        if completed_at:
+            data["completed_at"] = completed_at
 
         return await self._request("POST", ENDPOINT_COMPLETE_TASK_BY_NAME, data=data)
 
@@ -292,7 +298,7 @@ class TaskTrackerAPI:
         params = {"username": username}
         return await self._request("GET", ENDPOINT_DAILY_STATE, params=params)
 
-    async def set_daily_state(
+    async def set_daily_state(  # noqa: PLR0913
         self,
         username: str,
         energy: int | None = None,

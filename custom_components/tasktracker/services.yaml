@@ -37,6 +37,11 @@ complete_task_by_name:
       selector:
         text:
           multiline: true
+    completed_at:
+      required: false
+      example: "2024-01-15T14:30:00"
+      selector:
+        datetime:
 
 create_leftover:
   fields:

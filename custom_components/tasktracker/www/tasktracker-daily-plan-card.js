@@ -28,10 +28,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     return {
       user_filter_mode: 'explicit',
       explicit_user: null,
-      show_notification: true,
       show_header: true,
       show_completion_actions: true,
       show_completion_notes: true,
+      show_window_times: true,
+      window_display_mode: 'always',
       refresh_interval: 600,
     };
   }
@@ -40,10 +41,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     this._config = {
       user_filter_mode: config.user_filter_mode || 'explicit',
       explicit_user: config.explicit_user || null,
-      show_notification: config.show_notification !== false,
       show_header: config.show_header !== false,
       show_completion_actions: config.show_completion_actions !== false,
       show_completion_notes: config.show_completion_notes !== false,
+      show_window_times: config.show_window_times !== false,
+      window_display_mode: config.window_display_mode || 'always',
       refresh_interval: config.refresh_interval || 600,
       ...config,
     };
@@ -90,6 +92,18 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
   _getUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
+  }
+
+  _shouldShowWindows(windows) {
+    switch (this._config.window_display_mode) {
+      case 'never':
+        return false;
+      case 'multiple_only':
+        return windows && windows.length > 1;
+      case 'always':
+      default:
+        return true;
+    }
   }
 
   async _fetchPlan() {
@@ -169,12 +183,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     };
   }
 
-  _showTaskModal(task, taskType) {
+    _showTaskModal(task, taskType) {
     const modal = TaskTrackerUtils.createTaskModal(
       task,
       this._config,
-      async (notes) => {
-        await this._completeTask(task, notes);
+      async (notes, completed_at = null) => {
+        await this._completeTask(task, notes, completed_at);
       },
       null, // No save functionality for daily plan tasks
       this._availableUsers,
@@ -207,7 +221,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes) {
+  async _completeTask(task, notes, completed_at = null) {
     const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
 
     // For 'current' user mode, username will be null and that's expected
@@ -218,7 +232,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     }
 
     try {
-      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes);
+      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes, completed_at);
 
       if (response && response.success) {
         TaskTrackerUtils.showSuccess(response.spoken_response || `Task "${task.name}" completed successfully`);
@@ -290,7 +304,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
         .daily-state-button {
           background: var(--primary-color);
-          color: var(--text-primary-color);
+          color: var(--primary-text-color);
           border: none;
           border-radius: 6px;
           padding: 10px 16px;
@@ -340,6 +354,175 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           color: var(--secondary-text-color);
           font-style: italic;
         }
+
+        /* Self-care window styles */
+        .selfcare-windowed {
+          border-radius: 6px;
+        }
+
+        .selfcare-windowed.all-complete {
+          opacity: 0.8;
+          background: rgba(76, 175, 80, 0.1);
+        }
+
+        .windows-container {
+          margin-top: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .window-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.9em;
+          transition: background-color 0.2s ease;
+        }
+
+        .window-item.completed {
+          background: rgba(76, 175, 80, 0.15);
+          color: var(--primary-text-color);
+        }
+
+        .window-item.incomplete {
+          background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
+          color: var(--primary-text-color);
+          cursor: pointer;
+        }
+
+        .window-item.incomplete:hover {
+          background: var(--divider-color, rgba(0, 0, 0, 0.1));
+        }
+
+        .window-item.incomplete:focus {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 2px;
+          background: var(--divider-color, rgba(0, 0, 0, 0.1));
+        }
+
+        /* Styling for incomplete windows based on task status */
+        .selfcare-windowed.needs-completion.due-today .window-item.incomplete {
+          background: rgba(var(--primary-color-rgb, 3, 169, 244), 0.1);
+        }
+
+        .selfcare-windowed.needs-completion.due-today .window-item.incomplete:hover {
+          background: rgba(var(--primary-color-rgb, 3, 169, 244), 0.2);
+        }
+
+        .selfcare-windowed.needs-completion.due-today .window-item.incomplete:focus {
+          background: rgba(var(--primary-color-rgb, 3, 169, 244), 0.2);
+        }
+
+        /* Overdue styling for incomplete windows */
+        .selfcare-windowed.needs-completion.overdue .window-item.incomplete {
+          background: rgba(255, 193, 7, 0.1);
+        }
+
+        .selfcare-windowed.needs-completion.overdue .window-item.incomplete:hover {
+          background: rgba(255, 193, 7, 0.2);
+        }
+
+        .selfcare-windowed.needs-completion.overdue .window-item.incomplete:focus {
+          background: rgba(255, 193, 7, 0.2);
+        }
+
+        /* Fallback for tasks that need completion (legacy support) */
+        .selfcare-windowed.needs-completion .window-item.incomplete {
+          background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
+        }
+
+        .selfcare-windowed.needs-completion .window-item.incomplete:hover {
+          background: var(--divider-color, rgba(0, 0, 0, 0.1));
+        }
+
+        .selfcare-windowed.needs-completion .window-item.incomplete:focus {
+          background: var(--divider-color, rgba(0, 0, 0, 0.1));
+        }
+
+        .window-check {
+          color: var(--success-color, #4caf50);
+          font-weight: bold;
+          font-size: 1em;
+        }
+
+        .window-opportunity {
+          color: var(--secondary-text-color);
+          font-size: 1em;
+          display: flex;
+          align-items: center;
+        }
+
+        .window-opportunity ha-icon {
+          --mdc-icon-size: 16px;
+          color: inherit;
+        }
+
+        /* Due today styling for opportunity circle */
+        .selfcare-windowed.needs-completion.due-today .window-opportunity {
+          color: var(--primary-color);
+        }
+
+        /* Overdue styling for opportunity circle */
+        .selfcare-windowed.needs-completion.overdue .window-opportunity {
+          color: var(--error-color, #f44336);
+        }
+
+        .window-label {
+          font-weight: 500;
+          min-width: 60px;
+        }
+
+        .window-time {
+          color: var(--secondary-text-color);
+          font-size: 0.85em;
+          margin-left: auto;
+        }
+
+        /* Self-care task without windows */
+        .task-item[data-task-type="self_care"]:not(.selfcare-windowed) .task-metadata {
+          font-style: italic;
+        }
+
+        /* Fix spacing for self-care windowed tasks */
+        .selfcare-windowed .task-content {
+          padding-right: 0;
+        }
+
+        .selfcare-windowed .task-actions {
+          margin-top: 8px;
+          margin-left: 0; /* Reset margin since we use border + padding now */
+          border-left: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+          padding-left: 12px;
+          margin-left: 12px;
+        }
+
+        /* Full-height complete button styling */
+        .task-item {
+          display: flex;
+          align-items: stretch;
+        }
+
+        .task-content {
+          flex: 1;
+        }
+
+        .task-actions {
+          display: flex;
+          align-items: stretch;
+          border-left: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+          padding-left: 12px;
+          margin-left: 12px;
+        }
+
+        .complete-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex: 1;
+        }
       </style>
 
       <div class="card">
@@ -381,14 +564,69 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         });
       });
 
-      // Complete button click handlers
+      // Complete button click handlers (generic completion - uses current time)
       const completeButtons = this.shadowRoot.querySelectorAll('.complete-btn');
       completeButtons.forEach(button => {
         button.addEventListener('click', (e) => {
           e.stopPropagation(); // Prevent event bubbling to parent task item
           const taskData = JSON.parse(button.dataset.taskData);
           if (taskData) {
+            // Generic completion - backend will determine window assignment based on current time
             this._completeTask(taskData, '');
+          }
+        });
+      });
+
+      // Window item click handlers (window-specific completion with midpoint timestamps)
+      const incompleteWindows = this.shadowRoot.querySelectorAll('.window-item.incomplete');
+      incompleteWindows.forEach(windowItem => {
+        windowItem.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent event bubbling to parent task item
+
+          // Find the parent task item to get task data
+          const taskItem = windowItem.closest('.task-item');
+          if (taskItem && taskItem.dataset.taskData) {
+            const taskData = JSON.parse(taskItem.dataset.taskData);
+            if (taskData && taskData.windows) {
+              // Extract window index from the element ID (format: window-taskId-index)
+              const windowId = windowItem.id;
+              const windowIndexMatch = windowId.match(/window-\d+-(\d+)$/);
+
+              if (windowIndexMatch) {
+                const windowIndex = parseInt(windowIndexMatch[1], 10);
+                const window = taskData.windows[windowIndex];
+
+                                if (window) {
+                  // Calculate the appropriate completion timestamp based on the window
+                  const completionTimestamp = this._calculateCompletionTimestamp(window);
+
+                  // Debug logging
+                  console.log(`Window completion: ${window.label || 'Window ' + (windowIndex + 1)} (${window.start}-${window.end})`);
+                  console.log(`Current time in window: ${this._isCurrentTimeInWindow(window)}`);
+                  console.log(`Completion timestamp: ${completionTimestamp || 'current time'}`);
+
+                  // Complete the task with the calculated timestamp
+                  this._completeTask(taskData, '', completionTimestamp);
+                } else {
+                  console.warn('Window not found at index:', windowIndex);
+                  // Fallback to generic completion
+                  this._completeTask(taskData, '');
+                }
+              } else {
+                console.warn('Could not parse window index from ID:', windowId);
+                // Fallback to generic completion
+                this._completeTask(taskData, '');
+              }
+            }
+          }
+        });
+
+        // Add keyboard support for accessibility
+        windowItem.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            windowItem.click();
           }
         });
       });
@@ -480,7 +718,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       return '<div class="no-tasks">Invalid task data</div>';
     }
 
-    // Build metadata line with pipes
+    // Handle self-care tasks with windows differently
+    if (taskType === 'self_care' && task.windows && task.windows.length > 0 && this._shouldShowWindows(task.windows)) {
+      return this._renderSelfCareTaskWithWindows(task);
+    }
+
+    // Build metadata line with pipes for regular tasks and self-care without windows
     const metadataParts = [];
 
     // Add duration if available
@@ -500,17 +743,54 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       metadataParts.push(TaskTrackerUtils.formatDueDate(dueDate, userContext, task));
     }
 
-    // Calculate overdue color if due date is available
-    const dueDate = task.due_date || task.next_due;
-    const daysOverdue = dueDate ? TaskTrackerUtils.calculateDaysOverdue(dueDate) : 0;
-    const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue);
-    const borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
+        // Calculate overdue color and status
+    // For self-care tasks, use API-provided overdue info; for regular tasks, calculate from due date
+    let isOverdue, isDue, daysOverdue, overdueColor, borderStyle;
 
-    // Determine if task is overdue
-    const isOverdue = dueDate && daysOverdue > 0;
+    if (taskType === 'self_care' && (task.is_overdue !== undefined || task.days_overdue !== undefined)) {
+      // Self-care tasks: use API response
+      isOverdue = task.is_overdue || false;
+      daysOverdue = task.days_overdue || 0;
+      isDue = daysOverdue === 0 && (task.due_date || task.next_due); // Due today
+      const overdueSeverity = task.overdue_severity || 1;
+
+      if (isOverdue) {
+        overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity);
+        borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
+      } else if (isDue) {
+        // Due but not overdue - use blue styling
+        borderStyle = 'border-left: 2px solid var(--primary-color) !important;';
+      } else {
+        borderStyle = '';
+      }
+    } else {
+      // Regular tasks: calculate from due date
+      const dueDate = task.due_date || task.next_due;
+      daysOverdue = dueDate ? TaskTrackerUtils.calculateDaysOverdue(dueDate) : 0;
+      isOverdue = dueDate && daysOverdue > 0;
+      isDue = dueDate && daysOverdue === 0; // Due today
+      const overdueSeverity = task.overdue_severity || 1;
+
+      if (isOverdue) {
+        overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity);
+        borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
+      } else if (isDue) {
+        // Due but not overdue - use blue styling
+        borderStyle = 'border-left: 2px solid var(--primary-color) !important;';
+      } else {
+        borderStyle = '';
+      }
+    }
+
+    const taskClasses = [
+      'task-item',
+      isOverdue || isDue ? 'needs-completion' : '',
+      isOverdue ? 'overdue' : '',
+      isDue && !isOverdue ? 'due-today' : ''
+    ].filter(Boolean).join(' ');
 
     return `
-      <div class="task-item ${isOverdue ? 'needs-completion' : ''}"
+      <div class="${taskClasses}"
            data-task-data='${JSON.stringify(task)}'
            data-task-type="${taskType}"
            style="${borderStyle}">
@@ -532,6 +812,213 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         ` : ''}
       </div>
     `;
+  }
+
+  _renderSelfCareTaskWithWindows(task) {
+    const completedWindows = task.windows.filter(w => w.completed).length;
+    const totalWindows = task.windows.length;
+    const allComplete = completedWindows === totalWindows;
+
+        // Use the overdue information from the API response
+    const isOverdue = task.is_overdue || false;
+    const daysOverdue = task.days_overdue || 0;
+    const isDue = daysOverdue === 0 && (task.due_date || task.next_due); // Due today
+    const overdueSeverity = task.overdue_severity || 1;
+
+    let borderStyle = '';
+    if (isOverdue) {
+      const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity);
+      borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
+    } else if (isDue) {
+      // Due but not overdue - use blue styling
+      borderStyle = 'border-left: 2px solid var(--primary-color) !important;';
+    }
+
+    // Build metadata
+    const metadataParts = [];
+    if (task.duration_minutes) {
+      metadataParts.push(TaskTrackerUtils.formatDuration(task.duration_minutes));
+    }
+    if (task.priority) {
+      metadataParts.push(TaskTrackerUtils.formatPriority(task.priority));
+    }
+
+    // Progress indicator
+    const progressText = `${completedWindows}/${totalWindows} windows complete`;
+    metadataParts.push(progressText);
+
+    // Window status indicators
+    const windowsHtml = task.windows.map((window, index) => {
+      const timeRange = this._formatWindowTimeRange(window);
+      const windowId = `window-${task.id}-${index}`;
+
+      if (window.completed) {
+        return `
+          <div class="window-item completed"
+               role="status"
+               aria-label="Window ${window.label} completed"
+               id="${windowId}">
+            <span class="window-check" aria-hidden="true">✓</span>
+            <span class="window-label">${window.label || 'Window ' + (index + 1)}</span>
+            ${this._config.show_window_times ? `<span class="window-time">${timeRange}</span>` : ''}
+          </div>
+        `;
+      } else {
+        return `
+          <div class="window-item incomplete"
+               role="button"
+               tabindex="0"
+               aria-label="Window ${window.label} available for completion"
+               id="${windowId}">
+            <span class="window-opportunity" aria-hidden="true">
+              <ha-icon icon="mdi:circle-outline"></ha-icon>
+            </span>
+            <span class="window-label">${window.label || 'Window ' + (index + 1)}</span>
+            ${this._config.show_window_times ? `<span class="window-time">${timeRange}</span>` : ''}
+          </div>
+        `;
+      }
+    }).join('');
+    const statusClasses = [
+      'task-item',
+      'selfcare-windowed',
+      allComplete ? 'all-complete' : 'has-opportunities',
+      isOverdue || isDue ? 'needs-completion' : '',
+      isOverdue ? 'overdue' : '',
+      isDue && !isOverdue ? 'due-today' : ''
+    ].filter(Boolean).join(' ');
+
+    return `
+      <div class="${statusClasses}"
+           data-task-data='${JSON.stringify(task)}'
+           data-task-type="self_care"
+           style="${borderStyle}">
+        <div class="task-content">
+          <div class="task-name">
+            ${task.name}
+            ${task.last_completion_notes ? '<div class="completion-indicator" title="Has completion notes"></div>' : ''}
+          </div>
+          ${metadataParts.length > 0 ? `
+            <div class="task-metadata">${metadataParts.join(' | ')}</div>
+          ` : ''}
+          <div class="windows-container">
+            ${windowsHtml}
+          </div>
+        </div>
+        ${this._config.show_completion_actions && !allComplete ? `
+          <div class="task-actions">
+            <button class="complete-btn" data-task-data='${JSON.stringify(task)}'>
+              Complete
+            </button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  _formatWindowTime(timeStr) {
+    // Convert 24-hour time string to 12-hour format for display
+    try {
+      const [hours, minutes] = timeStr.split(':').map(num => parseInt(num, 10));
+      if (isNaN(hours) || isNaN(minutes)) {
+        return timeStr; // Return original if parsing fails
+      }
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    } catch (e) {
+      console.warn('Failed to format window time:', timeStr, e);
+      return timeStr;
+    }
+  }
+
+    _formatWindowTimeRange(window) {
+    const startTime = this._formatWindowTime(window.start);
+    const endTime = this._formatWindowTime(window.end);
+    return `${startTime} - ${endTime}`;
+  }
+
+  _calculateWindowMidpoint(window) {
+    // Parse start and end times (format: "HH:MM")
+    const [startHours, startMinutes] = window.start.split(':').map(num => parseInt(num, 10));
+    const [endHours, endMinutes] = window.end.split(':').map(num => parseInt(num, 10));
+
+    // Convert to minutes since midnight
+    let startTotalMinutes = startHours * 60 + startMinutes;
+    let endTotalMinutes = endHours * 60 + endMinutes;
+
+    // Handle windows that cross midnight (end time is smaller than start time)
+    if (endTotalMinutes < startTotalMinutes) {
+      endTotalMinutes += 24 * 60; // Add 24 hours worth of minutes
+    }
+
+    // Calculate midpoint
+    const midpointMinutes = Math.floor((startTotalMinutes + endTotalMinutes) / 2);
+
+    // Convert back to hours and minutes, handling overflow past midnight
+    const finalMinutes = midpointMinutes % (24 * 60);
+    const hours = Math.floor(finalMinutes / 60);
+    const minutes = finalMinutes % 60;
+
+    return {
+      hours: hours,
+      minutes: minutes,
+      timeString: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    };
+  }
+
+  _isCurrentTimeInWindow(window) {
+    const now = new Date();
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+
+    const [startHours, startMinutes] = window.start.split(':').map(num => parseInt(num, 10));
+    const [endHours, endMinutes] = window.end.split(':').map(num => parseInt(num, 10));
+
+    let startTotalMinutes = startHours * 60 + startMinutes;
+    let endTotalMinutes = endHours * 60 + endMinutes;
+
+    // Handle windows that cross midnight
+    if (endTotalMinutes < startTotalMinutes) {
+      // Window crosses midnight
+      return currentTotalMinutes >= startTotalMinutes || currentTotalMinutes <= endTotalMinutes;
+    } else {
+      // Normal window within same day
+      return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes <= endTotalMinutes;
+    }
+  }
+
+  _calculateCompletionTimestamp(window) {
+    if (this._isCurrentTimeInWindow(window)) {
+      // Current time is within the window - use current timestamp
+      return null; // null means use current time in the API
+    } else {
+      // Current time is outside the window - use window midpoint
+      const midpoint = this._calculateWindowMidpoint(window);
+      const now = new Date();
+
+      // Create a new date with today's date but the midpoint time
+      const completionDate = new Date(now);
+      completionDate.setHours(midpoint.hours, midpoint.minutes, 0, 0);
+
+      // If the midpoint would be in the future (for windows that cross midnight),
+      // we might need to adjust the date
+      if (completionDate > now && window.start > window.end) {
+        // This is a midnight-crossing window and midpoint is tomorrow
+        // Check if we should use yesterday's date instead
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(midpoint.hours, midpoint.minutes, 0, 0);
+
+        // Use yesterday if it makes more sense based on current time
+        if (now.getHours() < 12) { // Assume morning means we want yesterday's night window
+          return yesterday.toISOString();
+        }
+      }
+
+      return completionDate.toISOString();
+    }
   }
 
   getCardSize() {
@@ -603,9 +1090,19 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
         )}
 
         ${TaskTrackerUtils.createConfigRow(
-          'Show Notification',
-          'Display debug notification information',
-          TaskTrackerUtils.createCheckboxInput(this._config.show_notification, 'show_notification')
+          'Show Window Times',
+          'Display time ranges for self-care task windows',
+          TaskTrackerUtils.createCheckboxInput(this._config.show_window_times, 'show_window_times')
+        )}
+
+        ${TaskTrackerUtils.createConfigRow(
+          'Window Display Mode',
+          'When to show time windows on self-care tasks',
+          TaskTrackerUtils.createSelectInput(this._config.window_display_mode, 'window_display_mode', [
+            { value: 'never', label: 'Never' },
+            { value: 'multiple_only', label: 'Multiple Windows Only' },
+            { value: 'always', label: 'Always' }
+          ])
         )}
 
         <div class="section-title">User Settings</div>

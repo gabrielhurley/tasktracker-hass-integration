@@ -198,8 +198,19 @@ export class TaskTrackerUtils {
       const now = new Date();
 
       // For SelfCareTask with time windows and user context, use smart formatting
-      if (task && task.task_type === 'SelfCareTask' && task.time_windows && userContext) {
+      if (task && task.task_type === 'SelfCareTask' && (task.time_windows || task.windows) && userContext) {
+        console.log(`DEBUG: Using formatSelfCareDueDate for task "${task.name}", days_overdue: ${task.days_overdue}, is_overdue: ${task.is_overdue}`);
         return TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
+      }
+
+      // Check API overdue information first (more reliable than date math)
+      if (task && task.days_overdue !== undefined && task.days_overdue > 0) {
+        console.log(`DEBUG: Using API overdue info for task "${task.name || 'unknown'}": ${task.days_overdue} days overdue`);
+        if (task.days_overdue === 1) {
+          return '1 day overdue';
+        } else {
+          return `${task.days_overdue} days overdue`;
+        }
       }
 
       // Fallback to original logic for other task types
@@ -240,12 +251,27 @@ export class TaskTrackerUtils {
     try {
       // Check if task is overdue first - use the days_overdue field from API
       if (task.days_overdue && task.days_overdue > 0) {
+        console.log(`DEBUG: Task "${task.name}" is ${task.days_overdue} days overdue`);
         if (task.days_overdue === 1) {
           return '1 day overdue';
         } else {
           return `${task.days_overdue} days overdue`;
         }
       }
+
+      // Normalize time windows to consistent format [startTime, endTime]
+      const normalizeTimeWindows = (task) => {
+        if (task.windows && task.windows.length > 0) {
+          // New format: array of objects with start/end properties
+          return task.windows.map(window => [window.start, window.end]);
+        } else if (task.time_windows && task.time_windows.length > 0) {
+          // Legacy format: array of [start, end] arrays
+          return task.time_windows;
+        }
+        return [];
+      };
+
+      const timeWindows = normalizeTimeWindows(task);
 
       // Parse user's daily reset time
       const resetTimeParts = userContext.daily_reset_time.split(':');
@@ -277,9 +303,9 @@ export class TaskTrackerUtils {
         }
 
         // For tasks with time windows, find the next incomplete window
-        if (task.time_windows && task.time_windows.length > 0) {
+        if (timeWindows && timeWindows.length > 0) {
           const nextIncompleteWindow = TaskTrackerUtils.findNextIncompleteWindow(
-            task.time_windows,
+            timeWindows,
             now,
             completedWindowsToday
           );
@@ -313,7 +339,7 @@ export class TaskTrackerUtils {
           const dueMinute = dueDate.getMinutes();
           const dueTimeStr = `${dueHour.toString().padStart(2, '0')}:${dueMinute.toString().padStart(2, '0')}`;
 
-          for (const [startTime, endTime] of task.time_windows || []) {
+          for (const [startTime, endTime] of timeWindows || []) {
             if (endTime < startTime) {
               // Cross-midnight window - due time might be early morning of "tomorrow"
               if (dueTimeStr <= endTime) {
@@ -562,7 +588,7 @@ export class TaskTrackerUtils {
   }
 
   // Task and leftover completion methods
-  static async completeTask(hass, taskName, username, notes) {
+  static async completeTask(hass, taskName, username, notes, completed_at = null) {
     try {
       const params = {
         name: taskName
@@ -576,6 +602,10 @@ export class TaskTrackerUtils {
 
       if (notes) {
         params.notes = notes;
+      }
+
+      if (completed_at) {
+        params.completed_at = completed_at;
       }
 
       const response = await hass.callService('tasktracker', 'complete_task_by_name', params, {}, true, true);
@@ -1285,6 +1315,141 @@ export class TaskTrackerUtils {
     notesSection.appendChild(completionNotesTextarea);
 
     // Buttons
+    // Past completion section (initially hidden)
+    const pastCompletionSection = document.createElement('div');
+    pastCompletionSection.style.cssText = `
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--secondary-background-color);
+      border-radius: 8px;
+      border-left: 4px solid var(--primary-color);
+    `;
+
+    const pastCompletionTitle = document.createElement('h4');
+    pastCompletionTitle.textContent = 'When was this completed?';
+    pastCompletionTitle.style.cssText = `
+      margin: 0 0 12px 0;
+      color: var(--primary-text-color);
+      font-size: 1em;
+      font-weight: 500;
+    `;
+
+    const quickOptionsContainer = document.createElement('div');
+    quickOptionsContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    `;
+
+    const yesterdayButton = document.createElement('button');
+    yesterdayButton.textContent = 'Yesterday';
+    yesterdayButton.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--primary-text-color);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9em;
+      text-align: center;
+    `;
+
+    const customDateButton = document.createElement('button');
+    customDateButton.textContent = 'Choose Date/Time';
+    customDateButton.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--primary-text-color);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9em;
+      text-align: center;
+    `;
+
+    // Add hover effects for both buttons
+    [yesterdayButton, customDateButton].forEach(button => {
+      button.addEventListener('mouseenter', () => {
+        button.style.background = 'var(--divider-color)';
+      });
+      button.addEventListener('mouseleave', () => {
+        button.style.background = 'transparent';
+      });
+    });
+
+    quickOptionsContainer.appendChild(yesterdayButton);
+    quickOptionsContainer.appendChild(customDateButton);
+
+    // Custom date/time input (initially hidden)
+    const customDateContainer = document.createElement('div');
+    customDateContainer.style.cssText = `
+      display: none;
+      margin-top: 12px;
+    `;
+
+    const customDateLabel = document.createElement('label');
+    customDateLabel.textContent = 'Completion Date & Time';
+    customDateLabel.style.cssText = `
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+
+    const customDateInput = document.createElement('input');
+    customDateInput.type = 'datetime-local';
+    customDateInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: var(--card-background-color);
+      color: var(--primary-text-color);
+      font-size: 14px;
+      box-sizing: border-box;
+    `;
+
+    // Set default to yesterday at current time
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    customDateInput.value = TaskTrackerUtils.formatDateTimeForInput(yesterday.toISOString());
+
+    customDateContainer.appendChild(customDateLabel);
+    customDateContainer.appendChild(customDateInput);
+
+    const pastCompletionButtons = document.createElement('div');
+    pastCompletionButtons.style.cssText = `
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 12px;
+    `;
+
+    const cancelPastButton = TaskTrackerUtils.createStyledButton('Cancel');
+    cancelPastButton.style.fontSize = '0.9em';
+    cancelPastButton.style.padding = '6px 12px';
+    cancelPastButton.style.background = 'var(--secondary-background-color)';
+    cancelPastButton.style.color = 'var(--primary-text-color)';
+    cancelPastButton.style.border = '1px solid var(--divider-color)';
+
+    const confirmPastButton = TaskTrackerUtils.createStyledButton('Mark as Completed');
+    confirmPastButton.style.fontSize = '0.9em';
+    confirmPastButton.style.padding = '6px 12px';
+
+    pastCompletionButtons.appendChild(cancelPastButton);
+    pastCompletionButtons.appendChild(confirmPastButton);
+
+    pastCompletionSection.appendChild(pastCompletionTitle);
+    pastCompletionSection.appendChild(quickOptionsContainer);
+    pastCompletionSection.appendChild(customDateContainer);
+    pastCompletionSection.appendChild(pastCompletionButtons);
+
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = `
       display: flex;
@@ -1302,18 +1467,26 @@ export class TaskTrackerUtils {
     }
 
     const completeButton = TaskTrackerUtils.createStyledButton('Complete');
+    completeButton.style.border = '1px solid var(--divider-color)';
 
-    // Append buttons in correct order: Cancel, Save (if exists), Complete
+    const completedAlreadyButton = TaskTrackerUtils.createStyledButton('Completed Already');
+    completedAlreadyButton.style.background = 'transparent';
+    completedAlreadyButton.style.color = 'var(--secondary-text-color)';
+    completedAlreadyButton.style.border = 'none';
+
+    // Append buttons in correct order: Cancel, Save (if exists), Completed Already, Complete
     buttonContainer.appendChild(cancelButton);
     if (saveButton) {
       buttonContainer.appendChild(saveButton);
     }
+    buttonContainer.appendChild(completedAlreadyButton);
     buttonContainer.appendChild(completeButton);
 
     // Assemble modal content
     modalContent.appendChild(header);
     modalContent.appendChild(detailsGrid);
     modalContent.appendChild(notesSection);
+    modalContent.appendChild(pastCompletionSection);
     modalContent.appendChild(buttonContainer);
 
     modal.appendChild(modalContent);
@@ -1420,11 +1593,70 @@ export class TaskTrackerUtils {
       }
     });
 
+    // Completed Already button handler
+    completedAlreadyButton.addEventListener('click', () => {
+      pastCompletionSection.style.display = 'block';
+      buttonContainer.style.display = 'none';
+    });
+
+    // Yesterday button handler
+    yesterdayButton.addEventListener('click', async () => {
+      const notes = completionNotesTextarea.value.trim();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      try {
+        await onComplete(notes, yesterday.toISOString());
+        closeModal();
+      } catch (error) {
+        console.error('Failed to complete task:', error);
+        // Error handling is done in the onComplete callback
+      }
+    });
+
+    // Choose Date/Time button handler
+    customDateButton.addEventListener('click', () => {
+      customDateContainer.style.display = 'block';
+      quickOptionsContainer.style.display = 'none';
+    });
+
+    // Cancel past completion button handler
+    cancelPastButton.addEventListener('click', () => {
+      pastCompletionSection.style.display = 'none';
+      buttonContainer.style.display = 'flex';
+      // Reset to quick options view
+      customDateContainer.style.display = 'none';
+      quickOptionsContainer.style.display = 'flex';
+    });
+
+    // Confirm past completion button handler
+    confirmPastButton.addEventListener('click', async () => {
+      const notes = completionNotesTextarea.value.trim();
+      const completedAtValue = customDateInput.value;
+
+      if (!completedAtValue) {
+        TaskTrackerUtils.showError('Please select a completion date and time');
+        return;
+      }
+
+      // Convert datetime-local value to ISO string
+      const completedAt = new Date(completedAtValue).toISOString();
+
+      try {
+        await onComplete(notes, completedAt);
+        closeModal();
+      } catch (error) {
+        console.error('Failed to complete task:', error);
+        // Error handling is done in the onComplete callback
+      }
+    });
+
     // Apply fade-in animation
     modal.style.opacity = '0';
     setTimeout(() => {
       modal.style.transition = 'opacity 0.2s ease';
       modal.style.opacity = '1';
+      // Focus the complete button for keyboard navigation
+      completeButton.focus();
     }, 10);
 
     return modal;
@@ -2099,38 +2331,58 @@ export class TaskTrackerUtils {
     }
   }
 
-  // Calculate overdue color based on days overdue
-  static getOverdueColor(daysOverdue) {
+  // Calculate overdue color based on days overdue and severity
+  static getOverdueColor(daysOverdue, overdueSeverity = 1) {
     if (daysOverdue <= 0) {
       return null; // Not overdue, use default colors
     }
 
-    if (daysOverdue <= 7) {
-      return null; // First week, use default colors
+    // Aggressive severity-based timeline
+    switch (overdueSeverity) {
+      case 3: // Maximum severity: immediate red
+        return `rgb(255, 70, 40)`; // Deep red immediately
+
+      case 2: // Medium severity: immediate orange, fast transition to red
+        if (daysOverdue <= 7) {
+          return `rgb(255, 160, 70)`; // Orange immediately
+        } else {
+          // Days 8-14: Transition from orange to red
+          const progress = Math.min((daysOverdue - 7) / 7, 1); // 0 to 1 over 7 days
+          const red = Math.round(255);
+          const green = Math.round(160 - (90 * progress)); // 160 -> 70
+          const blue = Math.round(70 - (30 * progress)); // 70 -> 40
+          return `rgb(${red}, ${green}, ${blue})`;
+        }
+
+      case 1: // Low severity: traditional timeline
+      default:
+        if (daysOverdue <= 7) {
+          return null; // Grace period, use default colors
+        }
+
+        if (daysOverdue <= 21) {
+          // Week 2-3: Transition from default to orange
+          const progress = (daysOverdue - 7) / 14; // 0 to 1 over 14 days
+          const orangeIntensity = Math.min(progress, 1);
+
+          // Subtle orange color that works with both light and dark themes
+          const red = Math.round(200 + (55 * orangeIntensity));
+          const green = Math.round(140 + (20 * orangeIntensity));
+          const blue = Math.round(60 + (10 * orangeIntensity));
+
+          return `rgb(${red}, ${green}, ${blue})`;
+        }
+
+        // 22+ days: Transition from orange to red
+        const progress = Math.min((daysOverdue - 21) / 14, 1); // 0 to 1 over next 14 days
+
+        // Subtle red color that works with both light and dark themes
+        const red = Math.round(220 + (35 * progress));
+        const green = Math.round(100 - (30 * progress));
+        const blue = Math.round(80 - (40 * progress));
+
+        return `rgb(${red}, ${green}, ${blue})`;
     }
-
-    if (daysOverdue <= 21) {
-      // Week 2-3: Transition from default to orange
-      const progress = (daysOverdue - 7) / 14; // 0 to 1 over 14 days
-      const orangeIntensity = Math.min(progress, 1);
-
-      // Subtle orange color that works with both light and dark themes
-      const red = Math.round(200 + (55 * orangeIntensity));
-      const green = Math.round(140 + (20 * orangeIntensity));
-      const blue = Math.round(60 + (10 * orangeIntensity));
-
-      return `rgb(${red}, ${green}, ${blue})`;
-    }
-
-    // 22+ days: Transition from orange to red
-    const progress = Math.min((daysOverdue - 21) / 14, 1); // 0 to 1 over next 14 days
-
-    // Subtle red color that works with both light and dark themes
-    const red = Math.round(220 + (35 * progress));
-    const green = Math.round(100 - (30 * progress));
-    const blue = Math.round(80 - (40 * progress));
-
-    return `rgb(${red}, ${green}, ${blue})`;
   }
 
   // Common config value change handler for card editors
@@ -2463,12 +2715,12 @@ export class TaskTrackerUtils {
           .preset-btn:hover {
             border-color: var(--primary-color);
             background: var(--primary-color);
-            color: var(--text-primary-color);
+            color: var(--primary-text-color);
           }
           .preset-btn.selected {
             border-color: var(--primary-color);
             background: var(--primary-color);
-            color: var(--text-primary-color);
+            color: var(--primary-text-color);
           }
           .preset-btn:disabled {
             opacity: 0.6;
@@ -2536,7 +2788,7 @@ export class TaskTrackerUtils {
           }
           .btn {
             background: var(--primary-color);
-            color: var(--text-primary-color);
+            color: var(--primary-text-color);
             border: none;
             border-radius: 4px;
             padding: 8px 16px;

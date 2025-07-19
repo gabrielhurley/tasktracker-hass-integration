@@ -9,3 +9,72 @@ Use this rule when generating HTML or CSS for user interfaces.
 - Prefer solutions that provide greater information density.
 - Never use emojis or unicode characters unless specifically instructed to do so.
 - Use colors sparingly.
+
+## Task Left Border Color Coding System
+
+The task cards use a consistent left border color system to indicate task status:
+
+### Blue Border (`needs-completion`)
+- **CSS**: `border-left: 2px solid var(--primary-color)`
+- **Applied to**: Tasks that are due today or overdue (with `needs-completion` class)
+- **Purpose**: "Attention needed" indicator for tasks requiring action today, using Home Assistant's primary color (usually blue)
+
+### Orange-to-Red Spectrum (Severity-Based Overdue Timeline)
+- **Severity 3 (Maximum)**: Immediate deep red `rgb(255,70,40)` when overdue
+- **Severity 2 (Medium)**: Immediate orange `rgb(255,160,70)`, transitions to red over 7 days
+- **Severity 1 (Low)**: Traditional timeline - 7-day grace period, then orange gradient (days 8-21), then red gradient (days 22+)
+- **Applied via**: Dynamic `borderStyle` using `TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity)`
+- **Purpose**: Aggressive visual urgency that respects task-specific impact severity
+
+### Green Border (Completed)
+- **CSS**: `border-left: 2px solid var(--success-color)`
+- **Applied to**: Completed tasks with `.task-item.completed` class
+- **Purpose**: Success/completion indication
+
+### Grey Border (Default)
+- **CSS**: `border-left: 2px solid var(--secondary-text-color)`
+- **Applied to**: Default task state
+- **Purpose**: Neutral state indicator
+
+### No Border (Default/Not Due)
+- **Not due yet**: No colored border styling
+- **No due date**: Uses default styling without additional border colors
+- **Purpose**: Default state for tasks that don't require immediate attention
+
+## Visual Hierarchy
+1. **Red (Severity 3)** = "Critical task overdue - immediate attention required"
+2. **Orange (Severity 2)** = "Important task overdue - needs attention soon"
+3. **Red (Severity 1, long overdue)** = "Low-priority task severely overdue"
+4. **Orange (Severity 1, moderately overdue)** = "Low-priority task getting concerning"
+5. **Blue** = "Due today - needs attention" (due but not yet overdue)
+6. **Green** = "Completed" (success state)
+7. **Grey** = "Normal" (default state for tasks with no due date)
+8. **No border** = "Not due yet" (upcoming tasks)
+
+### Severity-Based Examples
+- **Severity 3**: "Take critical medication", "Submit tax return" → Red immediately
+- **Severity 2**: "Review important document", "Call doctor back" → Orange immediately, red in a week
+- **Severity 1**: "Organize photos", "Clean garage" → Traditional relaxed timeline
+
+## Time Window Completion Behavior
+
+When users click on specific time windows for self-care tasks, the completion behavior should respect user intent regardless of current time:
+
+### Midpoint Timestamp Principle
+- **In-Window Completion**: If current time is within the clicked window, use current timestamp
+- **Out-of-Window Completion**: If current time is outside the clicked window, use the window's midpoint as the completion timestamp
+- **User Intent Respect**: Clicking a specific window indicates intent to complete for that window, regardless of timing
+
+### Examples
+- **Morning Window** (5:00 AM - 12:00 PM): Midpoint = 8:30 AM
+  - User clicks "Morning" at 6:39 PM → Record completion at 8:30 AM
+  - User clicks "Morning" at 9:15 AM → Record completion at 9:15 AM (current time)
+- **Night Window** (9:00 PM - 2:00 AM): Midpoint = 11:30 PM
+  - User clicks "Night" at 6:39 PM → Record completion at 11:30 PM
+  - User clicks "Night" at 10:30 PM → Record completion at 10:30 PM (current time)
+
+### Benefits
+- **Pragmatic Simplicity**: Avoids complex timestamp selection UI
+- **User Agency**: Respects user's intent about which window the completion belongs to
+- **Retroactive Support**: Allows users to log forgotten completions for past windows
+- **Proactive Support**: Allows users to pre-complete upcoming windows

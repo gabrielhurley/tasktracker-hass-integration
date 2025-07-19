@@ -223,8 +223,8 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     const modal = TaskTrackerUtils.createTaskModal(
       task,
       this._config,
-      async (notes) => {
-        await this._completeTask(task, notes);
+      async (notes, completed_at = null) => {
+        await this._completeTask(task, notes, completed_at);
       },
       async (updates) => {
         await this._saveTask(task, updates);
@@ -235,7 +235,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes) {
+  async _completeTask(task, notes, completed_at = null) {
     // Fetch available users if not already loaded and we're in current user mode
     if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
       await this._fetchAvailableUsers();
@@ -251,7 +251,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     }
 
     try {
-      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes);
+      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes, completed_at);
 
       if (response && response.success) {
         TaskTrackerUtils.showSuccess(response.spoken_response || `Task "${task.name}" completed successfully`);
