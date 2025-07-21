@@ -1,5 +1,5 @@
 ---
-description: Any time tests need to be run
+description: Any time tests need to be run for the Home Assistant python or javascript code in the tasktracker-hass-integration directory.
 alwaysApply: false
 ---
 # Testing Rules for TaskTracker Home Assistant Integration

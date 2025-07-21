@@ -670,7 +670,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     const tasksHtml = tasks.length > 0
       ? tasks.map(task => this._renderTaskItem(task, 'task')).join('')
-      : '<div class="no-tasks">None</div>';
+      : null;
 
     const notificationBodyHtml = notification.body ? `
       <div class="notification-focus">
@@ -688,13 +688,20 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       <div class="section-title">Self-Care <span class="all-done-text">(No tasks)</span></div>
     `;
 
-    return `
-      ${notificationBodyHtml}
-      ${selfCareSection}
+    // Tasks section - match the self-care empty state pattern
+    const tasksSection = tasks.length > 0 ? `
       <div class="section-title">Tasks</div>
       <div class="task-list">
         ${tasksHtml}
       </div>
+    ` : `
+      <div class="section-title">Tasks <span class="all-done-text">(No tasks)</span></div>
+    `;
+
+    return `
+      ${notificationBodyHtml}
+      ${selfCareSection}
+      ${tasksSection}
     `;
   }
 
