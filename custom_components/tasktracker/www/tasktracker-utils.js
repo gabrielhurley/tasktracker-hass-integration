@@ -199,13 +199,11 @@ export class TaskTrackerUtils {
 
       // For SelfCareTask with time windows and user context, use smart formatting
       if (task && task.task_type === 'SelfCareTask' && (task.time_windows || task.windows) && userContext) {
-        console.log(`DEBUG: Using formatSelfCareDueDate for task "${task.name}", days_overdue: ${task.days_overdue}, is_overdue: ${task.is_overdue}`);
         return TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
       }
 
       // Check API overdue information first (more reliable than date math)
       if (task && task.days_overdue !== undefined && task.days_overdue > 0) {
-        console.log(`DEBUG: Using API overdue info for task "${task.name || 'unknown'}": ${task.days_overdue} days overdue`);
         if (task.days_overdue === 1) {
           return '1 day overdue';
         } else {
@@ -251,7 +249,6 @@ export class TaskTrackerUtils {
     try {
       // Check if task is overdue first - use the days_overdue field from API
       if (task.days_overdue && task.days_overdue > 0) {
-        console.log(`DEBUG: Task "${task.name}" is ${task.days_overdue} days overdue`);
         if (task.days_overdue === 1) {
           return '1 day overdue';
         } else {
