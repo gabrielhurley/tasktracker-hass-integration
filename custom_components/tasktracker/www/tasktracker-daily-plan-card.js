@@ -32,6 +32,8 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       show_completion_actions: true,
       show_completion_notes: true,
       show_window_times: true,
+      show_recommendation_score: false,
+      low_recommendation_score_threshold: 10,
       window_display_mode: 'always',
       refresh_interval: 600,
     };
@@ -45,6 +47,8 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       show_completion_actions: config.show_completion_actions !== false,
       show_completion_notes: config.show_completion_notes !== false,
       show_window_times: config.show_window_times !== false,
+      show_recommendation_score: config.show_recommendation_score || false,
+      low_recommendation_score_threshold: config.low_recommendation_score_threshold || 10,
       window_display_mode: config.window_display_mode || 'always',
       refresh_interval: config.refresh_interval || 600,
       ...config,
@@ -504,6 +508,16 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           margin-left: 12px;
         }
 
+        /* Low recommendation score fade effect */
+        .task-item.low-recommendation {
+          opacity: 0.6;
+          transition: opacity 0.2s ease;
+        }
+
+        .task-item.low-recommendation:hover {
+          opacity: 0.8;
+        }
+
         /* Full-height complete button styling */
         .task-item {
           display: flex;
@@ -604,11 +618,6 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
                                 if (window) {
                   // Calculate the appropriate completion timestamp based on the window
                   const completionTimestamp = this._calculateCompletionTimestamp(window);
-
-                  // Debug logging
-                  console.log(`Window completion: ${window.label || 'Window ' + (windowIndex + 1)} (${window.start}-${window.end})`);
-                  console.log(`Current time in window: ${this._isCurrentTimeInWindow(window)}`);
-                  console.log(`Completion timestamp: ${completionTimestamp || 'current time'}`);
 
                   // Complete the task with the calculated timestamp
                   this._completeTask(taskData, '', completionTimestamp);
@@ -755,6 +764,13 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       metadataParts.push(TaskTrackerUtils.formatPriority(task.priority));
     }
 
+    // Add recommendation score if available and configured to show
+    if (this._config.show_recommendation_score &&
+        task.recommendation_score !== undefined &&
+        task.recommendation_score !== null) {
+      metadataParts.push(`Score: ${task.recommendation_score}`);
+    }
+
     // Add due date if available with user context for smart formatting
     if (task.due_date || task.next_due) {
       const dueDate = task.due_date || task.next_due;
@@ -801,11 +817,17 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       }
     }
 
+    // Check for low recommendation score to apply fade effect
+    const hasLowScore = task.recommendation_score !== undefined &&
+                       task.recommendation_score !== null &&
+                       task.recommendation_score < this._config.low_recommendation_score_threshold;
+
     const taskClasses = [
       'task-item',
       isOverdue || isDue ? 'needs-completion' : '',
       isOverdue ? 'overdue' : '',
-      isDue && !isOverdue ? 'due-today' : ''
+      isDue && !isOverdue ? 'due-today' : '',
+      hasLowScore ? 'low-recommendation' : ''
     ].filter(Boolean).join(' ');
 
     return `
@@ -862,6 +884,13 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       metadataParts.push(TaskTrackerUtils.formatPriority(task.priority));
     }
 
+    // Add recommendation score if available and configured to show
+    if (this._config.show_recommendation_score &&
+        task.recommendation_score !== undefined &&
+        task.recommendation_score !== null) {
+      metadataParts.push(`Score: ${task.recommendation_score}`);
+    }
+
     // Progress indicator
     const progressText = `${completedWindows}/${totalWindows} windows complete`;
     metadataParts.push(progressText);
@@ -898,13 +927,19 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         `;
       }
     }).join('');
+    // Check for low recommendation score to apply fade effect
+    const hasLowScore = task.recommendation_score !== undefined &&
+                       task.recommendation_score !== null &&
+                       task.recommendation_score < this._config.low_recommendation_score_threshold;
+
     const statusClasses = [
       'task-item',
       'selfcare-windowed',
       allComplete ? 'all-complete' : 'has-opportunities',
       isOverdue || isDue ? 'needs-completion' : '',
       isOverdue ? 'overdue' : '',
-      isDue && !isOverdue ? 'due-today' : ''
+      isDue && !isOverdue ? 'due-today' : '',
+      hasLowScore ? 'low-recommendation' : ''
     ].filter(Boolean).join(' ');
 
     return `
@@ -1118,6 +1153,12 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
           'Show Window Times',
           'Display time ranges for self-care task windows',
           TaskTrackerUtils.createCheckboxInput(this._config.show_window_times, 'show_window_times')
+        )}
+
+        ${TaskTrackerUtils.createConfigRow(
+          'Show Recommendation Score',
+          'Display the recommendation score in task metadata',
+          TaskTrackerUtils.createCheckboxInput(this._config.show_recommendation_score, 'show_recommendation_score')
         )}
 
         ${TaskTrackerUtils.createConfigRow(

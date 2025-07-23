@@ -247,7 +247,7 @@ export class TaskTrackerUtils {
     }
   }
 
-      static formatSelfCareDueDate(dueDate, now, userContext, task) {
+  static formatSelfCareDueDate(dueDate, now, userContext, task) {
     try {
       // Check if task is overdue first - use the days_overdue field from API
       if (task.days_overdue && task.days_overdue > 0) {
