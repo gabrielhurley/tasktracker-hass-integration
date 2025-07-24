@@ -17,6 +17,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._completions = [];
+    this._userContext = null;
     this._loading = false;
     this._initialLoad = true;
     this._refreshing = false;
@@ -159,6 +160,8 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       let newCompletions = [];
       if (response && response.response && response.response.data && response.response.data.items) {
         newCompletions = response.response.data.items;
+        // Capture user context from API response for timezone-aware formatting
+        this._userContext = response.response.data.user_context || null;
       }
 
       // Always update completions and re-render on initial load, only compare for subsequent refreshes
@@ -195,7 +198,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   }
 
   _formatDateTime(dateString) {
-    return TaskTrackerUtils.formatDateTime(dateString);
+    return TaskTrackerUtils.formatDateTime(dateString, this._userContext);
   }
 
   _formatDuration(minutes) {

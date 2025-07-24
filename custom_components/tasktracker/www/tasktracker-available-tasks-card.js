@@ -6,7 +6,7 @@ import { TaskTrackerUtils } from './tasktracker-utils.js';
  * A custom Lovelace card for displaying available tasks:
  * - Shows all available tasks in a list
  * - Modal popup for task details and completion
- * - Configurable filtering and sorting options
+ * - Configurable filtering options
  * - Real-time API integration for task data
  */
 
@@ -200,14 +200,21 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
 
   _categorizeTasksByStatus(tasks) {
     const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     const overdue = [];
+    const due = [];
     const upcoming = [];
 
     tasks.forEach(task => {
       if (task.due_date) {
         const dueDate = new Date(task.due_date);
-        if (dueDate < now) {
+        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+        if (dueDateOnly < today) {
           overdue.push(task);
+        } else if (dueDateOnly.getTime() === today.getTime()) {
+          due.push(task);
         } else {
           upcoming.push(task);
         }
@@ -216,7 +223,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       }
     });
 
-    return { overdue, upcoming };
+    return { overdue, due, upcoming };
   }
 
   _showTaskModal(task, taskIndex) {
@@ -386,12 +393,21 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     let content = '';
 
     if (this._config.highlight_overdue) {
-      const { overdue, upcoming } = this._categorizeTasksByStatus(this._tasks);
+      const { overdue, due, upcoming } = this._categorizeTasksByStatus(this._tasks);
       if (overdue.length > 0) {
         content += `
           <div class="category category-overdue">
             <div class="category-title">Overdue</div>
             ${overdue.map((task, index) => this._renderTaskItem(task, this._tasks.indexOf(task))).join('')}
+          </div>
+        `;
+      }
+
+      if (due.length > 0) {
+        content += `
+          <div class="category category-due">
+            <div class="category-title">Due</div>
+            ${due.map((task, index) => this._renderTaskItem(task, this._tasks.indexOf(task))).join('')}
           </div>
         `;
       }
@@ -406,7 +422,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       }
     } else {
       // Show all tasks without categorization
-      content = this._tasks.map((task, index) => this._renderTaskItem(task, index)).join('');
+      content = this._tasks.sort((a, b) => b.priority_score - a.priority_score).map((task, index) => this._renderTaskItem(task, index)).join('');
     }
 
     return content;

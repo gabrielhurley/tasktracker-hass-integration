@@ -17,6 +17,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._leftovers = [];
+    this._userContext = null;
     this._availableUsers = [];
     this._loading = false;
     this._initialLoad = true;
@@ -152,6 +153,8 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       let newLeftovers = [];
       if (response && response.response && response.response.data && response.response.data.items) {
         newLeftovers = response.response.data.items.slice(0, this._config.max_items);
+        // Capture user context from API response for timezone-aware formatting
+        this._userContext = response.response.data.user_context || null;
       }
 
       // Always update leftovers and re-render on initial load, only compare for subsequent refreshes
@@ -188,17 +191,20 @@ class TaskTrackerLeftoversCard extends HTMLElement {
   }
 
   _categorizeLeftoversByStatus(leftovers) {
-    const now = new Date();
     const good = [];
     const expired = [];
 
     leftovers.forEach(leftover => {
       if (leftover.due_date) {
-        const dueDate = new Date(leftover.due_date);
-        if (dueDate >= now) {
-          good.push(leftover);
-        } else {
+        // Use timezone-aware calculation when user context is available
+        const daysOverdue = this._userContext
+          ? TaskTrackerUtils.calculateLogicalDaysOverdue(leftover.due_date, this._userContext)
+          : TaskTrackerUtils.calculateDaysOverdue(leftover.due_date);
+
+        if (daysOverdue > 0) {
           expired.push(leftover);
+        } else {
+          good.push(leftover);
         }
       } else {
         // If no due date, assume it's good for now
@@ -299,11 +305,17 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     }
   }
 
-  _formatExpirationDate(expirationDateString) {
-    return TaskTrackerUtils.formatDueDate(expirationDateString);
+  _formatExpirationDate(expirationDateString, leftover = null) {
+    return TaskTrackerUtils.formatDueDate(expirationDateString, this._userContext, leftover);
   }
 
   _formatAge(createdAt) {
+    if (this._userContext) {
+      // Use timezone-aware formatting when user context is available
+      return TaskTrackerUtils.formatDateTime(createdAt, this._userContext);
+    }
+
+    // Fallback to browser timezone calculation
     try {
       const created = new Date(createdAt);
       const now = new Date();
@@ -326,6 +338,12 @@ class TaskTrackerLeftoversCard extends HTMLElement {
   _formatExpirationStatus(leftover) {
     if (!leftover.due_date) return 'No expiration';
 
+    if (this._userContext) {
+      // Use timezone-aware calculation when user context is available
+      return TaskTrackerUtils.formatDueDate(leftover.due_date, this._userContext, leftover);
+    }
+
+    // Fallback to browser timezone calculation
     try {
       const dueDate = new Date(leftover.due_date);
       const now = new Date();

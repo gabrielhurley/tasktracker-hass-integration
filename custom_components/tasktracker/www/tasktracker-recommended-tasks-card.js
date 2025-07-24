@@ -17,6 +17,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._tasks = [];
+    this._userContext = null;
     this._availableUsers = [];
     this._enhancedUsers = []; // Track enhanced user mappings
     this._availableMinutes = 30;
@@ -175,6 +176,8 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       let newTasks = [];
       if (response && response.response && response.response.data && response.response.data.items) {
         newTasks = response.response.data.items.slice(0, this._config.max_tasks);
+        // Capture user context from API response for timezone-aware formatting
+        this._userContext = response.response.data.user_context || null;
       }
 
       // Always update tasks and re-render on initial load, only compare for subsequent refreshes
@@ -286,8 +289,8 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     return TaskTrackerUtils.formatDate(dateString);
   }
 
-  _formatDueDate(dueDateString) {
-    return TaskTrackerUtils.formatDueDate(dueDateString);
+  _formatDueDate(dueDateString, task = null) {
+    return TaskTrackerUtils.formatDueDate(dueDateString, this._userContext, task);
   }
 
   _render() {
@@ -448,11 +451,11 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     metadataParts.push(duration);
     metadataParts.push(priority);
     if (task.due_date) {
-      metadataParts.push(`${this._formatDueDate(task.due_date)}`);
+      metadataParts.push(`${this._formatDueDate(task.due_date, task)}`);
     }
 
-    // Calculate overdue color
-    const daysOverdue = TaskTrackerUtils.calculateDaysOverdue(task.due_date);
+    // Calculate overdue color using user context for timezone-aware calculations
+    const daysOverdue = TaskTrackerUtils.calculateDaysOverdue(task.due_date, this._userContext);
     const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue);
     const borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
 

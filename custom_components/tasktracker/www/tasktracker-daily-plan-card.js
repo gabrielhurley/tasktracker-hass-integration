@@ -666,11 +666,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     const selfCare = this._plan?.data?.self_care || [];
     const tasks = this._plan?.data?.tasks || [];
-    const notification = this._plan?.notification || {};
+    const spokenResponse = this._plan?.spoken_response || {};
     const usingDefaults = this._plan?.data?.using_defaults || false;
 
     if (usingDefaults) {
-      return this._renderReducedPlan(tasks, notification);
+      return this._renderReducedPlan(tasks, spokenResponse);
     }
 
     const selfCareHtml = selfCare.length > 0
@@ -681,9 +681,9 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       ? tasks.map(task => this._renderTaskItem(task, 'task')).join('')
       : null;
 
-    const notificationBodyHtml = notification.body ? `
+    const notificationBodyHtml = spokenResponse ? `
       <div class="notification-focus">
-        ${notification.body}
+        ${spokenResponse}
       </div>
     ` : '';
 
@@ -778,7 +778,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       metadataParts.push(TaskTrackerUtils.formatDueDate(dueDate, userContext, task));
     }
 
-        // Calculate overdue color and status
+    // Calculate overdue color and status
     // For self-care tasks, use API-provided overdue info; for regular tasks, calculate from due date
     let isOverdue, isDue, daysOverdue, overdueColor, borderStyle;
 
@@ -799,9 +799,10 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         borderStyle = '';
       }
     } else {
-      // Regular tasks: calculate from due date
+      // Regular tasks: calculate from due date using user context
       const dueDate = task.due_date || task.next_due;
-      daysOverdue = dueDate ? TaskTrackerUtils.calculateDaysOverdue(dueDate) : 0;
+      const userContext = this._plan?.data?.user_context;
+      daysOverdue = dueDate ? TaskTrackerUtils.calculateDaysOverdue(dueDate, userContext) : 0;
       isOverdue = dueDate && daysOverdue > 0;
       isDue = dueDate && daysOverdue === 0; // Due today
       const overdueSeverity = task.overdue_severity || 1;

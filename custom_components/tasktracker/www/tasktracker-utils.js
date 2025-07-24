@@ -6,6 +6,127 @@
 
 export class TaskTrackerUtils {
 
+  // ===========================================
+  // Timezone and Logical Day Utilities
+  // ===========================================
+
+  /**
+   * Convert a Date object to the user's timezone using user context
+   * @param {Date} date - The date to convert
+   * @param {Object} userContext - User context with timezone information
+   * @returns {Date} - Date in user's timezone (approximation)
+   */
+  static dateToUserTimezone(date, userContext) {
+    if (!userContext || !userContext.timezone) {
+      return date; // Fallback to original date
+    }
+
+    try {
+      // Use Intl.DateTimeFormat to get the offset for the user's timezone
+      const userDate = new Date(date.toLocaleString("en-US", { timeZone: userContext.timezone }));
+      const localDate = new Date(date.toLocaleString("en-US"));
+      const offset = localDate.getTime() - userDate.getTime();
+
+      return new Date(date.getTime() - offset);
+    } catch (error) {
+      console.warn('Error converting to user timezone:', error);
+      return date; // Fallback to original date
+    }
+  }
+
+  /**
+   * Get the user's logical date based on their timezone and daily reset time
+   * @param {Object} userContext - User context with timezone and daily_reset_time
+   * @param {Date} [now] - Optional date to use instead of current time
+   * @returns {string} - Logical date in YYYY-MM-DD format
+   */
+  static getUserLogicalDate(userContext, now = null) {
+    if (!userContext) {
+      // Fallback to calendar date if no user context
+      const fallbackDate = now || new Date();
+      return fallbackDate.toISOString().split('T')[0];
+    }
+
+    // Use the backend-provided logical date if available
+    if (userContext.current_logical_date) {
+      return userContext.current_logical_date;
+    }
+
+    // Fallback calculation if current_logical_date not provided
+    const currentTime = now || new Date();
+    const userTime = TaskTrackerUtils.dateToUserTimezone(currentTime, userContext);
+
+    // Parse reset time (format: "HH:MM:SS")
+    const resetTimeParts = (userContext.daily_reset_time || "05:00:00").split(':');
+    const resetHour = parseInt(resetTimeParts[0]);
+    const resetMinute = parseInt(resetTimeParts[1]);
+
+    // If current time is before reset time, we're still in previous logical day
+    if (userTime.getHours() < resetHour ||
+        (userTime.getHours() === resetHour && userTime.getMinutes() < resetMinute)) {
+      const previousDay = new Date(userTime);
+      previousDay.setDate(previousDay.getDate() - 1);
+      return previousDay.toISOString().split('T')[0];
+    }
+
+    return userTime.toISOString().split('T')[0];
+  }
+
+  /**
+   * Calculate days overdue using logical day boundaries
+   * @param {string} dueDateString - ISO date string of when task is due
+   * @param {Object} userContext - User context with timezone information
+   * @param {Date} [now] - Optional current time
+   * @returns {number} - Number of logical days overdue (0 if not overdue)
+   */
+  static calculateLogicalDaysOverdue(dueDateString, userContext, now = null) {
+    if (!dueDateString || !userContext) {
+      return 0;
+    }
+
+    try {
+      const dueDate = new Date(dueDateString);
+      const currentLogicalDate = TaskTrackerUtils.getUserLogicalDate(userContext, now);
+      const dueDateInUserTz = TaskTrackerUtils.dateToUserTimezone(dueDate, userContext);
+      const dueDateLogical = dueDateInUserTz.toISOString().split('T')[0];
+
+      // Calculate difference in logical days
+      const currentDateObj = new Date(currentLogicalDate + 'T00:00:00');
+      const dueDateObj = new Date(dueDateLogical + 'T00:00:00');
+      const diffTime = currentDateObj.getTime() - dueDateObj.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      return Math.max(0, diffDays);
+    } catch (error) {
+      console.warn('Error calculating logical days overdue:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check if a date falls within the current logical day
+   * @param {string|Date} dateInput - Date to check
+   * @param {Object} userContext - User context with timezone information
+   * @returns {boolean} - True if date is within current logical day
+   */
+  static isWithinCurrentLogicalDay(dateInput, userContext) {
+    if (!dateInput || !userContext) {
+      return false;
+    }
+
+    try {
+      const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+      const dateInUserTz = TaskTrackerUtils.dateToUserTimezone(date, userContext);
+      const dateLogical = dateInUserTz.toISOString().split('T')[0];
+      const currentLogical = TaskTrackerUtils.getUserLogicalDate(userContext);
+
+      return dateLogical === currentLogical;
+    } catch (error) {
+      console.warn('Error checking logical day:', error);
+      return false;
+    }
+  }
+
   // User management utilities
   static async getAvailableUsers(hass) {
     try {
@@ -202,7 +323,7 @@ export class TaskTrackerUtils {
         return TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
       }
 
-      // Check API overdue information first (more reliable than date math)
+      // Use backend-provided days_overdue when available (most reliable)
       if (task && task.days_overdue !== undefined && task.days_overdue > 0) {
         if (task.days_overdue === 1) {
           return '1 day overdue';
@@ -211,30 +332,55 @@ export class TaskTrackerUtils {
         }
       }
 
-      // Fallback to original logic for other task types
-      const diffMs = dueDate - now;
+      // Calculate days difference and overdue status
+      let diffDays, isOverdue, diffMs;
 
-      // Use calendar day difference instead of 24-hour periods
-      // This accounts for timezone boundaries properly
-      const dueDateLocal = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-      const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const diffDays = Math.floor((dueDateLocal - nowLocal) / (1000 * 60 * 60 * 24));
+      if (userContext) {
+        // Use logical day calculation when user context is available
+        const logicalDaysOverdue = TaskTrackerUtils.calculateLogicalDaysOverdue(dueDateString, userContext, now);
 
-      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        if (logicalDaysOverdue > 0) {
+          // Task is overdue
+          isOverdue = true;
+          diffDays = -logicalDaysOverdue; // Negative for overdue
+          diffMs = -Math.abs(logicalDaysOverdue) * (1000 * 60 * 60 * 24); // Approximate for hour calculation
+        } else {
+          // Task is not overdue - calculate days until due using logical boundaries
+          isOverdue = false;
+          const currentLogicalDate = TaskTrackerUtils.getUserLogicalDate(userContext, now);
+          const dueDateInUserTz = TaskTrackerUtils.dateToUserTimezone(dueDate, userContext);
+          const dueDateLogical = dueDateInUserTz.toISOString().split('T')[0];
 
-      if (diffMs < 0) {
-        // Overdue
+          const currentDateObj = new Date(currentLogicalDate + 'T00:00:00');
+          const dueDateObj = new Date(dueDateLogical + 'T00:00:00');
+          const diffTime = dueDateObj.getTime() - currentDateObj.getTime();
+          diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          diffMs = dueDate - now;
+        }
+      } else {
+        // Fallback to browser timezone calculation when no user context
+        diffMs = dueDate - now;
+        const dueDateLocal = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        diffDays = Math.floor((dueDateLocal - nowLocal) / (1000 * 60 * 60 * 24));
+        isOverdue = diffMs < 0;
+      }
+
+      // Common formatting logic for all cases
+      const diffHours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+      if (isOverdue) {
+        // Overdue formatting
         const overdueDays = Math.abs(diffDays);
         if (overdueDays === 0) {
           return 'Today';
         } else if (overdueDays === 1) {
-          return '1 day ago';
+          return '1 day overdue';
         } else {
-          return `${overdueDays} days ago`;
+          return `${overdueDays} days overdue`;
         }
       } else if (diffDays === 0) {
-        // Due today
-        return diffHours > 0 ? `${diffHours}h` : 'Now';
+        return 'Today';
       } else if (diffDays === 1) {
         return 'Tomorrow';
       } else {
@@ -270,32 +416,23 @@ export class TaskTrackerUtils {
 
       const timeWindows = normalizeTimeWindows(task);
 
-      // Parse user's daily reset time
-      const resetTimeParts = userContext.daily_reset_time.split(':');
-      const resetHour = parseInt(resetTimeParts[0]);
-      const resetMinute = parseInt(resetTimeParts[1]);
+      // Use the new logical day utilities instead of manual calculation
+      const currentLogicalDate = TaskTrackerUtils.getUserLogicalDate(userContext, now);
+      const dueDateInUserTz = TaskTrackerUtils.dateToUserTimezone(dueDate, userContext);
+      const dueDateLogical = dueDateInUserTz.toISOString().split('T')[0];
 
-      // Calculate logical today and tomorrow boundaries
-      const logicalToday = new Date(now);
-      logicalToday.setHours(resetHour, resetMinute, 0, 0);
-
-      // If current time is before reset time, we're still in yesterday's logical day
-      if (now.getHours() < resetHour || (now.getHours() === resetHour && now.getMinutes() < resetMinute)) {
-        logicalToday.setDate(logicalToday.getDate() - 1);
-      }
-
-      const logicalTomorrow = new Date(logicalToday);
-      logicalTomorrow.setDate(logicalTomorrow.getDate() + 1);
-
-      // Check completion status for time window display
-      const completedWindowsToday = TaskTrackerUtils.getCompletedTimeWindows(task, logicalToday, logicalTomorrow);
+      // Check completion status
       const requiredOccurrences = task.required_occurrences || 1;
       const remainingOccurrences = Math.max(0, requiredOccurrences - (task.today_completions_count || 0));
 
-      // Check if due date falls within logical today
-      if (dueDate >= logicalToday && dueDate < logicalTomorrow) {
+      // Use backend-provided outstanding_occurrences if available (more reliable)
+      const actualRemaining = task.outstanding_occurrences !== undefined ?
+        task.outstanding_occurrences : remainingOccurrences;
+
+      // Check if due date falls within current logical day
+      if (dueDateLogical === currentLogicalDate) {
         // Check if task is complete for today
-        if (remainingOccurrences === 0) {
+        if (actualRemaining === 0) {
           return 'Complete for today';
         }
 
@@ -304,7 +441,7 @@ export class TaskTrackerUtils {
           const nextIncompleteWindow = TaskTrackerUtils.findNextIncompleteWindow(
             timeWindows,
             now,
-            completedWindowsToday
+            task.today_completions || []
           );
 
           if (nextIncompleteWindow) {
@@ -313,7 +450,7 @@ export class TaskTrackerUtils {
 
             // Show progress for multiple occurrence tasks
             if (requiredOccurrences > 1) {
-              return `Today (${startTime12}-${endTime12}) - ${remainingOccurrences} left`;
+              return `Today (${startTime12}-${endTime12}) - ${actualRemaining} left`;
             } else {
               return `Today (${startTime12}-${endTime12})`;
             }
@@ -322,18 +459,21 @@ export class TaskTrackerUtils {
 
         // No specific time window found, show general status
         if (requiredOccurrences > 1) {
-          return `Today - ${remainingOccurrences} left`;
+          return `Today - ${actualRemaining} left`;
         } else {
           return 'Today';
         }
       } else {
-        // Due date is in logical tomorrow or later
-        const daysDiff = Math.floor((dueDate - logicalTomorrow) / (1000 * 60 * 60 * 24));
+        // Calculate days until due using logical boundaries
+        const currentDateObj = new Date(currentLogicalDate + 'T00:00:00');
+        const dueDateObj = new Date(dueDateLogical + 'T00:00:00');
+        const diffTime = dueDateObj.getTime() - currentDateObj.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-        if (daysDiff === 0) {
+        if (diffDays === 1) {
           // Due tomorrow - check for time window context
-          const dueHour = dueDate.getHours();
-          const dueMinute = dueDate.getMinutes();
+          const dueHour = dueDateInUserTz.getHours();
+          const dueMinute = dueDateInUserTz.getMinutes();
           const dueTimeStr = `${dueHour.toString().padStart(2, '0')}:${dueMinute.toString().padStart(2, '0')}`;
 
           for (const [startTime, endTime] of timeWindows || []) {
@@ -352,10 +492,12 @@ export class TaskTrackerUtils {
           }
 
           return 'Tomorrow';
-        } else if (daysDiff === 1) {
+        } else if (diffDays === 2) {
           return 'In 2 days';
+                 } else if (diffDays > 2) {
+           return `In ${diffDays} days`;
         } else {
-          return `In ${daysDiff + 1} days`;
+          return 'Today';
         }
       }
     } catch (error) {
@@ -374,16 +516,13 @@ export class TaskTrackerUtils {
     try {
       const [hours, minutes] = time24.split(':');
       const hour = parseInt(hours);
-      const minute = minutes;
+      const ampm = hour < 12 ? 'AM' : 'PM';
+      const hour12 = hour % 12 || 12;
 
-      if (hour === 0) {
-        return `12:${minute} AM`;
-      } else if (hour < 12) {
-        return `${hour}:${minute} AM`;
-      } else if (hour === 12) {
-        return `12:${minute} PM`;
+      if (minutes === '00') {
+        return `${hour12} ${ampm}`;
       } else {
-        return `${hour - 12}:${minute} PM`;
+        return `${hour12}:${minutes} ${ampm}`;
       }
     } catch (error) {
       // Fallback to original format if conversion fails
@@ -492,14 +631,45 @@ export class TaskTrackerUtils {
     return timeWindows.length > 0 ? timeWindows[0] : null;
   }
 
-  static formatDateTime(dateString) {
+  static formatDateTime(dateString, userContext = null) {
     try {
       const date = new Date(dateString);
       const now = new Date();
       const diffMs = now - date;
 
-      // Use calendar day difference instead of 24-hour periods
-      // This accounts for timezone boundaries properly
+      // Use logical day calculation when user context is available
+      if (userContext) {
+        const dateInUserTz = TaskTrackerUtils.dateToUserTimezone(date, userContext);
+        const nowInUserTz = TaskTrackerUtils.dateToUserTimezone(now, userContext);
+
+        const currentLogicalDate = TaskTrackerUtils.getUserLogicalDate(userContext, now);
+        const dateLogical = TaskTrackerUtils.dateToUserTimezone(date, userContext).toISOString().split('T')[0];
+
+        const currentDateObj = new Date(currentLogicalDate + 'T00:00:00');
+        const dateLogicalObj = new Date(dateLogical + 'T00:00:00');
+        const diffTime = currentDateObj.getTime() - dateLogicalObj.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+        // Return relative time for recent completions
+        if (diffDays === 0) {
+          if (diffHours === 0) {
+            if (diffMinutes < 1) {
+              return 'Just now';
+            }
+            return `${diffMinutes}m ago`;
+          }
+          return `${diffHours}h ago`;
+        } else if (diffDays === 1) {
+          return 'Yesterday';
+        } else {
+          return `${diffDays} days ago`;
+        }
+      }
+
+      // Fallback to original calendar day calculation
       const dateLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const diffDays = Math.floor((nowLocal - dateLocal) / (1000 * 60 * 60 * 24));
@@ -2307,12 +2477,18 @@ export class TaskTrackerUtils {
   }
 
     // Calculate days overdue for a task
-  static calculateDaysOverdue(dueDateString) {
+  static calculateDaysOverdue(dueDateString, userContext = null) {
     if (!dueDateString) {
       return 0;
     }
 
     try {
+      // Use logical day calculation when user context is available
+      if (userContext) {
+        return TaskTrackerUtils.calculateLogicalDaysOverdue(dueDateString, userContext);
+      }
+
+      // Fallback to original calendar day calculation
       const dueDate = new Date(dueDateString);
       const now = new Date();
 
@@ -3030,5 +3206,52 @@ export class TaskTrackerUtils {
         <div class="slider-value">${displayValue}</div>
       </div>
     `;
+  }
+
+  // ===========================================
+  // Testing and Debugging Utilities
+  // ===========================================
+
+  /**
+   * Test the timezone and logical day utilities
+   * This function can be called from browser console for testing
+   * @param {Object} userContext - User context object to test with
+   */
+  static testTimezoneUtilities(userContext = null) {
+    const testContext = userContext || {
+      username: "testuser",
+      timezone: "America/Los_Angeles",
+      daily_reset_time: "05:00:00",
+      daily_task_cutoff_time: "20:00:00",
+      current_logical_date: "2025-07-23"
+    };
+
+    console.group('TaskTracker Timezone Utilities Test');
+
+    const now = new Date();
+    console.log('Current time (browser):', now.toISOString());
+    console.log('User context:', testContext);
+
+    const userTime = TaskTrackerUtils.dateToUserTimezone(now, testContext);
+    console.log('User timezone time:', userTime.toISOString());
+
+    const logicalDate = TaskTrackerUtils.getUserLogicalDate(testContext, now);
+    console.log('User logical date:', logicalDate);
+
+    const testDueDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
+    const daysOverdue = TaskTrackerUtils.calculateLogicalDaysOverdue(testDueDate.toISOString(), testContext, now);
+    console.log('Days overdue for date 2 days ago:', daysOverdue);
+
+    const todayCheck = TaskTrackerUtils.isWithinCurrentLogicalDay(now, testContext);
+    console.log('Is current time within logical day:', todayCheck);
+
+    console.groupEnd();
+
+    return {
+      userTime,
+      logicalDate,
+      daysOverdue,
+      todayCheck
+    };
   }
 }

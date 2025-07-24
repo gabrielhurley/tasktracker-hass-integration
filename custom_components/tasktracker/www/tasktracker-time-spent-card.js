@@ -17,6 +17,7 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._completions = [];
+    this._userContext = null;
     this._totalMinutes = 0;
     this._loading = false;
     this._initialLoad = true;
@@ -172,6 +173,8 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
       if (response && response.response && response.response.data) {
         newTotalMinutes = response.response.data.total_duration;
         newCompletions = response.response.data.items;
+        // Capture user context from API response for potential future timezone-aware formatting
+        this._userContext = response.response.data.user_context || null;
       }
 
       // Always update data and re-render on initial load, only compare for subsequent refreshes
