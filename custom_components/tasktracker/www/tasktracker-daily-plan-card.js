@@ -783,6 +783,16 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       metadataParts.push(`Score: ${task.recommendation_score}`);
     }
 
+        // Add occurrence progress for self-care tasks (only when multiple occurrences required)
+    if (taskType === 'self_care' &&
+        task.required_occurrences !== undefined &&
+        task.outstanding_occurrences !== undefined &&
+        task.required_occurrences > 1) {
+      const completedOccurrences = task.required_occurrences - task.outstanding_occurrences;
+      const progressText = `${completedOccurrences}/${task.required_occurrences} occurrences complete`;
+      metadataParts.push(progressText);
+    }
+
     // Add due date if available with user context for smart formatting
     if (task.due_date || task.next_due) {
       const dueDate = task.due_date || task.next_due;
