@@ -396,6 +396,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           color: var(--primary-text-color);
         }
 
+        .window-item.inferred-complete {
+          background: rgba(76, 175, 80, 0.08);
+          color: var(--primary-text-color);
+          border-left: 2px solid rgba(76, 175, 80, 0.3);
+        }
+
         .window-item.incomplete {
           background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
           color: var(--primary-text-color);
@@ -453,6 +459,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
         .window-check {
           color: var(--success-color, #4caf50);
+          font-weight: bold;
+          font-size: 1em;
+        }
+
+        .window-check.inferred {
+          color: rgba(76, 175, 80, 0.7);
           font-weight: bold;
           font-size: 1em;
         }
@@ -861,6 +873,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     const totalWindows = task.windows.length;
     const allComplete = completedWindows === totalWindows;
 
+    // Calculate progress based on outstanding occurrences rather than windows
+    const requiredOccurrences = task.required_occurrences || totalWindows;
+    const outstandingOccurrences = task.outstanding_occurrences || 0;
+    const completedOccurrences = requiredOccurrences - outstandingOccurrences;
+    const allOccurrencesComplete = outstandingOccurrences === 0;
+
         // Use the overdue information from the API response
     const isOverdue = task.is_overdue || false;
     const daysOverdue = task.days_overdue || 0;
@@ -892,14 +910,37 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       metadataParts.push(`Score: ${task.recommendation_score}`);
     }
 
-    // Progress indicator
-    const progressText = `${completedWindows}/${totalWindows} windows complete`;
+    // Progress indicator based on occurrences, not windows
+    const progressText = `${completedOccurrences}/${requiredOccurrences} occurrences complete`;
     metadataParts.push(progressText);
+
+    // Calculate unmapped completions and determine which windows to mark as inferred
+    const unmappedCompletions = completedOccurrences - completedWindows;
+    const inferredWindows = new Set();
+
+    if (unmappedCompletions > 0) {
+      // Find past windows and mark the earliest ones as inferred complete
+      const pastWindows = task.windows
+        .map((window, index) => ({ window, index }))
+        .filter(({ window }) => !window.completed && this._isWindowInPast(window))
+        .sort((a, b) => {
+          // Sort by window start time
+          const timeA = a.window.start.split(':').map(n => parseInt(n, 10));
+          const timeB = b.window.start.split(':').map(n => parseInt(n, 10));
+          return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+        });
+
+      // Mark the earliest past windows as inferred complete
+      for (let i = 0; i < Math.min(unmappedCompletions, pastWindows.length); i++) {
+        inferredWindows.add(pastWindows[i].index);
+      }
+    }
 
     // Window status indicators
     const windowsHtml = task.windows.map((window, index) => {
       const timeRange = this._formatWindowTimeRange(window);
       const windowId = `window-${task.id}-${index}`;
+      const isInferredComplete = inferredWindows.has(index);
 
       if (window.completed) {
         return `
@@ -908,6 +949,17 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
                aria-label="Window ${window.label} completed"
                id="${windowId}">
             <span class="window-check" aria-hidden="true">✓</span>
+            <span class="window-label">${window.label || 'Window ' + (index + 1)}</span>
+            ${this._config.show_window_times ? `<span class="window-time">${timeRange}</span>` : ''}
+          </div>
+        `;
+      } else if (isInferredComplete) {
+        return `
+          <div class="window-item inferred-complete"
+               role="status"
+               aria-label="Window ${window.label} likely completed (inferred)"
+               id="${windowId}">
+            <span class="window-check inferred" aria-hidden="true" title="Completion inferred from unmapped activity">✓?</span>
             <span class="window-label">${window.label || 'Window ' + (index + 1)}</span>
             ${this._config.show_window_times ? `<span class="window-time">${timeRange}</span>` : ''}
           </div>
@@ -936,7 +988,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     const statusClasses = [
       'task-item',
       'selfcare-windowed',
-      allComplete ? 'all-complete' : 'has-opportunities',
+      allOccurrencesComplete ? 'all-complete' : 'has-opportunities',
       isOverdue || isDue ? 'needs-completion' : '',
       isOverdue ? 'overdue' : '',
       isDue && !isOverdue ? 'due-today' : '',
@@ -960,7 +1012,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
             ${windowsHtml}
           </div>
         </div>
-        ${this._config.show_completion_actions && !allComplete ? `
+        ${this._config.show_completion_actions && !allOccurrencesComplete ? `
           <div class="task-actions">
             <button class="complete-btn" data-task-data='${JSON.stringify(task)}'>
               Complete
@@ -1047,6 +1099,29 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     } else {
       // Normal window within same day
       return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes <= endTotalMinutes;
+    }
+  }
+
+  _isWindowInPast(window) {
+    const now = new Date();
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+
+    const [endHours, endMinutes] = window.end.split(':').map(num => parseInt(num, 10));
+    let endTotalMinutes = endHours * 60 + endMinutes;
+
+    // Handle windows that cross midnight
+    const [startHours, startMinutes] = window.start.split(':').map(num => parseInt(num, 10));
+    let startTotalMinutes = startHours * 60 + startMinutes;
+
+    if (endTotalMinutes < startTotalMinutes) {
+      // Window crosses midnight - it's in the past if current time is after the end time
+      // and before the start time (meaning we're in the next day after the window ended)
+      return currentTotalMinutes > endTotalMinutes && currentTotalMinutes < startTotalMinutes;
+    } else {
+      // Normal window - it's in the past if current time is after the end time
+      return currentTotalMinutes > endTotalMinutes;
     }
   }
 
