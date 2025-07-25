@@ -319,7 +319,13 @@ export class TaskTrackerUtils {
       const now = new Date();
 
       // For SelfCareTask with time windows and user context, use smart formatting
-      if (task && task.task_type === 'SelfCareTask' && (task.time_windows || task.windows) && userContext) {
+      // Check that windows array actually has content, not just that it exists
+      const hasWindows = task && (
+        (task.time_windows && task.time_windows.length > 0) ||
+        (task.windows && task.windows.length > 0)
+      );
+
+      if (task && task.task_type === 'SelfCareTask' && hasWindows && userContext) {
         return TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
       }
 
