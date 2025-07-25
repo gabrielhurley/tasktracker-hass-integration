@@ -796,7 +796,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     // Add due date if available with user context for smart formatting
     if (task.due_date || task.next_due) {
       const dueDate = task.due_date || task.next_due;
-      const userContext = this._plan?.data?.user_context;
+      const userContext = this._plan?.user_context;
       metadataParts.push(TaskTrackerUtils.formatDueDate(dueDate, userContext, task));
     }
 

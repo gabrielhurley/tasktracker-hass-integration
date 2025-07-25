@@ -318,18 +318,6 @@ export class TaskTrackerUtils {
       const dueDate = new Date(dueDateString);
       const now = new Date();
 
-      // DEBUG: Add temporary logging to diagnose the issue
-      if (task && task.task_type === 'SelfCareTask') {
-        console.log(`[DEBUG] formatDueDate for ${task.name}:`, {
-          dueDateString,
-          dueDate: dueDate.toISOString(),
-          now: now.toISOString(),
-          userContext,
-          hasWindows: task.windows && task.windows.length > 0,
-          taskType: task.task_type
-        });
-      }
-
       // For SelfCareTask with time windows and user context, use smart formatting
       // Check that windows array actually has content, not just that it exists
       const hasWindows = task && (
@@ -338,107 +326,42 @@ export class TaskTrackerUtils {
       );
 
       if (task && task.task_type === 'SelfCareTask' && hasWindows && userContext) {
-        const result = TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
-        console.log(`[DEBUG] ${task.name} using formatSelfCareDueDate -> ${result}`);
-        return result;
+        return TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
       }
 
       // Use backend-provided days_overdue when available (most reliable)
       if (task && task.days_overdue !== undefined && task.days_overdue > 0) {
         if (task.days_overdue === 1) {
-          const result = '1 day overdue';
-          if (task.task_type === 'SelfCareTask') {
-            console.log(`[DEBUG] ${task.name} using backend days_overdue -> ${result} (days_overdue: ${task.days_overdue})`);
-          }
-          return result;
+          return '1 day overdue';
         } else {
-          const result = `${task.days_overdue} days overdue`;
-          if (task.task_type === 'SelfCareTask') {
-            console.log(`[DEBUG] ${task.name} using backend days_overdue -> ${result} (days_overdue: ${task.days_overdue})`);
-          }
-          return result;
+          return `${task.days_overdue} days overdue`;
         }
       }
 
-      // Calculate days difference and overdue status
-      let diffDays, isOverdue, diffMs;
-
-      if (userContext) {
-        // Use logical day calculation when user context is available
-        const logicalDaysOverdue = TaskTrackerUtils.calculateLogicalDaysOverdue(dueDateString, userContext, now);
-
-        if (logicalDaysOverdue > 0) {
-          // Task is overdue
-          isOverdue = true;
-          diffDays = -logicalDaysOverdue; // Negative for overdue
-          diffMs = -Math.abs(logicalDaysOverdue) * (1000 * 60 * 60 * 24); // Approximate for hour calculation
-        } else {
-          // Task is not overdue - calculate days until due using logical boundaries
-          isOverdue = false;
-          const currentLogicalDate = TaskTrackerUtils.getUserLogicalDate(userContext, now);
-          const dueDateInUserTz = TaskTrackerUtils.dateToUserTimezone(dueDate, userContext);
-          const dueDateLogical = dueDateInUserTz.toISOString().split('T')[0];
-
-          const currentDateObj = new Date(currentLogicalDate + 'T00:00:00');
-          const dueDateObj = new Date(dueDateLogical + 'T00:00:00');
-          const diffTime = dueDateObj.getTime() - currentDateObj.getTime();
-          diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          diffMs = dueDate - now;
-        }
-      } else {
-        // Fallback to browser timezone calculation when no user context
-        diffMs = dueDate - now;
-        const dueDateLocal = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-        const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        diffDays = Math.floor((dueDateLocal - nowLocal) / (1000 * 60 * 60 * 24));
-        isOverdue = diffMs < 0;
-      }
-
-      // Common formatting logic for all cases
-      const diffHours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      // Calculate the difference in days
+      const diffTime = dueDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const isOverdue = diffDays < 0;
 
       if (isOverdue) {
         // Overdue formatting
         const overdueDays = Math.abs(diffDays);
         if (overdueDays === 0) {
-          const result = 'Today';
-          if (task && task.task_type === 'SelfCareTask') {
-            console.log(`[DEBUG] ${task.name} using regular logic (overdue) -> ${result} (overdueDays: ${overdueDays})`);
-          }
-          return result;
+          return 'Today';
         } else if (overdueDays === 1) {
-          const result = '1 day overdue';
-          if (task && task.task_type === 'SelfCareTask') {
-            console.log(`[DEBUG] ${task.name} using regular logic (overdue) -> ${result} (overdueDays: ${overdueDays})`);
-          }
-          return result;
+          return '1 day overdue';
         } else {
-          const result = `${overdueDays} days overdue`;
-          if (task && task.task_type === 'SelfCareTask') {
-            console.log(`[DEBUG] ${task.name} using regular logic (overdue) -> ${result} (overdueDays: ${overdueDays})`);
-          }
-          return result;
+          return `${overdueDays} days overdue`;
         }
       } else if (diffDays === 0) {
-        const result = 'Today';
-        if (task && task.task_type === 'SelfCareTask') {
-          console.log(`[DEBUG] ${task.name} using regular logic -> ${result} (diffDays: ${diffDays})`);
-        }
-        return result;
+        return 'Today';
       } else if (diffDays === 1) {
-        const result = 'Tomorrow';
-        if (task && task.task_type === 'SelfCareTask') {
-          console.log(`[DEBUG] ${task.name} using regular logic -> ${result} (diffDays: ${diffDays})`);
-        }
-        return result;
+        return 'Tomorrow';
       } else {
-        const result = `${diffDays} days`;
-        if (task && task.task_type === 'SelfCareTask') {
-          console.log(`[DEBUG] ${task.name} using regular logic -> ${result} (diffDays: ${diffDays})`);
-        }
-        return result;
+        return `${diffDays} days`;
       }
-    } catch {
+    } catch (error) {
+      console.error('Error formatting due date:', error);
       return 'Unknown';
     }
   }
