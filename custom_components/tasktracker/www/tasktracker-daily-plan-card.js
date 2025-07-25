@@ -297,7 +297,6 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           border-radius: 4px;
         }
         .notification-focus {
-          background: var(--card-background-color);
           color: var(--primary-text-color);
           padding: 12px;
           border-radius: 4px;
@@ -420,15 +419,15 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
         /* Styling for incomplete windows based on task status */
         .selfcare-windowed.needs-completion.due-today .window-item.incomplete {
-          background: rgba(var(--primary-color-rgb, 3, 169, 244), 0.1);
+          background: rgba(3, 169, 244, 0.1);
         }
 
         .selfcare-windowed.needs-completion.due-today .window-item.incomplete:hover {
-          background: rgba(var(--primary-color-rgb, 3, 169, 244), 0.2);
+          background: rgba(3, 169, 244, 0.2);
         }
 
         .selfcare-windowed.needs-completion.due-today .window-item.incomplete:focus {
-          background: rgba(var(--primary-color-rgb, 3, 169, 244), 0.2);
+          background: rgba(3, 169, 244, 0.2);
         }
 
         /* Overdue styling for incomplete windows */

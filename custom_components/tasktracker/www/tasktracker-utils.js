@@ -2205,7 +2205,7 @@ export class TaskTrackerUtils {
       .card {
         padding: 16px;
         font-family: var(--primary-font-family);
-        background: var(--card-background-color);
+        background: var(--ha-card-background, var(--card-background-color, #fff))
         border-radius: var(--ha-card-border-radius, 12px);
         border: 1px solid var(--divider-color);
       }
