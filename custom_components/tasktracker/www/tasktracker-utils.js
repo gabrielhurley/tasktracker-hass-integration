@@ -404,8 +404,9 @@ export class TaskTrackerUtils {
       const actualRemaining = task.outstanding_occurrences !== undefined ?
         task.outstanding_occurrences : remainingOccurrences;
 
-      // Check if due date falls within current logical day
-      if (dueDateLogical === currentLogicalDate) {
+      // PRIORITY FIX: For self-care tasks, if there are outstanding occurrences and the task is not overdue,
+      // show it as actionable "Today" regardless of when the next specific window starts
+      if (actualRemaining > 0 && task.days_overdue === 0) {
         // Check if task is complete for today
         if (actualRemaining === 0) {
           return 'Complete for today';
@@ -423,13 +424,29 @@ export class TaskTrackerUtils {
             const startTime12 = TaskTrackerUtils.convertTo12HourFormat(nextIncompleteWindow[0]);
             const endTime12 = TaskTrackerUtils.convertTo12HourFormat(nextIncompleteWindow[1]);
 
-            // Show progress for multiple occurrence tasks
+            // Always show as "Today" when there are outstanding occurrences
             if (requiredOccurrences > 1) {
               return `Today (${startTime12}-${endTime12}) - ${actualRemaining} left`;
             } else {
               return `Today (${startTime12}-${endTime12})`;
             }
           }
+        }
+
+        // No specific time window found, but there are outstanding occurrences
+        // Show as "Today" since the task is actionable
+        if (requiredOccurrences > 1) {
+          return `Today - ${actualRemaining} left`;
+        } else {
+          return 'Today';
+        }
+      }
+
+      // Check if due date falls within current logical day (fallback for edge cases)
+      if (dueDateLogical === currentLogicalDate) {
+        // Check if task is complete for today
+        if (actualRemaining === 0) {
+          return 'Complete for today';
         }
 
         // No specific time window found, show general status
@@ -469,8 +486,8 @@ export class TaskTrackerUtils {
           return 'Tomorrow';
         } else if (diffDays === 2) {
           return 'In 2 days';
-                 } else if (diffDays > 2) {
-           return `In ${diffDays} days`;
+        } else if (diffDays > 2) {
+          return `In ${diffDays} days`;
         } else {
           return 'Today';
         }
@@ -478,9 +495,8 @@ export class TaskTrackerUtils {
     } catch (error) {
       console.warn('Error in formatSelfCareDueDate:', error);
       // Fallback to simple relative time
-      const diffMs = dueDate - now;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
+      const diffTime = dueDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       if (diffDays === 0) return 'Today';
       if (diffDays === 1) return 'Tomorrow';
       return `${diffDays} days`;
