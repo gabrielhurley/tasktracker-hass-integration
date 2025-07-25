@@ -318,6 +318,18 @@ export class TaskTrackerUtils {
       const dueDate = new Date(dueDateString);
       const now = new Date();
 
+      // DEBUG: Add temporary logging to diagnose the issue
+      if (task && task.task_type === 'SelfCareTask') {
+        console.log(`[DEBUG] formatDueDate for ${task.name}:`, {
+          dueDateString,
+          dueDate: dueDate.toISOString(),
+          now: now.toISOString(),
+          userContext,
+          hasWindows: task.windows && task.windows.length > 0,
+          taskType: task.task_type
+        });
+      }
+
       // For SelfCareTask with time windows and user context, use smart formatting
       // Check that windows array actually has content, not just that it exists
       const hasWindows = task && (
@@ -326,15 +338,25 @@ export class TaskTrackerUtils {
       );
 
       if (task && task.task_type === 'SelfCareTask' && hasWindows && userContext) {
-        return TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
+        const result = TaskTrackerUtils.formatSelfCareDueDate(dueDate, now, userContext, task);
+        console.log(`[DEBUG] ${task.name} using formatSelfCareDueDate -> ${result}`);
+        return result;
       }
 
       // Use backend-provided days_overdue when available (most reliable)
       if (task && task.days_overdue !== undefined && task.days_overdue > 0) {
         if (task.days_overdue === 1) {
-          return '1 day overdue';
+          const result = '1 day overdue';
+          if (task.task_type === 'SelfCareTask') {
+            console.log(`[DEBUG] ${task.name} using backend days_overdue -> ${result} (days_overdue: ${task.days_overdue})`);
+          }
+          return result;
         } else {
-          return `${task.days_overdue} days overdue`;
+          const result = `${task.days_overdue} days overdue`;
+          if (task.task_type === 'SelfCareTask') {
+            console.log(`[DEBUG] ${task.name} using backend days_overdue -> ${result} (days_overdue: ${task.days_overdue})`);
+          }
+          return result;
         }
       }
 
@@ -379,18 +401,42 @@ export class TaskTrackerUtils {
         // Overdue formatting
         const overdueDays = Math.abs(diffDays);
         if (overdueDays === 0) {
-          return 'Today';
+          const result = 'Today';
+          if (task && task.task_type === 'SelfCareTask') {
+            console.log(`[DEBUG] ${task.name} using regular logic (overdue) -> ${result} (overdueDays: ${overdueDays})`);
+          }
+          return result;
         } else if (overdueDays === 1) {
-          return '1 day overdue';
+          const result = '1 day overdue';
+          if (task && task.task_type === 'SelfCareTask') {
+            console.log(`[DEBUG] ${task.name} using regular logic (overdue) -> ${result} (overdueDays: ${overdueDays})`);
+          }
+          return result;
         } else {
-          return `${overdueDays} days overdue`;
+          const result = `${overdueDays} days overdue`;
+          if (task && task.task_type === 'SelfCareTask') {
+            console.log(`[DEBUG] ${task.name} using regular logic (overdue) -> ${result} (overdueDays: ${overdueDays})`);
+          }
+          return result;
         }
       } else if (diffDays === 0) {
-        return 'Today';
+        const result = 'Today';
+        if (task && task.task_type === 'SelfCareTask') {
+          console.log(`[DEBUG] ${task.name} using regular logic -> ${result} (diffDays: ${diffDays})`);
+        }
+        return result;
       } else if (diffDays === 1) {
-        return 'Tomorrow';
+        const result = 'Tomorrow';
+        if (task && task.task_type === 'SelfCareTask') {
+          console.log(`[DEBUG] ${task.name} using regular logic -> ${result} (diffDays: ${diffDays})`);
+        }
+        return result;
       } else {
-        return `${diffDays} days`;
+        const result = `${diffDays} days`;
+        if (task && task.task_type === 'SelfCareTask') {
+          console.log(`[DEBUG] ${task.name} using regular logic -> ${result} (diffDays: ${diffDays})`);
+        }
+        return result;
       }
     } catch {
       return 'Unknown';
