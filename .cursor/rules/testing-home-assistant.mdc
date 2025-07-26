@@ -4,6 +4,11 @@ alwaysApply: false
 ---
 # Testing Rules for TaskTracker Home Assistant Integration
 
+## Always check your directory and vitrualenv
+
+**CRITICAL:** Always ensure you are in the `tasktracker-hass-integration` directory
+**CRITICAL:** Always ensure you have activate the tasktracker-hass-integration virtualenv with the `source .venv/bin/activate` command.
+
 ## Always Use the run_tests.py Helper Script
 
 **CRITICAL:** Always use the `run_tests.py` helper script to run tests instead of running pytest directly. This script:

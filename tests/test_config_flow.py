@@ -2,15 +2,22 @@
 
 import asyncio
 from collections.abc import Generator
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant import config_entries
+from homeassistant.const import CONF_API_KEY, CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.tasktracker.const import DOMAIN
+from custom_components.tasktracker.config_flow import TaskTrackerOptionsFlow
+from custom_components.tasktracker.const import (
+    CONF_HA_USER_ID,
+    CONF_TASKTRACKER_USERNAME,
+    CONF_USERS,
+    DOMAIN,
+)
 
 
 class TestTaskTrackerConfigFlow:
@@ -809,3 +816,144 @@ class TestTaskTrackerConfigFlow:
                     users[0]["ha_user_id"] == "user-id-123"
                 )  # Should be extracted ID, not display name
                 assert users[0]["tasktracker_username"] == "gabriel"
+
+
+@pytest.mark.asyncio
+async def test_options_flow_reload_on_api_settings_change(hass: HomeAssistant):
+    """Test that changing API settings triggers integration reload."""
+    # Create a mock config entry using the proper pattern
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HOST: "http://old-host:8000",
+            CONF_API_KEY: "old_api_key",
+            CONF_USERS: [
+                {
+                    CONF_HA_USER_ID: "user1",
+                    CONF_TASKTRACKER_USERNAME: "testuser"
+                }
+            ]
+        },
+        entry_id="test_entry_id"
+    )
+    config_entry.add_to_hass(hass)
+
+    # Mock async_reload on the config entries registry
+    with patch.object(hass.config_entries, 'async_reload', new_callable=AsyncMock) as mock_reload:
+        # Start the options flow
+        result = await hass.config_entries.options.async_init(config_entry.entry_id)
+
+        # Test updating API settings
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "http://new-host:8000",
+                CONF_API_KEY: "new_api_key",
+                "action": "save_basic"
+            }
+        )
+
+        # Verify successful completion
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
+        # Verify config entry was updated
+        assert config_entry.data[CONF_HOST] == "http://new-host:8000"
+        assert config_entry.data[CONF_API_KEY] == "new_api_key"
+        assert config_entry.data[CONF_USERS] == [
+            {
+                CONF_HA_USER_ID: "user1",
+                CONF_TASKTRACKER_USERNAME: "testuser"
+            }
+        ]
+
+        # Verify integration was reloaded
+        mock_reload.assert_called_once_with(config_entry.entry_id)
+
+
+@pytest.mark.asyncio
+async def test_options_flow_reload_on_user_mapping_change(hass: HomeAssistant):
+    """Test that changing user mappings triggers integration reload."""
+    # Create a mock config entry using the proper pattern
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HOST: "http://test-host:8000",
+            CONF_API_KEY: "test_api_key",
+            CONF_USERS: [
+                {
+                    CONF_HA_USER_ID: "user1",
+                    CONF_TASKTRACKER_USERNAME: "testuser"
+                }
+            ]
+        },
+        entry_id="test_entry_id"
+    )
+    config_entry.add_to_hass(hass)
+
+    # Mock async_reload on the config entries registry
+    with patch.object(hass.config_entries, 'async_reload', new_callable=AsyncMock) as mock_reload:
+        # Start the options flow
+        result = await hass.config_entries.options.async_init(config_entry.entry_id)
+
+        # Navigate to manage users
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "http://test-host:8000",
+                CONF_API_KEY: "test_api_key",
+                "action": "manage_users"
+            }
+        )
+
+        # Save changes (even if no actual changes, should still trigger reload)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {"action": "save"}
+        )
+
+        # Verify successful completion
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
+        # Verify integration was reloaded
+        mock_reload.assert_called_once_with(config_entry.entry_id)
+
+
+@pytest.mark.asyncio
+async def test_options_flow_preserves_api_key_when_redacted(hass: HomeAssistant):
+    """Test that redacted API key placeholder preserves original key."""
+    original_api_key = "original_secret_key"
+
+    # Create a mock config entry using the proper pattern
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HOST: "http://test-host:8000",
+            CONF_API_KEY: original_api_key,
+            CONF_USERS: []
+        },
+        entry_id="test_entry_id"
+    )
+    config_entry.add_to_hass(hass)
+
+    # Mock async_reload on the config entries registry
+    with patch.object(hass.config_entries, 'async_reload', new_callable=AsyncMock):
+        # Start the options flow
+        result = await hass.config_entries.options.async_init(config_entry.entry_id)
+
+        # Submit with redacted API key (should preserve original)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "http://updated-host:8000",
+                CONF_API_KEY: "••••••••••••••••",  # Redacted placeholder
+                "action": "save_basic"
+            }
+        )
+
+        # Verify successful completion
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
+        # Verify original API key was preserved
+        assert config_entry.data[CONF_API_KEY] == original_api_key
+        # Verify host was updated
+        assert config_entry.data[CONF_HOST] == "http://updated-host:8000"

@@ -203,14 +203,9 @@ class TaskTrackerOptionsFlow(config_entries.OptionsFlow):
                 self.hass.config_entries.async_update_entry(
                     self.config_entry, data=new_data
                 )
-                # Also update the stored config in hass.data if it exists
-                if (
-                    DOMAIN in self.hass.data
-                    and self.config_entry.entry_id in self.hass.data[DOMAIN]
-                ):
-                    self.hass.data[DOMAIN][self.config_entry.entry_id]["config"] = (
-                        new_data
-                    )
+
+                # Reload the integration to apply the new configuration immediately
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
                 return self.async_create_entry(title="", data={})
 
@@ -282,14 +277,9 @@ class TaskTrackerOptionsFlow(config_entries.OptionsFlow):
                 self.hass.config_entries.async_update_entry(
                     self.config_entry, data=new_data
                 )
-                # Also update the stored config in hass.data if it exists
-                if (
-                    DOMAIN in self.hass.data
-                    and self.config_entry.entry_id in self.hass.data[DOMAIN]
-                ):
-                    self.hass.data[DOMAIN][self.config_entry.entry_id]["config"] = (
-                        new_data
-                    )
+
+                # Reload the integration to apply the new configuration immediately
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
                 return self.async_create_entry(title="", data={})
             elif action == "cancel":
