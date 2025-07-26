@@ -12,6 +12,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._plan = null;
+    this._dailyState = null;
     this._loading = false;
     this._error = null;
     this._availableUsers = [];
@@ -124,9 +125,14 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     }
 
     try {
-      const response = await this._hass.callService('tasktracker', 'get_daily_plan', serviceData, {}, true, true);
-      if (response && response.response) {
-        this._plan = response.response;
+      // Fetch both plan and daily state in parallel
+      const [planResponse] = await Promise.all([
+        this._hass.callService('tasktracker', 'get_daily_plan', serviceData, {}, true, true),
+        this._fetchDailyState()
+      ]);
+
+      if (planResponse && planResponse.response) {
+        this._plan = planResponse.response;
       } else {
         this._plan = null;
       }
@@ -138,6 +144,27 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     this._loading = false;
     this._render();
+  }
+
+  async _fetchDailyState() {
+    const username = this._getUsername();
+    if (!username) {
+      this._dailyState = null;
+      return;
+    }
+
+    try {
+      const serviceData = { username };
+      const response = await this._hass.callService('tasktracker', 'get_daily_state', serviceData, {}, true, true);
+      if (response && response.response) {
+        this._dailyState = response.response;
+      } else {
+        this._dailyState = null;
+      }
+    } catch (err) {
+      console.error('Failed to fetch daily state:', err);
+      this._dailyState = null;
+    }
   }
 
   _setupEventListeners() {
@@ -177,12 +204,27 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       }
     });
 
+    // Listen for daily state events to refresh the plan
+    const dailyStateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_daily_state_set', (event) => {
+      const evUsername = event?.data?.username;
+      const username = this._getUsername();
+      if (!username || username === evUsername) {
+        // Update the daily state and re-render
+        this._dailyState = {
+          success: true,
+          data: event.data.state
+        };
+        this._render();
+      }
+    });
+
     // Combined cleanup function
     this._eventCleanup = async () => {
       await Promise.all([
         dailyPlanCleanup().catch(() => {}),
         completionCleanup().catch(() => {}),
-        moodUpdateCleanup().catch(() => {})
+        moodUpdateCleanup().catch(() => {}),
+        dailyStateCleanup().catch(() => {})
       ]);
     };
   }
@@ -201,6 +243,44 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     TaskTrackerUtils.showModal(modal);
   }
 
+  _renderDailyStateDisplay() {
+    if (!this._dailyState || !this._dailyState.data) {
+      return '';
+    }
+
+    const state = this._dailyState.data;
+
+    // Map state values to display labels
+    const stateValues = [
+      { label: 'Energy', value: state.energy, key: 'energy' },
+      { label: 'Motivation', value: state.motivation, key: 'motivation' },
+      { label: 'Focus', value: state.focus, key: 'focus' },
+      { label: 'Pain', value: state.pain, key: 'pain' },
+      { label: 'Mood', value: state.mood, key: 'mood' },
+      { label: 'Free Time', value: state.free_time, key: 'free_time' }
+    ].filter(item => item.value !== null && item.value !== undefined);
+
+    const valuesHtml = stateValues.map(item => `
+      <div class="state-value">
+        <span class="state-label">${item.label}:</span>
+        <span class="state-number">${item.value}</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="daily-state-container">
+        <div class="daily-state-display">
+          <div class="daily-state-values">
+            ${valuesHtml}
+          </div>
+          <button class="daily-state-edit-btn" title="Edit daily state">
+            Edit
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   _handleSetDailyState() {
     const username = this._getUsername();
     if (!username) {
@@ -215,7 +295,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         use_emoji_labels: true // Use emoji labels by default
       },
       (savedState) => {
-        // Callback when state is saved - refresh the plan
+        // Callback when state is saved - refresh both plan and daily state
         setTimeout(() => {
           this._fetchPlan();
         }, 500);
@@ -334,6 +414,67 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           font-style: italic;
           text-align: center;
           margin-top: 8px;
+        }
+
+        /* Daily state display styles */
+
+        .daily-state-container {
+          border-top: 1px solid var(--divider-color);
+          padding-top: 16px;
+        }
+
+        .daily-state-display {
+          background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
+          border-radius: 6px;
+          padding: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .daily-state-values {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          flex: 1;
+        }
+
+        .state-value {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.85em;
+          color: var(--primary-text-color);
+        }
+
+        .state-label {
+          color: var(--secondary-text-color);
+          font-weight: 500;
+        }
+
+        .state-number {
+          font-weight: 600;
+          color: var(--light-primary-color);
+        }
+
+        .daily-state-edit-btn {
+          background: var(--secondary-background-color);
+          color: var(--secondary-text-color);
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          padding: 6px 12px;
+          font-size: 0.8em;
+          font-weight: 500;
+          cursor: pointer;
+          transition: opacity 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .daily-state-edit-btn:hover {
+          opacity: 0.9;
+          color: var(--primary-text-color);
+          background: var(--secondary-background-color);
         }
 
         /* Urgent section styles */
@@ -581,6 +722,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       dailyStateButton.addEventListener('click', () => this._handleSetDailyState());
     }
 
+    // Daily state edit button handler
+    const dailyStateEditButton = this.shadowRoot.querySelector('.daily-state-edit-btn');
+    if (dailyStateEditButton) {
+      dailyStateEditButton.addEventListener('click', () => this._handleSetDailyState());
+    }
+
     if (hasValidUserConfig) {
       // Task item click handlers
       const taskItems = this.shadowRoot.querySelectorAll('.task-item');
@@ -722,6 +869,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       ${notificationBodyHtml}
       ${selfCareSection}
       ${tasksSection}
+      ${this._renderDailyStateDisplay()}
     `;
   }
 

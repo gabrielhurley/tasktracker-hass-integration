@@ -2689,7 +2689,9 @@ export class TaskTrackerUtils {
     if (!username) return false;
 
     try {
-      const payload = { username, ...stateValues };
+      // Filter out the date field since we're always editing the current day's state
+      const { date, ...filteredStateValues } = stateValues;
+      const payload = { username, ...filteredStateValues };
       await hass.callService('tasktracker', 'set_daily_state', payload, {}, true, true);
       return true;
     } catch (e) {
