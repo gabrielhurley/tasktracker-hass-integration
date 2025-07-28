@@ -156,6 +156,7 @@ GET_DAILY_PLAN_SCHEMA = vol.Schema(
     {
         vol.Optional("username"): cv.string,
         vol.Optional("fair_weather"): cv.boolean,
+        vol.Optional("select_recommended"): cv.boolean,
     }
 )
 
@@ -663,6 +664,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 result = await api.get_daily_plan(
                     username=username,
                     fair_weather=call.data.get("fair_weather"),
+                    select_recommended=call.data.get("select_recommended"),
                 )
 
                 if result.get("success"):

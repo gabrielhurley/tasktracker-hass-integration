@@ -19,6 +19,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     this._enhancedUsers = [];
     this._refreshInterval = null;
     this._eventCleanup = null;
+    this._showRecommendedOnly = true; // Default to showing recommended tasks only
   }
 
   static getConfigElement() {
@@ -37,6 +38,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       low_recommendation_score_threshold: 10,
       window_display_mode: 'always',
       refresh_interval: 600,
+      default_filter_recommended: true,
     };
   }
 
@@ -52,8 +54,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       low_recommendation_score_threshold: config.low_recommendation_score_threshold || 10,
       window_display_mode: config.window_display_mode || 'always',
       refresh_interval: config.refresh_interval || 600,
+      default_filter_recommended: config.default_filter_recommended !== false,
       ...config,
     };
+    // Set initial toggle state from config
+    this._showRecommendedOnly = this._config.default_filter_recommended;
     this._render();
   }
 
@@ -123,6 +128,8 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     if (username) {
       serviceData.username = username;
     }
+    // Add the select_recommended parameter based on toggle state
+    serviceData.select_recommended = this._showRecommendedOnly;
 
     try {
       // Fetch both plan and daily state in parallel
@@ -279,6 +286,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         </div>
       </div>
     `;
+  }
+
+  _toggleRecommendationFilter() {
+    this._showRecommendedOnly = !this._showRecommendedOnly;
+    this._fetchPlan(); // Fetch new plan with updated filter
   }
 
   _handleSetDailyState() {
@@ -694,15 +706,53 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           justify-content: center;
           flex: 1;
         }
+
+        /* Filter toggle styles */
+        .filter-toggle-btn {
+          background: none;
+          border: none;
+          color: var(--primary-text-color);
+          cursor: pointer;
+          padding: 8px;
+          border-radius: 4px;
+          transition: background-color 0.2s ease, color 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .filter-toggle-btn:hover {
+          background: var(--secondary-background-color);
+        }
+
+        .filter-toggle-btn.filtered {
+          background: var(--secondary-background-color);
+        }
+
+        .filter-toggle-btn ha-icon {
+          --mdc-icon-size: 20px;
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
       </style>
 
       <div class="card">
         ${this._config.show_header ? `
           <div class="header">
             <h3 class="title">Daily Plan ${username ? `- ${TaskTrackerUtils.capitalize(username)}` : ''}</h3>
-            <button class="refresh-btn" title="Refresh daily plan">
-              <ha-icon icon="mdi:refresh"></ha-icon>
-            </button>
+            <div class="header-actions">
+              <button class="filter-toggle-btn ${this._showRecommendedOnly ? 'filtered' : ''}"
+                      title="${this._showRecommendedOnly ? 'Showing recommended tasks only - click to show all tasks' : 'Showing all tasks - click to show recommended only'}">
+                <ha-icon icon="${this._showRecommendedOnly ? 'mdi:filter-check' : 'mdi:filter-off'}"></ha-icon>
+              </button>
+              <button class="refresh-btn" title="Refresh daily plan">
+                <ha-icon icon="mdi:refresh"></ha-icon>
+              </button>
+            </div>
           </div>
         ` : ''}
 
@@ -714,6 +764,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this._fetchPlan());
+    }
+
+    // Filter toggle button handler
+    const filterToggleBtn = this.shadowRoot.querySelector('.filter-toggle-btn');
+    if (filterToggleBtn) {
+      filterToggleBtn.addEventListener('click', () => this._toggleRecommendationFilter());
     }
 
     // Daily state button handler
@@ -1427,6 +1483,12 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
           'Refresh Interval (seconds)',
           'How often to automatically refresh plan data',
           TaskTrackerUtils.createNumberInput(this._config.refresh_interval, 'refresh_interval', 10, 3600, 10)
+        )}
+
+        ${TaskTrackerUtils.createConfigRow(
+          'Default Filter Recommended',
+          'Show only recommended tasks by default when card loads',
+          TaskTrackerUtils.createCheckboxInput(this._config.default_filter_recommended, 'default_filter_recommended')
         )}
       </div>
     `;

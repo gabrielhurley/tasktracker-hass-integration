@@ -283,6 +283,7 @@ class TaskTrackerAPI:
         self,
         username: str | None,
         fair_weather: bool | None = None,
+        select_recommended: bool | None = None,
     ) -> dict[str, Any]:
         """Retrieve the daily plan for a user."""
         params: dict[str, Any] = {}
@@ -290,6 +291,8 @@ class TaskTrackerAPI:
             params["username"] = username
         if fair_weather is not None:
             params["fair_weather"] = str(fair_weather).lower()
+        if select_recommended is not None:
+            params["select_recommended"] = str(select_recommended).lower()
 
         return await self._request("GET", ENDPOINT_DAILY_PLAN, params=params)
 
