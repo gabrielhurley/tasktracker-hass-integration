@@ -35,7 +35,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       show_completion_notes: true,
       show_window_times: true,
       show_recommendation_score: false,
-      low_recommendation_score_threshold: .25,
+      low_recommendation_score_threshold: 0.25,
       window_display_mode: 'always',
       refresh_interval: 600,
       default_filter_recommended: true,
@@ -51,7 +51,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       show_completion_notes: config.show_completion_notes !== false,
       show_window_times: config.show_window_times !== false,
       show_recommendation_score: config.show_recommendation_score || false,
-      low_recommendation_score_threshold: config.low_recommendation_score_threshold || .25,
+      low_recommendation_score_threshold: config.low_recommendation_score_threshold || 0.25,
       window_display_mode: config.window_display_mode || 'always',
       refresh_interval: config.refresh_interval || 600,
       default_filter_recommended: config.default_filter_recommended !== false,
@@ -1451,6 +1451,12 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
         )}
 
         ${TaskTrackerUtils.createConfigRow(
+          'Low Recommendation Score Threshold',
+          'Tasks with scores below this value will appear faded',
+          TaskTrackerUtils.createNumberInput(this._config.low_recommendation_score_threshold, 'low_recommendation_score_threshold', 0, 1, 0.01)
+        )}
+
+        ${TaskTrackerUtils.createConfigRow(
           'Window Display Mode',
           'When to show time windows on self-care tasks',
           TaskTrackerUtils.createSelectInput(this._config.window_display_mode, 'window_display_mode', [
@@ -1496,7 +1502,7 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
     // Add event listeners
     this.shadowRoot.querySelectorAll('input, select').forEach(input => {
       input.addEventListener('change', this._valueChanged.bind(this));
-      if (input.type === 'text') {
+      if (input.type === 'text' || input.type === 'number') {
         input.addEventListener('input', this._valueChanged.bind(this));
       }
     });

@@ -2147,8 +2147,11 @@ export class TaskTrackerUtils {
   }
 
   static createNumberInput(value, configKey, min = null, max = null, step = null) {
+    // Handle null/undefined values by using empty string or default
+    const displayValue = (value === null || value === undefined) ? '' : value;
+
     const attrs = [
-      `value="${value}"`,
+      `value="${displayValue}"`,
       `data-config-key="${configKey}"`,
       min !== null ? `min="${min}"` : '',
       max !== null ? `max="${max}"` : '',
@@ -2566,7 +2569,8 @@ export class TaskTrackerUtils {
     if (target.type === 'checkbox') {
       value = target.checked;
     } else if (target.type === 'number') {
-      const parsedValue = parseInt(target.value, 10);
+      // Use parseFloat to handle both integers and decimals
+      const parsedValue = parseFloat(target.value);
       // Handle empty values or invalid numbers by using null to trigger default fallback
       value = isNaN(parsedValue) ? null : parsedValue;
     } else {
@@ -2578,8 +2582,8 @@ export class TaskTrackerUtils {
       value = null;
     }
 
-    // For text inputs, debounce the config update to avoid frequent API calls
-    if (target.type === 'text') {
+    // For text and number inputs, debounce the config update to avoid frequent API calls and focus loss
+    if (target.type === 'text' || target.type === 'number') {
       // Initialize debounce timers if not exists
       if (!editorInstance._debounceTimers) {
         editorInstance._debounceTimers = {};
@@ -2596,7 +2600,7 @@ export class TaskTrackerUtils {
         delete editorInstance._debounceTimers[configKey];
       }, 500); // Wait 500ms after user stops typing
     } else {
-      // For non-text inputs (checkboxes, selects, numbers), update immediately
+      // For non-debounced inputs (checkboxes, selects), update immediately
       updateConfigCallback(configKey, value);
     }
   }

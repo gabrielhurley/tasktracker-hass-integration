@@ -717,7 +717,7 @@ class TaskTrackerCompleteTaskCardEditor extends HTMLElement {
     // Add event listeners
     this.shadowRoot.querySelectorAll('input, select').forEach(input => {
       input.addEventListener('change', this._valueChanged.bind(this));
-      if (input.type === 'text') {
+      if (input.type === 'text' || input.type === 'number') {
         input.addEventListener('input', this._valueChanged.bind(this));
       }
     });
