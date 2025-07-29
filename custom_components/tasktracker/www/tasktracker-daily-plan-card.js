@@ -596,6 +596,24 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           background: rgba(255, 193, 7, 0.2);
         }
 
+        /* Individual window overdue styling */
+        .selfcare-windowed.needs-completion .window-item.incomplete.overdue {
+          background: rgba(255, 193, 7, 0.1);
+        }
+
+        .selfcare-windowed.needs-completion .window-item.incomplete.overdue:hover {
+          background: rgba(255, 193, 7, 0.2);
+        }
+
+        .selfcare-windowed.needs-completion .window-item.incomplete.overdue:focus {
+          background: rgba(255, 193, 7, 0.2);
+        }
+
+        /* Individual window overdue opportunity icon styling */
+        .selfcare-windowed.needs-completion .window-item.incomplete.overdue .window-opportunity {
+          color: var(--error-color, #f44336);
+        }
+
         /* Fallback for tasks that need completion (legacy support) */
         .selfcare-windowed.needs-completion .window-item.incomplete {
           background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
@@ -1178,11 +1196,18 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           </div>
         `;
       } else {
+        // Check if this individual window is overdue
+        const isWindowOverdue = this._isWindowInPast(window);
+        const windowClasses = ['window-item', 'incomplete'];
+        if (isWindowOverdue) {
+          windowClasses.push('overdue');
+        }
+
         return `
-          <div class="window-item incomplete"
+          <div class="${windowClasses.join(' ')}"
                role="button"
                tabindex="0"
-               aria-label="Window ${window.label} available for completion"
+               aria-label="Window ${window.label} ${isWindowOverdue ? 'overdue' : 'available for completion'}"
                id="${windowId}">
             <span class="window-opportunity" aria-hidden="true">
               <ha-icon icon="mdi:circle-outline"></ha-icon>
