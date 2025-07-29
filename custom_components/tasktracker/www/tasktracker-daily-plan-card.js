@@ -1384,8 +1384,15 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
   }
 
   setConfig(config) {
+    const isInitialRender = !this.shadowRoot.hasChildNodes();
     this._config = { ...TaskTrackerDailyPlanCard.getStubConfig(), ...config };
-    this._render();
+
+    if (isInitialRender) {
+      this._render();
+    } else {
+      // Update field values without re-rendering
+      this._updateFieldValues();
+    }
   }
 
   set hass(hass) {
@@ -1396,15 +1403,38 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
     TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
   }
 
+  _updateFieldValues() {
+    // Update field values without re-rendering
+    this.shadowRoot.querySelectorAll('input, select').forEach(input => {
+      const configKey = input.dataset.configKey;
+      if (configKey && this._config[configKey] !== undefined) {
+        if (input.type === 'checkbox') {
+          input.checked = this._config[configKey];
+        } else {
+          input.value = this._config[configKey] || '';
+        }
+      }
+    });
+
+    // Handle user_filter_mode visibility
+    const explicitUserRow = this.shadowRoot.querySelector('.explicit-user-row');
+    if (explicitUserRow) {
+      explicitUserRow.style.display = this._config.user_filter_mode === 'explicit' ? 'block' : 'none';
+    }
+  }
+
   _updateConfig(configKey, value) {
     this._config = {
       ...this._config,
       [configKey]: value
     };
 
-    // If user_filter_mode changed, re-render to show/hide explicit user field
+    // If user_filter_mode changed, show/hide explicit user field
     if (configKey === 'user_filter_mode') {
-      this._render();
+      const explicitUserRow = this.shadowRoot.querySelector('.explicit-user-row');
+      if (explicitUserRow) {
+        explicitUserRow.style.display = value === 'explicit' ? 'block' : 'none';
+      }
     }
 
     this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config } }));
@@ -1417,8 +1447,6 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
       <style>${TaskTrackerUtils.getCommonConfigStyles()}</style>
       <div class="card-config">
         <div class="section-title">Display Settings</div>
-
-
 
         ${TaskTrackerUtils.createConfigRow(
           'Show Header',
@@ -1477,11 +1505,13 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
           ])
         )}
 
-        ${this._config.user_filter_mode === 'explicit' ? TaskTrackerUtils.createConfigRow(
-          'Username',
-          'Specific username for daily plan',
-          TaskTrackerUtils.createTextInput(this._config.explicit_user, 'explicit_user', 'Enter username')
-        ) : ''}
+        <div class="explicit-user-row" style="display: ${this._config.user_filter_mode === 'explicit' ? 'block' : 'none'}">
+          ${TaskTrackerUtils.createConfigRow(
+            'Username',
+            'Specific username for daily plan',
+            TaskTrackerUtils.createTextInput(this._config.explicit_user, 'explicit_user', 'Enter username')
+          )}
+        </div>
 
         <div class="section-title">Behavior Settings</div>
 

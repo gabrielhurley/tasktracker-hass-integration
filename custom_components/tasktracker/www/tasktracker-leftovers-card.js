@@ -546,37 +546,37 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
       <div class="card-config">
         <div class="section-title">User Settings</div>
 
-        ${TaskTrackerUtils.createConfigRow(
-      'User Filter Mode',
-      'How to determine the user for leftovers',
-      TaskTrackerUtils.createSelectInput(this._config.user_filter_mode, 'user_filter_mode', [
-        { value: 'all', label: 'All Users' },
-        { value: 'current', label: 'Current User' },
-        { value: 'explicit', label: 'Specific User' }
-      ])
-    )}
+      ${TaskTrackerUtils.createConfigRow(
+        'User Filter Mode',
+        'How to determine the user for leftovers',
+        TaskTrackerUtils.createSelectInput(this._config.user_filter_mode, 'user_filter_mode', [
+          { value: 'all', label: 'All Users' },
+          { value: 'current', label: 'Current User' },
+          { value: 'explicit', label: 'Specific User' }
+        ])
+      )}
 
-        ${this._config.user_filter_mode === 'explicit' ? TaskTrackerUtils.createConfigRow(
-      'Username',
-      'Specific username for leftover management',
-      TaskTrackerUtils.createTextInput(this._config.explicit_user, 'explicit_user', 'Enter username')
-    ) : ''}
+      ${this._config.user_filter_mode === 'explicit' ? TaskTrackerUtils.createConfigRow(
+        'Username',
+        'Specific username for leftover management',
+        TaskTrackerUtils.createTextInput(this._config.explicit_user, 'explicit_user', 'Enter username')
+      ) : ''}
 
-        <div class="section-title">Behavior Settings</div>
+      <div class="section-title">Behavior Settings</div>
 
-        ${TaskTrackerUtils.createConfigRow(
-      'Refresh Interval (seconds)',
-      'How often to automatically refresh leftover data',
-      TaskTrackerUtils.createNumberInput(this._config.refresh_interval, 'refresh_interval', 10, 3600, 10)
-    )}
+      ${TaskTrackerUtils.createConfigRow(
+        'Refresh Interval (seconds)',
+        'How often to automatically refresh leftover data',
+        TaskTrackerUtils.createNumberInput(this._config.refresh_interval, 'refresh_interval', 10, 3600, 10)
+      )}
 
-        ${TaskTrackerUtils.createConfigRow(
-          'Show Disposal Notes',
-          'Display disposal notes field in modal',
-          TaskTrackerUtils.createCheckboxInput(this._config.show_disposal_notes, 'show_disposal_notes')
-        )}
+      ${TaskTrackerUtils.createConfigRow(
+        'Show Disposal Notes',
+        'Display disposal notes field in modal',
+        TaskTrackerUtils.createCheckboxInput(this._config.show_disposal_notes, 'show_disposal_notes')
+      )}
 
-        ${TaskTrackerUtils.createConfigRow(
+      ${TaskTrackerUtils.createConfigRow(
           'Show Header',
           'Display card header with title and refresh button',
           TaskTrackerUtils.createCheckboxInput(this._config.show_header, 'show_header')
