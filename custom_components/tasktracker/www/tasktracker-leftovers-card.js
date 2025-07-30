@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
 
 /**
  * TaskTracker Leftovers Card
@@ -195,11 +196,18 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     const expired = [];
 
     leftovers.forEach(leftover => {
-      if (leftover.due_date) {
-        // Use timezone-aware calculation when user context is available
+      // Use API-provided overdue status when available (most reliable)
+      if (leftover.is_overdue !== undefined) {
+        if (leftover.is_overdue) {
+          expired.push(leftover);
+        } else {
+          good.push(leftover);
+        }
+      } else if (leftover.due_date) {
+        // Fallback to frontend calculation if API doesn't provide is_overdue
         const daysOverdue = this._userContext
-          ? TaskTrackerUtils.calculateLogicalDaysOverdue(leftover.due_date, this._userContext)
-          : TaskTrackerUtils.calculateDaysOverdue(leftover.due_date);
+          ? TaskTrackerDateTime.calculateDaysOverdue(leftover.due_date, this._userContext)
+          : TaskTrackerDateTime.calculateDaysOverdue(leftover.due_date, null);
 
         if (daysOverdue > 0) {
           expired.push(leftover);

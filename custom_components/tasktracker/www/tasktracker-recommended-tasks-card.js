@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
 
 /**
  * TaskTracker Recommended Tasks Card
@@ -455,7 +456,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     }
 
     // Calculate overdue color using user context for timezone-aware calculations
-    const daysOverdue = TaskTrackerUtils.calculateDaysOverdue(task.due_date, this._userContext);
+    const daysOverdue = TaskTrackerDateTime.calculateDaysOverdue(task.due_date, this._userContext);
     const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue);
     const borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
 

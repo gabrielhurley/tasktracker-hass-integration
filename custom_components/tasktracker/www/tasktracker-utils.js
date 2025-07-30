@@ -9,9 +9,15 @@ export class TaskTrackerUtils {
   // ===========================================
   // Timezone and Logical Day Utilities
   // ===========================================
+  //
+  // NOTICE: These methods are deprecated. Use TaskTrackerDateTime utilities instead.
+  // These are kept for backward compatibility with existing code.
+  // For new code, import and use TaskTrackerDateTime from './tasktracker-datetime-utils.js'
+  //
 
   /**
    * Convert a Date object to the user's timezone using user context
+   * @deprecated Use TaskTrackerDateTime utilities instead
    * @param {Date} date - The date to convert
    * @param {Object} userContext - User context with timezone information
    * @returns {Date} - Date in user's timezone (approximation)
@@ -36,6 +42,7 @@ export class TaskTrackerUtils {
 
   /**
    * Get the user's logical date based on their timezone and daily reset time
+   * @deprecated Use TaskTrackerDateTime.parseUserContext() and current_logical_date instead
    * @param {Object} userContext - User context with timezone and daily_reset_time
    * @param {Date} [now] - Optional date to use instead of current time
    * @returns {string} - Logical date in YYYY-MM-DD format
@@ -47,7 +54,7 @@ export class TaskTrackerUtils {
       return fallbackDate.toISOString().split('T')[0];
     }
 
-    // Use the backend-provided logical date if available
+    // Use the backend-provided logical date if available (preferred)
     if (userContext.current_logical_date) {
       return userContext.current_logical_date;
     }
@@ -74,6 +81,7 @@ export class TaskTrackerUtils {
 
   /**
    * Calculate days overdue using logical day boundaries
+   * @deprecated Use TaskTrackerDateTime.calculateDaysOverdue() instead
    * @param {string} dueDateString - ISO date string of when task is due
    * @param {Object} userContext - User context with timezone information
    * @param {Date} [now] - Optional current time
@@ -105,6 +113,7 @@ export class TaskTrackerUtils {
 
   /**
    * Check if a date falls within the current logical day
+   * @deprecated Use TaskTrackerDateTime.isWithinCurrentLogicalDay() instead
    * @param {string|Date} dateInput - Date to check
    * @param {Object} userContext - User context with timezone information
    * @returns {boolean} - True if date is within current logical day
@@ -338,7 +347,37 @@ export class TaskTrackerUtils {
         }
       }
 
-      // Calculate the difference in days
+            // DEPRECATED: This logic has been moved to TaskTrackerDateTime.formatDueDateLogical()
+      // Use logical day calculation for daily tasks when user context is available
+      if (userContext && task && task.frequency_unit === 'days' && task.frequency_value === 1) {
+        // For daily tasks, use logical day boundaries
+        const currentLogicalDate = userContext.current_logical_date || TaskTrackerUtils.getUserLogicalDate(userContext);
+        const dueDateInUserTz = TaskTrackerUtils.dateToUserTimezone(dueDate, userContext);
+        const dueDateLogical = dueDateInUserTz.toISOString().split('T')[0];
+
+        // Calculate difference in logical days
+        const currentDateObj = new Date(currentLogicalDate + 'T00:00:00');
+        const dueDateObj = new Date(dueDateLogical + 'T00:00:00');
+        const diffTime = currentDateObj.getTime() - dueDateObj.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 0) {
+          // Overdue
+          if (diffDays === 1) {
+            return '1 day overdue';
+          } else {
+            return `${diffDays} days overdue`;
+          }
+        } else if (diffDays === 0) {
+          return 'Today';
+        } else if (diffDays === -1) {
+          return 'Tomorrow';
+        } else {
+          return `${Math.abs(diffDays)} days`;
+        }
+      }
+
+      // Fallback to calendar day calculation for non-daily tasks
       const diffTime = dueDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       const isOverdue = diffDays < 0;
@@ -2470,7 +2509,13 @@ export class TaskTrackerUtils {
     return true;
   }
 
-    // Calculate days overdue for a task
+  /**
+   * Calculate days overdue for a task
+   * @deprecated Use TaskTrackerDateTime.calculateDaysOverdue() instead
+   * @param {string} dueDateString - ISO date string of when task is due
+   * @param {Object} userContext - User context with timezone information (optional)
+   * @returns {number} - Number of days overdue (0 if not overdue)
+   */
   static calculateDaysOverdue(dueDateString, userContext = null) {
     if (!dueDateString) {
       return 0;
@@ -3208,47 +3253,8 @@ export class TaskTrackerUtils {
   // ===========================================
   // Testing and Debugging Utilities
   // ===========================================
-
-  /**
-   * Test the timezone and logical day utilities
-   * This function can be called from browser console for testing
-   * @param {Object} userContext - User context object to test with
-   */
-  static testTimezoneUtilities(userContext = null) {
-    const testContext = userContext || {
-      username: "testuser",
-      timezone: "America/Los_Angeles",
-      daily_reset_time: "05:00:00",
-      daily_task_cutoff_time: "20:00:00",
-      current_logical_date: "2025-07-23"
-    };
-
-    console.group('TaskTracker Timezone Utilities Test');
-
-    const now = new Date();
-    console.log('Current time (browser):', now.toISOString());
-    console.log('User context:', testContext);
-
-    const userTime = TaskTrackerUtils.dateToUserTimezone(now, testContext);
-    console.log('User timezone time:', userTime.toISOString());
-
-    const logicalDate = TaskTrackerUtils.getUserLogicalDate(testContext, now);
-    console.log('User logical date:', logicalDate);
-
-    const testDueDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
-    const daysOverdue = TaskTrackerUtils.calculateLogicalDaysOverdue(testDueDate.toISOString(), testContext, now);
-    console.log('Days overdue for date 2 days ago:', daysOverdue);
-
-    const todayCheck = TaskTrackerUtils.isWithinCurrentLogicalDay(now, testContext);
-    console.log('Is current time within logical day:', todayCheck);
-
-    console.groupEnd();
-
-    return {
-      userTime,
-      logicalDate,
-      daysOverdue,
-      todayCheck
-    };
-  }
+  //
+  // Note: Previous datetime testing utilities have been removed.
+  // Use TaskTrackerDateTime.debugWindowTiming() for datetime debugging.
+  //
 }

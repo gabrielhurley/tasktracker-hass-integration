@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
 
 /**
  * TaskTracker Available Tasks Card
@@ -17,6 +18,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._tasks = [];
+    this._userContext = null;
     this._availableUsers = [];
     this._enhancedUsers = []; // Track enhanced user mappings
     this._loading = false;
@@ -163,6 +165,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       let newTasks = [];
       if (response && response.response && response.response.data && response.response.data.items) {
         newTasks = response.response.data.items.slice(0, this._config.max_tasks);
+        this._userContext = response.response.data.user_context || null;
       }
 
       // Always update tasks and re-render on initial load, only compare for subsequent refreshes
@@ -308,8 +311,8 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     return TaskTrackerUtils.formatDate(dateString);
   }
 
-  _formatDueDate(dueDateString) {
-    return TaskTrackerUtils.formatDueDate(dueDateString);
+  _formatDueDate(dueDateString, task = null) {
+    return TaskTrackerUtils.formatDueDate(dueDateString, this._userContext, task);
   }
 
   _formatDuration(minutes) {
@@ -430,7 +433,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
 
   _renderTaskItem(task, originalIndex) {
     const priority = this._formatPriority(task.priority);
-    const dueDate = this._formatDueDate(task.due_date);
+    const dueDate = this._formatDueDate(task.due_date, task);
     const duration = this._formatDuration(task.duration_minutes);
 
     // Build metadata line with pipes
@@ -440,7 +443,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     metadataParts.push(dueDate);
 
     // Calculate overdue color
-    const daysOverdue = TaskTrackerUtils.calculateDaysOverdue(task.due_date);
+    const daysOverdue = TaskTrackerDateTime.calculateDaysOverdue(task.due_date, this._userContext);
     const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue);
     const borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
 

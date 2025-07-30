@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
 
 /**
  * TaskTracker Daily Plan Card
@@ -13,6 +14,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     this._hass = null;
     this._plan = null;
     this._dailyState = null;
+    this._userContext = null;
     this._loading = false;
     this._error = null;
     this._availableUsers = [];
@@ -140,8 +142,10 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
       if (planResponse && planResponse.response) {
         this._plan = planResponse.response;
+        this._userContext = planResponse.response.user_context;
       } else {
         this._plan = null;
+        this._userContext = null;
       }
     } catch (err) {
       console.error('Failed to fetch daily plan:', err);
@@ -849,7 +853,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
                                 if (window) {
                   // Calculate the appropriate completion timestamp based on the window
-                  const completionTimestamp = this._calculateCompletionTimestamp(window);
+                  const completionTimestamp = TaskTrackerDateTime.getCompletionTimestamp(window, this._userContext);
 
                   // Complete the task with the calculated timestamp
                   this._completeTask(taskData, '', completionTimestamp);
@@ -1017,8 +1021,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     // Add due date if available with user context for smart formatting
     if (task.due_date || task.next_due) {
       const dueDate = task.due_date || task.next_due;
-      const userContext = this._plan?.user_context;
-      metadataParts.push(TaskTrackerUtils.formatDueDate(dueDate, userContext, task));
+      metadataParts.push(TaskTrackerUtils.formatDueDate(dueDate, this._userContext, task));
     }
 
     // Calculate overdue color and status
@@ -1044,8 +1047,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     } else {
       // Regular tasks: calculate from due date using user context
       const dueDate = task.due_date || task.next_due;
-      const userContext = this._plan?.data?.user_context;
-      daysOverdue = dueDate ? TaskTrackerUtils.calculateDaysOverdue(dueDate, userContext) : 0;
+      daysOverdue = dueDate ? TaskTrackerDateTime.calculateDaysOverdue(dueDate, this._userContext) : 0;
       isOverdue = dueDate && daysOverdue > 0;
       isDue = dueDate && daysOverdue === 0; // Due today
       const overdueSeverity = task.overdue_severity || 1;
@@ -1153,7 +1155,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       // Find past windows and mark the earliest ones as inferred complete
       const pastWindows = task.windows
         .map((window, index) => ({ window, index }))
-        .filter(({ window }) => !window.completed && this._isWindowInPast(window))
+        .filter(({ window }) => !window.completed && TaskTrackerDateTime.isWindowInPast(window, this._userContext))
         .sort((a, b) => {
           // Sort by window start time
           const timeA = a.window.start.split(':').map(n => parseInt(n, 10));
@@ -1169,7 +1171,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     // Window status indicators
     const windowsHtml = task.windows.map((window, index) => {
-      const timeRange = this._formatWindowTimeRange(window);
+      const timeRange = TaskTrackerDateTime.formatWindowTimeRange(window);
       const windowId = `window-${task.id}-${index}`;
       const isInferredComplete = inferredWindows.has(index);
 
@@ -1197,7 +1199,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         `;
       } else {
         // Check if this individual window is overdue
-        const isWindowOverdue = this._isWindowInPast(window);
+        const isWindowOverdue = TaskTrackerDateTime.isWindowInPast(window, this._userContext);
         const windowClasses = ['window-item', 'incomplete'];
         if (isWindowOverdue) {
           windowClasses.push('overdue');
@@ -1261,139 +1263,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     `;
   }
 
-  _formatWindowTime(timeStr) {
-    // Convert 24-hour time string to 12-hour format for display
-    try {
-      const [hours, minutes] = timeStr.split(':').map(num => parseInt(num, 10));
-      if (isNaN(hours) || isNaN(minutes)) {
-        return timeStr; // Return original if parsing fails
-      }
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
 
-      // Only show minutes if they're not zero
-      if (minutes === 0) {
-        return `${displayHours} ${period}`;
-      } else {
-        return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-      }
-    } catch (e) {
-      console.warn('Failed to format window time:', timeStr, e);
-      return timeStr;
-    }
-  }
-
-    _formatWindowTimeRange(window) {
-    const startTime = this._formatWindowTime(window.start);
-    const endTime = this._formatWindowTime(window.end);
-    return `${startTime} - ${endTime}`;
-  }
-
-  _calculateWindowMidpoint(window) {
-    // Parse start and end times (format: "HH:MM")
-    const [startHours, startMinutes] = window.start.split(':').map(num => parseInt(num, 10));
-    const [endHours, endMinutes] = window.end.split(':').map(num => parseInt(num, 10));
-
-    // Convert to minutes since midnight
-    let startTotalMinutes = startHours * 60 + startMinutes;
-    let endTotalMinutes = endHours * 60 + endMinutes;
-
-    // Handle windows that cross midnight (end time is smaller than start time)
-    if (endTotalMinutes < startTotalMinutes) {
-      endTotalMinutes += 24 * 60; // Add 24 hours worth of minutes
-    }
-
-    // Calculate midpoint
-    const midpointMinutes = Math.floor((startTotalMinutes + endTotalMinutes) / 2);
-
-    // Convert back to hours and minutes, handling overflow past midnight
-    const finalMinutes = midpointMinutes % (24 * 60);
-    const hours = Math.floor(finalMinutes / 60);
-    const minutes = finalMinutes % 60;
-
-    return {
-      hours: hours,
-      minutes: minutes,
-      timeString: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-    };
-  }
-
-  _isCurrentTimeInWindow(window) {
-    const now = new Date();
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
-    const currentTotalMinutes = currentHours * 60 + currentMinutes;
-
-    const [startHours, startMinutes] = window.start.split(':').map(num => parseInt(num, 10));
-    const [endHours, endMinutes] = window.end.split(':').map(num => parseInt(num, 10));
-
-    let startTotalMinutes = startHours * 60 + startMinutes;
-    let endTotalMinutes = endHours * 60 + endMinutes;
-
-    // Handle windows that cross midnight
-    if (endTotalMinutes < startTotalMinutes) {
-      // Window crosses midnight
-      return currentTotalMinutes >= startTotalMinutes || currentTotalMinutes <= endTotalMinutes;
-    } else {
-      // Normal window within same day
-      return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes <= endTotalMinutes;
-    }
-  }
-
-  _isWindowInPast(window) {
-    const now = new Date();
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
-    const currentTotalMinutes = currentHours * 60 + currentMinutes;
-
-    const [endHours, endMinutes] = window.end.split(':').map(num => parseInt(num, 10));
-    let endTotalMinutes = endHours * 60 + endMinutes;
-
-    // Handle windows that cross midnight
-    const [startHours, startMinutes] = window.start.split(':').map(num => parseInt(num, 10));
-    let startTotalMinutes = startHours * 60 + startMinutes;
-
-    if (endTotalMinutes < startTotalMinutes) {
-      // Window crosses midnight - it's in the past if current time is after the end time
-      // and before the start time (meaning we're in the next day after the window ended)
-      return currentTotalMinutes > endTotalMinutes && currentTotalMinutes < startTotalMinutes;
-    } else {
-      // Normal window - it's in the past if current time is after the end time
-      return currentTotalMinutes > endTotalMinutes;
-    }
-  }
-
-  _calculateCompletionTimestamp(window) {
-    if (this._isCurrentTimeInWindow(window)) {
-      // Current time is within the window - use current timestamp
-      return null; // null means use current time in the API
-    } else {
-      // Current time is outside the window - use window midpoint
-      const midpoint = this._calculateWindowMidpoint(window);
-      const now = new Date();
-
-      // Create a new date with today's date but the midpoint time
-      const completionDate = new Date(now);
-      completionDate.setHours(midpoint.hours, midpoint.minutes, 0, 0);
-
-      // If the midpoint would be in the future (for windows that cross midnight),
-      // we might need to adjust the date
-      if (completionDate > now && window.start > window.end) {
-        // This is a midnight-crossing window and midpoint is tomorrow
-        // Check if we should use yesterday's date instead
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(midpoint.hours, midpoint.minutes, 0, 0);
-
-        // Use yesterday if it makes more sense based on current time
-        if (now.getHours() < 12) { // Assume morning means we want yesterday's night window
-          return yesterday.toISOString();
-        }
-      }
-
-      return completionDate.toISOString();
-    }
-  }
 
   getCardSize() {
     return 3;
