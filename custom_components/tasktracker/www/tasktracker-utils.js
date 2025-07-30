@@ -1081,7 +1081,7 @@ export class TaskTrackerUtils {
     const taskName = task.name || task.task_name;
     const taskDuration = task.duration_minutes || task.task_duration_minutes || 0;
     const taskPriority = task.priority || task.task_priority_value || 2;
-    const taskFrequencyDays = task.frequency_days || task.task_frequency_days;
+    const isRecurringTask = task.task_type in ['RecurringTask', 'SelfCareTask'];
     const assignedTo = task.assigned_to;
     const dueDate = task.next_due || task.due_date;
 
@@ -1222,7 +1222,7 @@ export class TaskTrackerUtils {
     detailsGrid.appendChild(priorityField);
 
     // Due date field (editable if onSave is provided and task is recurring)
-    if (taskFrequencyDays) {
+    if (isRecurringTask) {
       const dueDateField = document.createElement('div');
       dueDateField.style.cssText = 'display: flex; flex-direction: column; gap: 4px; grid-column: 1 / -1;';
       const dueDateLabel = document.createElement('label');
@@ -1695,7 +1695,7 @@ export class TaskTrackerUtils {
         }
 
         // Collect due date changes (if applicable)
-        if (taskFrequencyDays && dueDateControl.value) {
+        if (isRecurringTask && dueDateControl.value) {
           const newDueDate = new Date(dueDateControl.value).toISOString();
           if (newDueDate !== dueDate) {
             updates.next_due = newDueDate;

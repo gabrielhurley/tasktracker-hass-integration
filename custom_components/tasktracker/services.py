@@ -132,7 +132,10 @@ UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("duration_minutes"): cv.positive_int,
         vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
         vol.Optional("next_due"): cv.string,
-        vol.Optional("frequency_days"): cv.positive_int,
+        vol.Optional("frequency_value"): cv.positive_int,
+        vol.Optional("frequency_unit"): vol.In(
+            ["days", "weeks", "months", "years", "minutes", "hours"]
+        ),
     }
 )
 
@@ -560,8 +563,10 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     updates["next_due"] = call.data["next_due"]
                 if "assigned_to" in call.data:
                     updates["assigned_to"] = call.data["assigned_to"]
-                if "frequency_days" in call.data:
-                    updates["frequency_days"] = call.data["frequency_days"]
+                if "frequency_unit" in call.data:
+                    updates["frequency_unit"] = call.data["frequency_unit"]
+                if "frequency_value" in call.data:
+                    updates["frequency_value"] = call.data["frequency_value"]
 
                 result = await api.update_task(
                     task_id=call.data["task_id"],
