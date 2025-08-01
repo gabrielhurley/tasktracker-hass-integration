@@ -127,15 +127,47 @@ GET_ALL_TASKS_SCHEMA = vol.Schema(
 UPDATE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
-        vol.Required("task_type"): cv.string,
+        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
         vol.Required("assigned_to"): cv.string,
+
+        # BaseTask fields
+        vol.Optional("name"): cv.string,
+        vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
+        vol.Optional("notes"): cv.string,
+        vol.Optional("is_active"): cv.boolean,
+        vol.Optional("overdue_severity"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
+
+        # DurationMixin field
         vol.Optional("duration_minutes"): cv.positive_int,
-        vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
-        vol.Optional("next_due"): cv.string,
+
+        # FrequencyMixin fields (RecurringTask, SelfCareTask)
         vol.Optional("frequency_value"): cv.positive_int,
         vol.Optional("frequency_unit"): vol.In(
             ["days", "weeks", "months", "years", "minutes", "hours"]
         ),
+        vol.Optional("next_due"): cv.string,
+
+        # TaskFitMixin fields
+        vol.Optional("energy_cost"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+        vol.Optional("focus_cost"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+        vol.Optional("pain_cost"): vol.All(cv.positive_int, vol.Range(min=0, max=5)),
+        vol.Optional("motivation_boost"): vol.All(int, vol.Range(min=-5, max=5)),
+        vol.Optional("satisfaction"): vol.All(cv.positive_int, vol.Range(min=0, max=5)),
+        vol.Optional("impact"): vol.All(cv.positive_int, vol.Range(min=0, max=5)),
+        vol.Optional("suitable_after_hours"): vol.In(["yes", "if_necessary", "absolutely_not"]),
+
+        # DayOfWeekConstraintMixin field
+        vol.Optional("allowed_days"): vol.All(cv.ensure_list, [vol.All(int, vol.Range(min=0, max=6))]),
+
+        # FairWeatherConstraintMixin field
+        vol.Optional("requires_fair_weather"): cv.boolean,
+
+        # SelfCareTask specific fields
+        vol.Optional("level"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
+        vol.Optional("required_occurrences"): cv.positive_int,
+
+        # Tags field
+        vol.Optional("tags"): vol.All(cv.ensure_list, [cv.string]),
     }
 )
 
@@ -555,18 +587,25 @@ async def async_setup_services(  # noqa: C901, PLR0915
             try:
                 # Extract update fields from call data
                 updates = {}
-                if "duration_minutes" in call.data:
-                    updates["duration_minutes"] = call.data["duration_minutes"]
-                if "priority" in call.data:
-                    updates["priority"] = call.data["priority"]
-                if "next_due" in call.data:
-                    updates["next_due"] = call.data["next_due"]
+
+                # List of all possible update fields (excluding required ones)
+                update_fields = [
+                    "name", "priority", "notes", "is_active", "overdue_severity",
+                    "duration_minutes", "frequency_value", "frequency_unit", "next_due",
+                    "energy_cost", "focus_cost", "pain_cost", "motivation_boost",
+                    "satisfaction", "impact", "suitable_after_hours",
+                    "allowed_days", "requires_fair_weather",
+                    "level", "required_occurrences", "tags"
+                ]
+
+                # Extract any fields that are present in the call data
+                for field in update_fields:
+                    if field in call.data:
+                        updates[field] = call.data[field]
+
+                # Always include assigned_to if present (can be updated)
                 if "assigned_to" in call.data:
                     updates["assigned_to"] = call.data["assigned_to"]
-                if "frequency_unit" in call.data:
-                    updates["frequency_unit"] = call.data["frequency_unit"]
-                if "frequency_value" in call.data:
-                    updates["frequency_value"] = call.data["frequency_value"]
 
                 result = await api.update_task(
                     task_id=call.data["task_id"],

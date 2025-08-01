@@ -1,5 +1,6 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
 import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
+import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
 
 /**
  * TaskTracker Available Tasks Card
@@ -230,17 +231,28 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 
   _showTaskModal(task, taskIndex) {
+    // Show detail modal with edit button
     const modal = TaskTrackerUtils.createTaskModal(
       task,
       this._config,
       async (notes, completed_at = null) => {
         await this._completeTask(task, notes, completed_at);
       },
-      async (updates) => {
-        await this._saveTask(task, updates);
-      },
+      null, // No inline save functionality in detail view
       this._availableUsers,
-      this._enhancedUsers
+      this._enhancedUsers,
+      (taskToEdit) => {
+        // Edit button callback - opens comprehensive editor
+        TaskTrackerTaskEditor.openEditModal(
+          taskToEdit,
+          this._config,
+          async (taskToUpdate, updates) => {
+            await this._saveTask(taskToUpdate, updates);
+          },
+          this._availableUsers,
+          this._enhancedUsers
+        );
+      }
     );
     TaskTrackerUtils.showModal(modal);
   }

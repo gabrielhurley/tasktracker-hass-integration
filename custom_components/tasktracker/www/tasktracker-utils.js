@@ -1090,7 +1090,7 @@ export class TaskTrackerUtils {
     return button;
   }
 
-  static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null) {
+  static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null, onEdit = null) {
     const modal = document.createElement('div');
     modal.className = 'task-modal';
     modal.style.cssText = `
@@ -1663,6 +1663,12 @@ export class TaskTrackerUtils {
       saveButton = TaskTrackerUtils.createStyledButton('Save');
     }
 
+    // Edit button (only if onEdit callback provided)
+    let editButton;
+    if (onEdit) {
+      editButton = TaskTrackerUtils.createStyledButton('Edit');
+    }
+
     const completeButton = TaskTrackerUtils.createStyledButton('Complete');
     completeButton.style.border = '1px solid var(--divider-color)';
 
@@ -1671,10 +1677,13 @@ export class TaskTrackerUtils {
     completedAlreadyButton.style.color = 'var(--secondary-text-color)';
     completedAlreadyButton.style.border = 'none';
 
-    // Append buttons in correct order: Cancel, Save (if exists), Completed Already, Complete
+    // Append buttons in correct order: Cancel, Save (if exists), Edit (if exists), Completed Already, Complete
     buttonContainer.appendChild(cancelButton);
     if (saveButton) {
       buttonContainer.appendChild(saveButton);
+    }
+    if (editButton) {
+      buttonContainer.appendChild(editButton);
     }
     buttonContainer.appendChild(completedAlreadyButton);
     buttonContainer.appendChild(completeButton);
@@ -1775,6 +1784,14 @@ export class TaskTrackerUtils {
         } else {
           closeModal();
         }
+      });
+    }
+
+    // Edit button handler
+    if (editButton && onEdit) {
+      editButton.addEventListener('click', () => {
+        closeModal(); // Close the detail modal first
+        onEdit(task); // Open the comprehensive edit modal
       });
     }
 

@@ -1,5 +1,6 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
 import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
+import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
 
 /**
  * TaskTracker Daily Plan Card
@@ -240,18 +241,53 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     };
   }
 
-    _showTaskModal(task, taskType) {
+  _showTaskModal(task, taskType) {
+    // Show detail modal with edit button
     const modal = TaskTrackerUtils.createTaskModal(
       task,
       this._config,
       async (notes, completed_at = null) => {
         await this._completeTask(task, notes, completed_at);
       },
-      null, // No save functionality for daily plan tasks
+      null, // No inline save functionality in detail view
       this._availableUsers,
-      this._enhancedUsers
+      this._enhancedUsers,
+      (taskToEdit) => {
+        // Edit button callback - opens comprehensive editor
+        TaskTrackerTaskEditor.openEditModal(
+          taskToEdit,
+          this._config,
+          async (taskToUpdate, updates) => {
+            await this._saveTask(taskToUpdate, updates);
+          },
+          this._availableUsers,
+          this._enhancedUsers
+        );
+      }
     );
     TaskTrackerUtils.showModal(modal);
+  }
+
+  async _saveTask(task, updates) {
+    try {
+      const response = await TaskTrackerUtils.updateTask(this._hass, task.id, task.task_type, task.assigned_to, updates);
+
+      if (response && response.success) {
+        TaskTrackerUtils.showSuccess('Task updated successfully');
+      } else {
+        const errorMsg = (response && response.message) || 'Unknown error';
+        TaskTrackerUtils.showError(`Failed to update task: ${errorMsg}`);
+      }
+
+      // Refresh the daily plan after update
+      setTimeout(() => {
+        this._fetchPlan();
+      }, 100);
+
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      TaskTrackerUtils.showError(`Failed to update task: ${error.message}`);
+    }
   }
 
   _renderDailyStateDisplay() {

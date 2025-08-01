@@ -216,19 +216,19 @@ update_task:
           options:
             - "RecurringTask"
             - "AdHocTask"
+            - "SelfCareTask"
     assigned_to:
       required: true
       example: "john_doe"
       selector:
         text:
-    duration_minutes:
+
+    # BaseTask fields
+    name:
       required: false
-      example: 45
+      example: "Updated task name"
       selector:
-        number:
-          min: 5
-          max: 480
-          unit_of_measurement: "minutes"
+        text:
     priority:
       required: false
       example: "2"
@@ -241,31 +241,176 @@ update_task:
               value: "2"
             - label: "Low (3)"
               value: "3"
+    notes:
+      required: false
+      example: "Additional task notes"
+      selector:
+        text:
+          multiline: true
+    is_active:
+      required: false
+      example: true
+      selector:
+        boolean:
+    overdue_severity:
+      required: false
+      example: "2"
+      selector:
+        select:
+          options:
+            - label: "Minor (1)"
+              value: "1"
+            - label: "Important (2)"
+              value: "2"
+            - label: "Critical (3)"
+              value: "3"
+
+    # DurationMixin field
+    duration_minutes:
+      required: false
+      example: 45
+      selector:
+        number:
+          min: 5
+          max: 480
+          unit_of_measurement: "minutes"
+
+    # FrequencyMixin fields
+    frequency_value:
+      required: false
+      example: 7
+      selector:
+        number:
+          min: 1
+          max: 365
+    frequency_unit:
+      required: false
+      example: "days"
+      selector:
+        select:
+          options:
+            - "days"
+            - "weeks"
+            - "months"
+            - "years"
     next_due:
       required: false
       example: "2024-01-15T14:30:00"
       selector:
         datetime:
-    frequency_days:
+
+    # TaskFitMixin fields
+    energy_cost:
       required: false
-      example: "7"
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5
+    focus_cost:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 5
+    pain_cost:
+      required: false
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 5
+    motivation_boost:
+      required: false
+      example: 0
+      selector:
+        number:
+          min: -5
+          max: 5
+    satisfaction:
+      required: false
+      example: 2
+      selector:
+        number:
+          min: 0
+          max: 5
+    impact:
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 0
+          max: 5
+    suitable_after_hours:
+      required: false
+      example: "if_necessary"
       selector:
         select:
           options:
-            - label: "Daily (1 day)"
+            - label: "Yes"
+              value: "yes"
+            - label: "If Necessary"
+              value: "if_necessary"
+            - label: "Absolutely Not"
+              value: "absolutely_not"
+
+    # Constraint fields
+    allowed_days:
+      required: false
+      example: [1, 2, 3, 4, 5]
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: "Monday"
+              value: 0
+            - label: "Tuesday"
+              value: 1
+            - label: "Wednesday"
+              value: 2
+            - label: "Thursday"
+              value: 3
+            - label: "Friday"
+              value: 4
+            - label: "Saturday"
+              value: 5
+            - label: "Sunday"
+              value: 6
+    requires_fair_weather:
+      required: false
+      example: false
+      selector:
+        boolean:
+
+    # SelfCareTask specific fields
+    level:
+      required: false
+      example: "1"
+      selector:
+        select:
+          options:
+            - label: "Must Do (1)"
               value: "1"
-            - label: "Twice Weekly (3 days)"
+            - label: "Should Do (2)"
+              value: "2"
+            - label: "Can Do (3)"
               value: "3"
-            - label: "Weekly (7 days)"
-              value: "7"
-            - label: "Biweekly (14 days)"
-              value: "14"
-            - label: "Monthly (30 days)"
-              value: "30"
-            - label: "Quarterly (90 days)"
-              value: "90"
-            - label: "Yearly (365 days)"
-              value: "365"
+    required_occurrences:
+      required: false
+      example: 2
+      selector:
+        number:
+          min: 1
+          max: 10
+
+    # Tags field
+    tags:
+      required: false
+      example: ["health", "morning"]
+      selector:
+        text:
+          multiple: true
 
 get_daily_state:
   fields:
