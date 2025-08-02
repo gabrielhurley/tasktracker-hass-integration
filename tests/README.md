@@ -1,133 +1,89 @@
-# TaskTracker Integration Tests
+# TaskTracker Home Assistant Integration Tests
 
-This directory contains unit tests for the TaskTracker Home Assistant integration using the `pytest-homeassistant-custom-component` package.
+This directory contains both Python and JavaScript tests for the TaskTracker Home Assistant integration.
 
-## Setup
+## Python Tests
 
-1. Install test dependencies:
-   ```bash
-   pip install -r requirements-test.txt
-   ```
+The majority of tests are written in Python using pytest and test the backend Home Assistant integration functionality.
 
-2. Run tests:
-   ```bash
-   pytest
-   ```
+### Running Python Tests
 
-3. Run tests with coverage:
-   ```bash
-   pytest --cov=custom_components.tasktracker --cov-report=html
-   ```
-
-## Test Structure
-
-### `conftest.py`
-Contains shared fixtures and configuration for all tests:
-- `auto_enable_custom_integrations`: Enables custom integrations for testing
-- `mock_config_entry`: Creates a mock configuration entry
-- `mock_api_response`: Provides sample API response data
-
-### `test_api.py`
-Tests for the TaskTracker API client (`custom_components.tasktracker.api`):
-- HTTP request formation and headers
-- Task completion methods
-- Task creation methods
-- Task query methods
-- Error handling (network errors, API errors)
-- Response validation
-
-### `test_init.py`
-Tests for integration setup and teardown (`custom_components.tasktracker.__init__`):
-- Integration setup success/failure
-- Config entry loading/unloading
-- Service registration
-- Frontend resource registration
-- Data structure validation
-
-### `test_config_flow.py`
-Tests for configuration flow (`custom_components.tasktracker.config_flow`):
-- User form display and validation
-- API connection testing
-- Authentication validation
-- Error handling for invalid credentials
-- Options flow testing
-
-### `test_services.py`
-Tests for Home Assistant services (`custom_components.tasktracker.services`):
-- Service registration and execution
-- User context resolution
-- API method invocation
-- Error handling and validation
-- Service response handling
-
-### `test_utils.py`
-Tests for utility functions (`custom_components.tasktracker.utils`):
-- User context mapping
-- Time and duration formatting
-- API response validation
-- Helper function behavior
-
-## Test Coverage
-
-The tests cover:
-
-### ✅ Core Functionality
-- API client HTTP communication
-- Integration setup/teardown
-- Configuration flow validation
-- Service registration and execution
-- User context mapping
-
-### ✅ Error Handling
-- Network connection failures
-- API authentication errors
-- Invalid user configurations
-- Malformed API responses
-- Missing user context
-
-### ✅ Edge Cases
-- Empty responses
-- Invalid data formats
-- Missing configuration
-- Service call failures
-
-## Running Specific Tests
-
-Run a specific test file:
 ```bash
-pytest tests/test_api.py
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run all Python tests
+python run_tests.py
+
+# Run specific test file
+pytest tests/test_services.py -v
+
+# Run with coverage
+pytest --cov=custom_components.tasktracker --cov-report=html
 ```
 
-Run a specific test method:
+## JavaScript Tests
+
+JavaScript tests focus on frontend utility functions and ensure consistent behavior across TaskTracker cards.
+
+### Setup
+
 ```bash
-pytest tests/test_api.py::TestTaskTrackerAPI::test_complete_task_success
+# Install Node.js dependencies (from project root)
+cd /path/to/tasktracker-hass-integration
+npm install
 ```
 
-Run tests with specific markers:
+### Running JavaScript Tests
+
 ```bash
-pytest -m asyncio  # Run only async tests
+# Run all JavaScript tests
+npm test
+
+# Run specific test file
+npm run test:tasktracker-utils
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
 ```
 
-## Mock Strategy
+### Test Coverage
 
-Tests use the following mocking approach:
-- **API responses**: Mocked using `AsyncMock` and `aioresponses`
-- **Home Assistant core**: Uses fixtures from `pytest-homeassistant-custom-component`
-- **External dependencies**: Patched at the module level
-- **Configuration**: Mock config entries with test data
+The JavaScript tests specifically cover:
 
-## Test Data
+- **TaskTrackerUtils.getTaskBorderStyle()** - Ensures consistent border color coding across all cards
+- **API data prioritization** - Tests that API-provided overdue info takes precedence over calculated values
+- **Overdue severity handling** - Validates color gradations for different severity levels
+- **Edge cases** - Missing fields, null values, and malformed data
+- **Regression testing** - Prevents specific bugs from reoccurring
 
-Test fixtures use realistic data structures matching the actual TaskTracker API:
-- Task objects with IDs, names, durations
-- User mappings between HA users and TaskTracker usernames
-- API responses with proper status/data structure
-- Error responses with appropriate error messages
+### Test Files
+
+- `tasktracker-utils.test.js` - Tests for TaskTracker utility functions
 
 ## Continuous Integration
 
-These tests are designed to run in CI environments and support:
-- Parallel execution
-- Coverage reporting
-- Detailed failure output
-- Async test handling
+Both Python and JavaScript tests should be run before submitting pull requests:
+
+```bash
+# Run all tests
+python run_tests.py && npm test
+```
+
+## Adding New Tests
+
+### Python Tests
+Follow the existing patterns in the test files. Use pytest fixtures and mock Home Assistant components appropriately.
+
+### JavaScript Tests
+Use Jest test framework and follow the existing structure:
+- Organize tests in `describe()` blocks by functionality
+- Use clear, descriptive test names
+- Include both positive and negative test cases
+- Test edge cases and error conditions

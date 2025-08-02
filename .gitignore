@@ -17,3 +17,10 @@ coverage.xml
 # Home Assistant configuration
 config/*
 !config/configuration.yaml
+
+
+# Node modules
+node_modules/
+
+# Coverage
+coverage/

@@ -3274,4 +3274,53 @@ export class TaskTrackerUtils {
   // Note: Previous datetime testing utilities have been removed.
   // Use TaskTrackerDateTime.debugWindowTiming() for datetime debugging.
   //
+
+      /**
+   * Calculate border style and CSS classes for task items based on overdue/due status
+   * This provides consistent styling across all TaskTracker cards
+   *
+   * @param {Object} task - Task object
+   * @param {string} taskType - Task type ('self_care' for self-care tasks, 'task' for regular tasks)
+   * @param {number} daysOverdue - Pre-calculated days overdue (from TaskTrackerDateTime.calculateDaysOverdue), used as fallback
+   * @returns {Object} - { borderStyle, cssClasses: { isOverdue, isDue, needsCompletion, overdue, dueToday } }
+   */
+  static getTaskBorderStyle(task, taskType = 'task', daysOverdue = 0) {
+    let isOverdue, isDue, borderStyle;
+    const overdueSeverity = task.overdue_severity || 1;
+
+    // Check if task has API-provided overdue info (both self-care and regular tasks can have this)
+    if (task.is_overdue !== undefined || task.days_overdue !== undefined) {
+      // Use API-provided overdue info
+      isOverdue = task.is_overdue || false;
+      daysOverdue = task.days_overdue || 0;
+      isDue = daysOverdue === 0 && !!(task.due_date || task.next_due); // Due today
+    } else {
+      // Fallback: use calculated daysOverdue parameter
+      const dueDate = task.due_date || task.next_due;
+      isOverdue = !!(dueDate && daysOverdue > 0);
+      isDue = !!(dueDate && daysOverdue === 0); // Due today
+    }
+
+    // Calculate border style
+    if (isOverdue) {
+      const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity);
+      borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
+    } else if (isDue) {
+      // Due but not overdue - use blue styling
+      borderStyle = 'border-left: 2px solid var(--primary-color) !important;';
+    } else {
+      borderStyle = '';
+    }
+
+    return {
+      borderStyle,
+      cssClasses: {
+        isOverdue,
+        isDue,
+        needsCompletion: isOverdue || isDue,
+        overdue: isOverdue,
+        dueToday: isDue && !isOverdue
+      }
+    };
+  }
 }

@@ -1,0 +1,30 @@
+{
+  "name": "tasktracker-hass-integration",
+  "version": "1.0.0",
+  "description": "TaskTracker Home Assistant integration",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:tasktracker-utils": "jest tasktracker-utils.test.js"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "tests/**/*.js",
+      "!tests/**/*.test.js"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ]
+  }
+}

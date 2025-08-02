@@ -300,8 +300,8 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     // Map state values to display labels
     const stateValues = [
       { label: 'Energy', value: state.energy, key: 'energy' },
-      { label: 'Motivation', value: state.motivation, key: 'motivation' },
       { label: 'Focus', value: state.focus, key: 'focus' },
+      { label: 'Motivation', value: state.motivation, key: 'motivation' },
       { label: 'Pain', value: state.pain, key: 'pain' },
       { label: 'Mood', value: state.mood, key: 'mood' },
       { label: 'Free Time', value: state.free_time, key: 'free_time' }
@@ -486,10 +486,9 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         }
 
         .daily-state-values {
-          display: flex;
-          flex-wrap: wrap;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
           gap: 8px;
-          flex: 1;
         }
 
         .state-value {
@@ -1060,43 +1059,16 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       metadataParts.push(TaskTrackerUtils.formatDueDate(dueDate, this._userContext, task));
     }
 
-    // Calculate overdue color and status
-    // For self-care tasks, use API-provided overdue info; for regular tasks, calculate from due date
-    let isOverdue, isDue, daysOverdue, overdueColor, borderStyle;
-
-    if (taskType === 'self_care' && (task.is_overdue !== undefined || task.days_overdue !== undefined)) {
-      // Self-care tasks: use API response
-      isOverdue = task.is_overdue || false;
-      daysOverdue = task.days_overdue || 0;
-      isDue = daysOverdue === 0 && (task.due_date || task.next_due); // Due today
-      const overdueSeverity = task.overdue_severity || 1;
-
-      if (isOverdue) {
-        overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity);
-        borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
-      } else if (isDue) {
-        // Due but not overdue - use blue styling
-        borderStyle = 'border-left: 2px solid var(--primary-color) !important;';
-      } else {
-        borderStyle = '';
-      }
+    // Calculate overdue color and status using helper method
+    let borderInfo;
+    if (taskType === 'self_care') {
+      // Self-care tasks: use helper method with self_care type
+      borderInfo = TaskTrackerUtils.getTaskBorderStyle(task, 'self_care', 0);
     } else {
-      // Regular tasks: calculate from due date using user context
+      // Regular tasks: calculate daysOverdue first, then use helper method
       const dueDate = task.due_date || task.next_due;
-      daysOverdue = dueDate ? TaskTrackerDateTime.calculateDaysOverdue(dueDate, this._userContext) : 0;
-      isOverdue = dueDate && daysOverdue > 0;
-      isDue = dueDate && daysOverdue === 0; // Due today
-      const overdueSeverity = task.overdue_severity || 1;
-
-      if (isOverdue) {
-        overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity);
-        borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
-      } else if (isDue) {
-        // Due but not overdue - use blue styling
-        borderStyle = 'border-left: 2px solid var(--primary-color) !important;';
-      } else {
-        borderStyle = '';
-      }
+      const daysOverdue = dueDate ? TaskTrackerDateTime.calculateDaysOverdue(dueDate, this._userContext) : 0;
+      borderInfo = TaskTrackerUtils.getTaskBorderStyle(task, 'task', daysOverdue);
     }
 
     // Check for low recommendation score to apply fade effect
@@ -1106,9 +1078,9 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     const taskClasses = [
       'task-item',
-      isOverdue || isDue ? 'needs-completion' : '',
-      isOverdue ? 'overdue' : '',
-      isDue && !isOverdue ? 'due-today' : '',
+      borderInfo.cssClasses.needsCompletion ? 'needs-completion' : '',
+      borderInfo.cssClasses.overdue ? 'overdue' : '',
+      borderInfo.cssClasses.dueToday ? 'due-today' : '',
       hasLowScore ? 'low-recommendation' : ''
     ].filter(Boolean).join(' ');
 
@@ -1116,7 +1088,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       <div class="${taskClasses}"
            data-task-data='${JSON.stringify(task)}'
            data-task-type="${taskType}"
-           style="${borderStyle}">
+           style="${borderInfo.borderStyle}">
         <div class="task-content">
           <div class="task-name">
             ${task.name}
@@ -1148,20 +1120,8 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     const completedOccurrences = requiredOccurrences - outstandingOccurrences;
     const allOccurrencesComplete = outstandingOccurrences === 0;
 
-        // Use the overdue information from the API response
-    const isOverdue = task.is_overdue || false;
-    const daysOverdue = task.days_overdue || 0;
-    const isDue = daysOverdue === 0 && (task.due_date || task.next_due); // Due today
-    const overdueSeverity = task.overdue_severity || 1;
-
-    let borderStyle = '';
-    if (isOverdue) {
-      const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity);
-      borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
-    } else if (isDue) {
-      // Due but not overdue - use blue styling
-      borderStyle = 'border-left: 2px solid var(--primary-color) !important;';
-    }
+    // Use the overdue information from the API response via helper method
+    const borderInfo = TaskTrackerUtils.getTaskBorderStyle(task, 'self_care', 0);
 
     // Build metadata
     const metadataParts = [];
@@ -1265,9 +1225,9 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       'task-item',
       'selfcare-windowed',
       allOccurrencesComplete ? 'all-complete' : 'has-opportunities',
-      isOverdue || isDue ? 'needs-completion' : '',
-      isOverdue ? 'overdue' : '',
-      isDue && !isOverdue ? 'due-today' : '',
+      borderInfo.cssClasses.needsCompletion ? 'needs-completion' : '',
+      borderInfo.cssClasses.overdue ? 'overdue' : '',
+      borderInfo.cssClasses.dueToday ? 'due-today' : '',
       hasLowScore ? 'low-recommendation' : ''
     ].filter(Boolean).join(' ');
 
@@ -1275,7 +1235,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       <div class="${statusClasses}"
            data-task-data='${JSON.stringify(task)}'
            data-task-type="self_care"
-           style="${borderStyle}">
+           style="${borderInfo.borderStyle}">
         <div class="task-content">
           <div class="task-name">
             ${task.name}
