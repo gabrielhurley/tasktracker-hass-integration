@@ -237,6 +237,10 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
           this._availableUsers,
           this._enhancedUsers
         );
+      },
+      async (snoozeUntil) => {
+        // Snooze button callback - updates task's due date
+        await this._snoozeTask(task, snoozeUntil);
       }
     );
     TaskTrackerUtils.showModal(modal);
@@ -292,6 +296,13 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       console.error('Failed to update task:', error);
       TaskTrackerUtils.showError(`Failed to update task: ${error.message}`);
     }
+  }
+
+  async _snoozeTask(task, snoozeUntil) {
+    const username = this._getCurrentUsername();
+    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, username, () => {
+      this._fetchRecommendedTasks();
+    });
   }
 
   _formatPriority(priority) {

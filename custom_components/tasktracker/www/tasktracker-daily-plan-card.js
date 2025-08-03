@@ -263,6 +263,10 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           this._availableUsers,
           this._enhancedUsers
         );
+      },
+      async (snoozeUntil) => {
+        // Snooze button callback - updates task's due date
+        await this._snoozeTask(task, snoozeUntil);
       }
     );
     TaskTrackerUtils.showModal(modal);
@@ -288,6 +292,13 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       console.error('Failed to update task:', error);
       TaskTrackerUtils.showError(`Failed to update task: ${error.message}`);
     }
+  }
+
+  async _snoozeTask(task, snoozeUntil) {
+    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
+    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, username, () => {
+      this._fetchPlan();
+    });
   }
 
   _renderDailyStateDisplay() {

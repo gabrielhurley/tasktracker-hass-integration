@@ -887,6 +887,46 @@ export class TaskTrackerUtils {
     return response.response;
   }
 
+  /**
+   * Snooze a task by updating its due date
+   * @param {Object} hass - Home Assistant instance
+   * @param {Object} task - Task object to snooze
+   * @param {string} snoozeUntil - ISO string of when to snooze until
+   * @param {string} username - Username for the update
+   * @param {Function} refreshCallback - Callback to refresh the card after snoozing
+   * @returns {Promise<boolean>} - Success status
+   */
+  static async snoozeTask(hass, task, snoozeUntil, username, refreshCallback = null) {
+    try {
+      // Call the update task service to change the due date
+      const response = await hass.callService('tasktracker', 'update_task', {
+        task_id: task.id || task.task_id,
+        task_type: task.task_type,
+        assigned_to: username,
+        next_due: snoozeUntil
+      }, {}, true, true);
+
+      if (response && response.response && response.response.success) {
+        TaskTrackerUtils.showSuccess(`Task "${task.name || task.task_name}" snoozed until ${TaskTrackerUtils.formatDateTime(snoozeUntil)}`);
+
+        // Call refresh callback if provided
+        if (refreshCallback) {
+          setTimeout(() => {
+            refreshCallback();
+          }, 100);
+        }
+
+        return true;
+      } else {
+        throw new Error(response?.response?.spoken_response || 'Failed to snooze task');
+      }
+    } catch (error) {
+      console.error('Failed to snooze task:', error);
+      TaskTrackerUtils.showError(`Failed to snooze task: ${error.message}`);
+      return false;
+    }
+  }
+
   // Leftover disposal utility
   static async disposeLeftover(hass, leftoverName, username, notes) {
     const serviceData = {
@@ -1090,7 +1130,7 @@ export class TaskTrackerUtils {
     return button;
   }
 
-  static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null, onEdit = null) {
+  static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null, onEdit = null, onSnooze = null) {
     const modal = document.createElement('div');
     modal.className = 'task-modal';
     modal.style.cssText = `
@@ -1647,6 +1687,142 @@ export class TaskTrackerUtils {
     pastCompletionSection.appendChild(customDateContainer);
     pastCompletionSection.appendChild(pastCompletionButtons);
 
+    // Snooze section (initially hidden)
+    const snoozeSection = document.createElement('div');
+    snoozeSection.style.cssText = `
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--secondary-background-color);
+      border-radius: 8px;
+      border-left: 4px solid var(--warning-color);
+    `;
+
+    const snoozeTitle = document.createElement('h4');
+    snoozeTitle.textContent = 'Snooze until when?';
+    snoozeTitle.style.cssText = `
+      margin: 0 0 12px 0;
+      color: var(--primary-text-color);
+      font-size: 1em;
+      font-weight: 500;
+    `;
+
+    const snoozeQuickOptionsContainer = document.createElement('div');
+    snoozeQuickOptionsContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    `;
+
+    const tomorrowButton = document.createElement('button');
+    tomorrowButton.textContent = 'Tomorrow';
+    tomorrowButton.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--primary-text-color);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9em;
+      text-align: center;
+    `;
+
+    const customSnoozeButton = document.createElement('button');
+    customSnoozeButton.textContent = 'Choose Date/Time';
+    customSnoozeButton.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--primary-text-color);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9em;
+      text-align: center;
+    `;
+
+    // Add hover effects for snooze buttons
+    [tomorrowButton, customSnoozeButton].forEach(button => {
+      button.addEventListener('mouseenter', () => {
+        button.style.background = 'var(--divider-color)';
+      });
+      button.addEventListener('mouseleave', () => {
+        button.style.background = 'transparent';
+      });
+    });
+
+    snoozeQuickOptionsContainer.appendChild(tomorrowButton);
+    snoozeQuickOptionsContainer.appendChild(customSnoozeButton);
+
+    // Custom snooze date/time input (initially hidden)
+    const customSnoozeContainer = document.createElement('div');
+    customSnoozeContainer.style.cssText = `
+      display: none;
+      margin-top: 12px;
+    `;
+
+    const customSnoozeLabel = document.createElement('label');
+    customSnoozeLabel.textContent = 'Snooze Until Date & Time';
+    customSnoozeLabel.style.cssText = `
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.85em;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    `;
+
+    const customSnoozeInput = document.createElement('input');
+    customSnoozeInput.type = 'datetime-local';
+    customSnoozeInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      background: var(--card-background-color);
+      color: var(--primary-text-color);
+      font-size: 14px;
+      box-sizing: border-box;
+    `;
+
+    // Set default to tomorrow at 9:00 AM
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    customSnoozeInput.value = TaskTrackerUtils.formatDateTimeForInput(tomorrow.toISOString());
+
+    customSnoozeContainer.appendChild(customSnoozeLabel);
+    customSnoozeContainer.appendChild(customSnoozeInput);
+
+    const snoozeButtons = document.createElement('div');
+    snoozeButtons.style.cssText = `
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 12px;
+    `;
+
+    const cancelSnoozeButton = TaskTrackerUtils.createStyledButton('Cancel');
+    cancelSnoozeButton.style.fontSize = '0.9em';
+    cancelSnoozeButton.style.padding = '6px 12px';
+    cancelSnoozeButton.style.background = 'var(--secondary-background-color)';
+    cancelSnoozeButton.style.color = 'var(--primary-text-color)';
+    cancelSnoozeButton.style.border = '1px solid var(--divider-color)';
+
+    const confirmSnoozeButton = TaskTrackerUtils.createStyledButton('Snooze Task');
+    confirmSnoozeButton.style.fontSize = '0.9em';
+    confirmSnoozeButton.style.padding = '6px 12px';
+
+    snoozeButtons.appendChild(cancelSnoozeButton);
+    snoozeButtons.appendChild(confirmSnoozeButton);
+
+    snoozeSection.appendChild(snoozeTitle);
+    snoozeSection.appendChild(snoozeQuickOptionsContainer);
+    snoozeSection.appendChild(customSnoozeContainer);
+    snoozeSection.appendChild(snoozeButtons);
+
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = `
       display: flex;
@@ -1677,13 +1853,25 @@ export class TaskTrackerUtils {
     completedAlreadyButton.style.color = 'var(--secondary-text-color)';
     completedAlreadyButton.style.border = 'none';
 
-    // Append buttons in correct order: Cancel, Save (if exists), Edit (if exists), Completed Already, Complete
+    // Snooze button (only if onSnooze callback provided and task has a due date)
+    let snoozeButton;
+    if (onSnooze && (task.next_due || task.due_date)) {
+      snoozeButton = TaskTrackerUtils.createStyledButton('Snooze');
+      snoozeButton.style.background = 'transparent';
+      snoozeButton.style.color = 'var(--secondary-text-color)';
+      snoozeButton.style.border = 'none';
+    }
+
+    // Append buttons in correct order: Cancel, Save (if exists), Edit (if exists), Snooze (if exists), Completed Already, Complete
     buttonContainer.appendChild(cancelButton);
     if (saveButton) {
       buttonContainer.appendChild(saveButton);
     }
     if (editButton) {
       buttonContainer.appendChild(editButton);
+    }
+    if (snoozeButton) {
+      buttonContainer.appendChild(snoozeButton);
     }
     buttonContainer.appendChild(completedAlreadyButton);
     buttonContainer.appendChild(completeButton);
@@ -1693,6 +1881,7 @@ export class TaskTrackerUtils {
     modalContent.appendChild(detailsGrid);
     modalContent.appendChild(notesSection);
     modalContent.appendChild(pastCompletionSection);
+    modalContent.appendChild(snoozeSection);
     modalContent.appendChild(buttonContainer);
 
     modal.appendChild(modalContent);
@@ -1813,6 +2002,14 @@ export class TaskTrackerUtils {
       buttonContainer.style.display = 'none';
     });
 
+    // Snooze button handler
+    if (snoozeButton && onSnooze) {
+      snoozeButton.addEventListener('click', () => {
+        snoozeSection.style.display = 'block';
+        buttonContainer.style.display = 'none';
+      });
+    }
+
     // Yesterday button handler
     yesterdayButton.addEventListener('click', async () => {
       const notes = completionNotesTextarea.value.trim();
@@ -1863,6 +2060,66 @@ export class TaskTrackerUtils {
         // Error handling is done in the onComplete callback
       }
     });
+
+    // Snooze event handlers
+    if (onSnooze) {
+      // Tomorrow snooze button handler
+      tomorrowButton.addEventListener('click', async () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0); // Set to 9:00 AM tomorrow
+
+        try {
+          await onSnooze(tomorrow.toISOString());
+          closeModal();
+        } catch (error) {
+          console.error('Failed to snooze task:', error);
+          // Error handling is done in the onSnooze callback
+        }
+      });
+
+      // Choose custom snooze date/time button handler
+      customSnoozeButton.addEventListener('click', () => {
+        customSnoozeContainer.style.display = 'block';
+        snoozeQuickOptionsContainer.style.display = 'none';
+      });
+
+      // Cancel snooze button handler
+      cancelSnoozeButton.addEventListener('click', () => {
+        snoozeSection.style.display = 'none';
+        buttonContainer.style.display = 'flex';
+        // Reset to quick options view
+        customSnoozeContainer.style.display = 'none';
+        snoozeQuickOptionsContainer.style.display = 'flex';
+      });
+
+      // Confirm custom snooze button handler
+      confirmSnoozeButton.addEventListener('click', async () => {
+        const snoozeUntilValue = customSnoozeInput.value;
+
+        if (!snoozeUntilValue) {
+          TaskTrackerUtils.showError('Please select a snooze date and time');
+          return;
+        }
+
+        // Convert datetime-local value to ISO string
+        const snoozeUntil = new Date(snoozeUntilValue).toISOString();
+
+        // Validate that the snooze date is in the future
+        if (new Date(snoozeUntil) <= new Date()) {
+          TaskTrackerUtils.showError('Snooze time must be in the future');
+          return;
+        }
+
+        try {
+          await onSnooze(snoozeUntil);
+          closeModal();
+        } catch (error) {
+          console.error('Failed to snooze task:', error);
+          // Error handling is done in the onSnooze callback
+        }
+      });
+    }
 
     // Apply fade-in animation
     modal.style.opacity = '0';
