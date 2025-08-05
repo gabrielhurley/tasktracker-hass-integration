@@ -16,6 +16,7 @@ from custom_components.tasktracker.const import (
     SERVICE_GET_ALL_TASKS,
     SERVICE_GET_AVAILABLE_TASKS,
     SERVICE_GET_AVAILABLE_USERS,
+    SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT,
     SERVICE_GET_RECENT_COMPLETIONS,
     SERVICE_GET_RECOMMENDED_TASKS,
     SERVICE_LIST_LEFTOVERS,
@@ -714,6 +715,43 @@ class TestTaskTrackerServices:
                     blocking=True,
                     return_response=True,
                 )
+
+    @pytest.mark.asyncio
+    async def test_get_daily_plan_encouragement_service(
+        self, hass: HomeAssistant, setup_integration: AsyncMock
+    ) -> None:
+        """Test get_daily_plan_encouragement service."""
+        mock_api = setup_integration
+        mock_api.get_daily_plan_encouragement.return_value = {
+            "success": True,
+            "spoken_response": "You're doing great! Keep it up!",
+            "data": {
+                "encouragement": "You're doing great! Keep it up!",
+                "task_count": 3,
+                "using_defaults": False,
+            },
+        }
+
+        from custom_components.tasktracker.services import async_setup_services
+
+        await async_setup_services(hass, mock_api, {})
+
+        # Call the service
+        result = await hass.services.async_call(
+            DOMAIN,
+            SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT,
+            {"username": "testuser"},
+            blocking=True,
+            return_response=True,
+        )
+
+        # Verify the result
+        assert result["success"] is True
+        assert result["spoken_response"] == "You're doing great! Keep it up!"
+        assert result["data"]["encouragement"] == "You're doing great! Keep it up!"
+
+        # Verify API was called
+        mock_api.get_daily_plan_encouragement.assert_called_once_with(username="testuser")
 
     @pytest.mark.asyncio
     async def test_async_unload_services(

@@ -948,11 +948,10 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     const selfCare = this._plan?.data?.self_care || [];
     const tasks = this._plan?.data?.tasks || [];
-    const spokenResponse = this._plan?.spoken_response || {};
     const usingDefaults = this._plan?.data?.using_defaults || false;
 
     if (usingDefaults) {
-      return this._renderReducedPlan(tasks, spokenResponse);
+      return this._renderReducedPlan(tasks);
     }
 
     const selfCareHtml = selfCare.length > 0
@@ -962,12 +961,6 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     const tasksHtml = tasks.length > 0
       ? tasks.map(task => this._renderTaskItem(task, 'task')).join('')
       : null;
-
-    const notificationBodyHtml = spokenResponse ? `
-      <div class="notification-focus">
-        ${spokenResponse}
-      </div>
-    ` : '';
 
     // Self-care section - show congratulatory message if no tasks
     const selfCareSection = selfCare.length > 0 ? `
@@ -990,14 +983,13 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     `;
 
     return `
-      ${notificationBodyHtml}
       ${selfCareSection}
       ${tasksSection}
       ${this._renderDailyStateDisplay()}
     `;
   }
 
-  _renderReducedPlan(tasks, notification) {
+  _renderReducedPlan(tasks) {
     const tasksHtml = tasks.length > 0
       ? tasks.map(task => this._renderTaskItem(task, 'task')).join('')
       : '<div class="no-urgent-tasks">No urgent tasks right now!</div>';

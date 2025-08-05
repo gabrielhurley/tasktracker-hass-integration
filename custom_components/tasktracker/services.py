@@ -26,6 +26,7 @@ from .const import (
     SERVICE_GET_AVAILABLE_TASKS,
     SERVICE_GET_AVAILABLE_USERS,
     SERVICE_GET_DAILY_PLAN,
+    SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT,
     SERVICE_GET_DAILY_STATE,
     SERVICE_GET_RECENT_COMPLETIONS,
     SERVICE_GET_RECOMMENDED_TASKS,
@@ -192,6 +193,12 @@ GET_DAILY_PLAN_SCHEMA = vol.Schema(
         vol.Optional("username"): cv.string,
         vol.Optional("fair_weather"): cv.boolean,
         vol.Optional("select_recommended"): cv.boolean,
+    }
+)
+
+GET_DAILY_PLAN_ENCOURAGEMENT_SCHEMA = vol.Schema(
+    {
+        vol.Optional("username"): cv.string,
     }
 )
 
@@ -729,6 +736,29 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Unexpected error in get_daily_plan_service")
                 raise
 
+        async def get_daily_plan_encouragement_service(call: ServiceCall) -> dict[str, Any]:
+            """Get AI-powered encouragement for the daily plan."""
+            try:
+                username = call.data.get("username")
+                if not username:
+                    user_id = call.context.user_id if call.context else None
+                    current_config = get_current_config()
+                    username = get_tasktracker_username_for_ha_user(
+                        hass, user_id, current_config
+                    )
+                    # username may remain None, backend will infer by api key mapping
+
+                result = await api.get_daily_plan_encouragement(username=username)
+
+                _LOGGER.debug("Daily plan encouragement retrieved: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to get daily plan encouragement")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in get_daily_plan_encouragement_service")
+                raise
+
         async def get_daily_state_service(call: ServiceCall) -> dict[str, Any]:
             """Get the daily state for a user."""
             try:
@@ -941,6 +971,15 @@ async def async_setup_services(  # noqa: C901, PLR0915
 
         hass.services.async_register(
             DOMAIN,
+            SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT,
+            get_daily_plan_encouragement_service,
+            schema=GET_DAILY_PLAN_ENCOURAGEMENT_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT)
+
+        hass.services.async_register(
+            DOMAIN,
             SERVICE_GET_DAILY_STATE,
             get_daily_state_service,
             schema=GET_DAILY_STATE_SCHEMA,
@@ -982,6 +1021,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_DELETE_COMPLETION,
         SERVICE_UPDATE_COMPLETION,
         SERVICE_GET_DAILY_PLAN,
+        SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT,
         SERVICE_GET_DAILY_STATE,
         SERVICE_SET_DAILY_STATE,
     ]

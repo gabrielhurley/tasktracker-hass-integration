@@ -55,6 +55,11 @@ JSMODULES = [
         "filename": "tasktracker-daily-state-card.js",
         "version": VERSION,
     },
+    {
+        "name": "TaskTracker Daily Encouragement Card",
+        "filename": "tasktracker-encouragement-card.js",
+        "version": VERSION,
+    },
 ]
 
 # Configuration keys
@@ -80,6 +85,7 @@ SERVICE_UPDATE_TASK: Final = "update_task"
 SERVICE_DELETE_COMPLETION: Final = "delete_completion"
 SERVICE_UPDATE_COMPLETION: Final = "update_completion"
 SERVICE_GET_DAILY_PLAN: Final = "get_daily_plan"
+SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT: Final = "get_daily_plan_encouragement"
 SERVICE_GET_DAILY_STATE: Final = "get_daily_state"
 SERVICE_SET_DAILY_STATE: Final = "set_daily_state"
 
@@ -104,6 +110,7 @@ ENDPOINT_UPDATE_COMPLETION: Final = "/api/completions/update_completion/"
 
 # New API endpoints
 ENDPOINT_DAILY_PLAN: Final = "/api/daily-plan/"
+ENDPOINT_DAILY_PLAN_ENCOURAGEMENT: Final = "/api/daily-plan/encouragement/"
 ENDPOINT_DAILY_STATE: Final = "/api/daily-state/"
 
 # Default values

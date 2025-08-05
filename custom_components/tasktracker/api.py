@@ -15,6 +15,7 @@ from .const import (
     ENDPOINT_CREATE_ADHOC_TASK,
     ENDPOINT_CREATE_LEFTOVER,
     ENDPOINT_DAILY_PLAN,
+    ENDPOINT_DAILY_PLAN_ENCOURAGEMENT,
     ENDPOINT_DAILY_STATE,
     ENDPOINT_DELETE_COMPLETION,
     ENDPOINT_LIST_LEFTOVERS,
@@ -295,6 +296,16 @@ class TaskTrackerAPI:
             params["select_recommended"] = str(select_recommended).lower()
 
         return await self._request("GET", ENDPOINT_DAILY_PLAN, params=params)
+
+    async def get_daily_plan_encouragement(
+        self, username: str | None
+    ) -> dict[str, Any]:
+        """Retrieve AI-powered encouragement for the daily plan."""
+        params: dict[str, Any] = {}
+        if username:
+            params["username"] = username
+
+        return await self._request("GET", ENDPOINT_DAILY_PLAN_ENCOURAGEMENT, params=params)
 
     async def get_daily_state(self, username: str) -> dict[str, Any]:
         """Retrieve the daily state for a user."""
