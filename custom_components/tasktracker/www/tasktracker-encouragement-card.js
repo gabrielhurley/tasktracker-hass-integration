@@ -1,5 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
+import { TaskTrackerStyles } from './utils/styles.js';
 
 /**
  * TaskTracker Encouragement Card

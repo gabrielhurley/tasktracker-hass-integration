@@ -1,7 +1,9 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
-import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
-import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
+import { TaskTrackerStyles } from './utils/styles.js';
+import { TaskTrackerDateTime } from './utils/datetime-utils.js';
+import { TaskTrackerTasksBaseCard } from './utils/task-cards-base.js';
+import { TaskTrackerTaskEditor } from './utils/ui/task-editor.js';
+import { TaskTrackerBaseEditor } from './utils/base-config-editor.js';
 
 /**
  * TaskTracker Recommended Tasks Card
@@ -13,10 +15,9 @@ import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
  * - Real-time API integration for task recommendations
  */
 
-class TaskTrackerRecommendedTasksCard extends HTMLElement {
+class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
     this._tasks = [];
@@ -38,6 +39,11 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement('tasktracker-recommended-tasks-card-editor');
   }
+
+  // Hooks consumed by TaskTrackerTasksBaseCard
+  onAfterComplete() { this._fetchRecommendedTasks(); }
+  onAfterUpdate() { this._fetchRecommendedTasks(); }
+  onAfterSnooze() { this._fetchRecommendedTasks(); }
 
   static getStubConfig() {
     return {
@@ -76,17 +82,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const wasInitialized = this._hass !== null;
-    this._hass = hass;
-
-    // Always set up auto-refresh and event listeners when hass changes
-    this._setupAutoRefresh();
-    this._setupEventListeners();
-
-    // Only fetch initial data on first hass assignment
-    if (!wasInitialized && hass) {
-      this._fetchRecommendedTasks();
-    }
+    super.hass = hass;
   }
 
   connectedCallback() {
@@ -109,31 +105,13 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     }
   }
 
-  _setupAutoRefresh() {
-    if (this._refreshInterval) {
-      clearInterval(this._refreshInterval);
-    }
-
-    this._refreshInterval = TaskTrackerUtils.setupAutoRefresh(() => {
-      this._fetchRecommendedTasks();
-    }, this._config.refresh_interval);
-  }
+  onHassFirstRun() { this._fetchRecommendedTasks(); this._setupEventListeners(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
   }
 
-  async _fetchAvailableUsers() {
-    try {
-      // Fetch both basic users (for backward compatibility) and enhanced users
-      this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
-      this._enhancedUsers = await TaskTrackerUtils.getEnhancedUsers(this._hass);
-    } catch (error) {
-      console.warn('Failed to fetch available users:', error);
-      this._availableUsers = [];
-      this._enhancedUsers = [];
-    }
-  }
+  // _fetchAvailableUsers inherited from TaskTrackerTasksBaseCard
 
   async _fetchRecommendedTasks() {
     await this._fetchAvailableUsers();
@@ -247,63 +225,14 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes, completed_at = null) {
-    const username = this._getCurrentUsername();
-    // For 'current' user mode, username will be null and that's expected
-    // The backend will handle user mapping via call context
-    if (username === null && this._config.user_filter_mode !== 'current') {
-      TaskTrackerUtils.showError('No user configured for task completion');
-      return;
-    }
-
-    try {
-      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes, completed_at);
-
-      if (response && response.success) {
-        TaskTrackerUtils.showSuccess(response.spoken_response || `Task "${task.name}" completed successfully`);
-      } else {
-        const errorMsg = (response && response.message) || 'Unknown error';
-        TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
-      }
-
-      // Refresh tasks after completion
-      setTimeout(() => {
-        this._fetchRecommendedTasks();
-      }, 100);
-
-    } catch (error) {
-      console.error('Failed to complete task:', error);
-      TaskTrackerUtils.showError(`Failed to complete task: ${error.message}`);
-    }
-  }
+  async _completeTask(task, notes, completed_at = null) { await super._completeTask(task, notes, completed_at); }
 
   async _saveTask(task, updates) {
-    try {
-      const response = await TaskTrackerUtils.updateTask(this._hass, task.id, task.task_type, task.assigned_to, updates);
-
-      if (response && response.success) {
-        TaskTrackerUtils.showSuccess('Task updated successfully');
-      } else {
-        const errorMsg = (response && response.message) || 'Unknown error';
-        TaskTrackerUtils.showError(`Failed to update task: ${errorMsg}`);
-      }
-
-      // Refresh tasks after update
-      setTimeout(() => {
-        this._fetchRecommendedTasks();
-      }, 100);
-
-    } catch (error) {
-      console.error('Failed to update task:', error);
-      TaskTrackerUtils.showError(`Failed to update task: ${error.message}`);
-    }
+    await super._saveTask(task, updates);
   }
 
   async _snoozeTask(task, snoozeUntil) {
-    const username = this._getCurrentUsername();
-    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, username, () => {
-      this._fetchRecommendedTasks();
-    });
+    await super._snoozeTask(task, snoozeUntil);
   }
 
   _formatPriority(priority) {
@@ -328,15 +257,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       </style>
 
       <div class="card">
-        ${this._config.show_header ? `
-          <div class="header">
-            <h3 class="title">Tasks for ${username ? TaskTrackerUtils.capitalize(username) : 'Current User'}</h3>
-            <button class="refresh-btn" title="Refresh tasks">
-              <ha-icon icon="mdi:refresh"></ha-icon>
-            </button>
-            ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
-          </div>
-        ` : ''}
+        ${this._renderHeader()}
 
         ${!hasValidUserConfig ? `
           <div class="no-user-warning">
@@ -365,9 +286,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => this._fetchRecommendedTasks());
-    }
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchRecommendedTasks());
 
     if (hasValidUserConfig) {
     const slider = this.shadowRoot.querySelector('.tt-ds-range');
@@ -397,6 +316,17 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     }
   }
 
+  // Base header integration
+  getCardTitle() {
+    const username = this._getCurrentUsername();
+    return `Tasks for ${username ? TaskTrackerUtils.capitalize(username) : 'Current User'}`;
+  }
+  getHeaderStatusHTML() {
+    return this._refreshing ? '<div class="refreshing-indicator"></div>' : '';
+  }
+  onAutoRefresh() { this._fetchRecommendedTasks(); }
+  onRefresh() { this._fetchRecommendedTasks(); }
+
   _renderContent() {
     // Only show loading state on initial load
     if (this._loading && this._initialLoad) {
@@ -415,41 +345,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   }
 
   _renderTaskItem(task, originalIndex) {
-    const priority = this._formatPriority(task.priority);
-    const duration = `${task.duration_minutes}m`;
-
-    // Build metadata line with pipes
-    const metadataParts = [];
-    metadataParts.push(duration);
-    metadataParts.push(priority);
-    if (task.due_date) {
-      metadataParts.push(`${this._formatDueDate(task.due_date, task)}`);
-    }
-
-    // Calculate overdue status and border styling using helper method
-    const daysOverdue = TaskTrackerDateTime.calculateDaysOverdue(task.due_date, this._userContext);
-    const borderInfo = TaskTrackerUtils.getTaskBorderStyle(task, 'task', daysOverdue);
-
-    // Build CSS classes
-    const taskClasses = [
-      'task-item',
-      borderInfo.cssClasses.needsCompletion ? 'needs-completion' : '',
-      borderInfo.cssClasses.overdue ? 'overdue' : '',
-      borderInfo.cssClasses.dueToday ? 'due-today' : ''
-    ].filter(Boolean).join(' ');
-
-    const borderClass = borderInfo.borderClass || '';
-    return `
-      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" data-task-data='${JSON.stringify(task)}'>
-        <div class="task-content">
-          <div class="task-name">
-            ${task.name}
-            ${task.last_completion_notes ? '<div class="completion-indicator" title="Has completion notes"></div>' : ''}
-          </div>
-          <div class="task-metadata">${metadataParts.join(' | ')}</div>
-        </div>
-      </div>
-    `;
+    return this.renderSimpleTaskRow(task, { showActions: false });
   }
 
   getCardSize() {
@@ -457,102 +353,50 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
   }
 
   _setupEventListeners() {
-    // Clean up any existing listener
-    if (this._eventCleanup) {
-      this._eventCleanup().catch(error => {
-        // Suppress "not_found" errors which are common during dashboard editing
-        if (error?.code !== 'not_found') {
-          console.warn('Error cleaning up existing TaskTracker event listener:', error);
-        }
-      });
-      this._eventCleanup = null;
-    }
+    const cleanups = [];
 
-    // Set up listeners for both task completions and task creations
-    const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(
-      this._hass,
-      (eventData) => {
-        // Only refresh if the completed task affects this user
+    cleanups.push(
+      TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
         const currentUsername = this._getCurrentUsername();
         if (currentUsername && eventData.username === currentUsername) {
-          setTimeout(() => {
-            this._fetchRecommendedTasks();
-          }, 500);
+          setTimeout(() => this._fetchRecommendedTasks(), 500);
         }
-      }
+      })
     );
 
-    const creationCleanup = TaskTrackerUtils.setupTaskCreationListener(
-      this._hass,
-      (eventData) => {
-        // Only refresh if the created task affects this user
+    cleanups.push(
+      TaskTrackerUtils.setupTaskCreationListener(this._hass, (eventData) => {
         const currentUsername = this._getCurrentUsername();
         if (currentUsername && eventData.assigned_to === currentUsername) {
-          setTimeout(() => {
-            this._fetchRecommendedTasks();
-          }, 500);
+          setTimeout(() => this._fetchRecommendedTasks(), 500);
         }
-      }
+      })
     );
 
-    const updateCleanup = TaskTrackerUtils.setupTaskUpdateListener(
-      this._hass,
-      (eventData) => {
-        // Refresh when any task is updated as it may affect recommendations
-        setTimeout(() => {
-          this._fetchRecommendedTasks();
-        }, 500);
-      }
+    cleanups.push(
+      TaskTrackerUtils.setupTaskUpdateListener(this._hass, () => {
+        setTimeout(() => this._fetchRecommendedTasks(), 500);
+      })
     );
 
-    const completionDeletionCleanup = TaskTrackerUtils.setupCompletionDeletionListener(
-      this._hass,
-      (eventData) => {
-        // Refresh when any completion is deleted as it may affect recommendations
-        setTimeout(() => {
-          this._fetchRecommendedTasks();
-        }, 500);
-      }
+    cleanups.push(
+      TaskTrackerUtils.setupCompletionDeletionListener(this._hass, () => {
+        setTimeout(() => this._fetchRecommendedTasks(), 500);
+      })
     );
 
-    // Combined cleanup function
-    this._eventCleanup = async () => {
-      await Promise.all([
-        completionCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion cleanup error:', err)),
-        creationCleanup().catch(err => err.code !== 'not_found' && console.warn('Creation cleanup error:', err)),
-        updateCleanup().catch(err => err.code !== 'not_found' && console.warn('Update cleanup error:', err)),
-        completionDeletionCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion deletion cleanup error:', err))
-      ]);
-    };
+    this.setEventCleanups(cleanups);
   }
 }
 
-class TaskTrackerRecommendedTasksCardEditor extends HTMLElement {
+class TaskTrackerRecommendedTasksCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._config = {};
-    this._hass = null;
     this._debounceTimers = {}; // Store debounce timers for different fields
   }
 
-  setConfig(config) {
-    this._config = { ...TaskTrackerRecommendedTasksCard.getStubConfig(), ...config };
-    this._render();
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-  }
-
-  configChanged(newConfig) {
-    const event = new Event('config-changed', {
-      bubbles: true,
-      composed: true,
-    });
-    event.detail = { config: newConfig };
-    this.dispatchEvent(event);
-  }
+  getDefaultConfig() { return { ...TaskTrackerRecommendedTasksCard.getStubConfig() }; }
 
   _render() {
     this.shadowRoot.innerHTML = `
@@ -623,23 +467,9 @@ class TaskTrackerRecommendedTasksCardEditor extends HTMLElement {
     });
   }
 
-  _valueChanged(ev) {
-    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
-  }
-
   _updateConfig(configKey, value) {
-    // Update config
-    this._config = {
-      ...this._config,
-      [configKey]: value
-    };
-
-    // If user_filter_mode changed, re-render to show/hide explicit user field
-    if (configKey === 'user_filter_mode') {
-      this._render();
-    }
-
-    this.configChanged(this._config);
+    super._updateConfig(configKey, value);
+    if (configKey === 'user_filter_mode') this._render();
   }
 }
 

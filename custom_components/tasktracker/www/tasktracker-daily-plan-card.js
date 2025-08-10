@@ -1,17 +1,18 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
-import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
-import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
+import { TaskTrackerStyles } from './utils/styles.js';
+import { TaskTrackerDateTime } from './utils/datetime-utils.js';
+import { TaskTrackerTasksBaseCard } from './utils/task-cards-base.js';
+import { TaskTrackerTaskEditor } from './utils/ui/task-editor.js';
+import { TaskTrackerBaseEditor } from './utils/base-config-editor.js';
 
 /**
  * TaskTracker Daily Plan Card
  *
  * Displays self-care tasks and tasks from the /api/daily-plan endpoint.
  */
-class TaskTrackerDailyPlanCard extends HTMLElement {
+class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
     this._plan = null;
@@ -29,6 +30,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement('tasktracker-daily-plan-card-editor');
   }
+
+  // Hooks consumed by TaskTrackerTasksBaseCard
+  onAfterComplete() { this._fetchPlan(); }
+  onAfterUpdate() { this._fetchPlan(); }
+  onAfterSnooze() { this._fetchPlan(); }
 
   static getStubConfig() {
     return {
@@ -67,14 +73,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const firstRun = this._hass === null;
-    this._hass = hass;
-
-    if (firstRun) {
-      this._fetchPlan();
-      this._setupAutoRefresh();
-      this._setupEventListeners();
-    }
+    super.hass = hass;
+  }
+  // Base first-run hook
+  onHassFirstRun() {
+    this._fetchPlan();
+    this._setupEventListeners();
   }
 
   connectedCallback() {
@@ -90,14 +94,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     }
   }
 
-  _setupAutoRefresh() {
-    if (this._refreshInterval) {
-      clearInterval(this._refreshInterval);
-    }
-    this._refreshInterval = TaskTrackerUtils.setupAutoRefresh(() => {
-      this._fetchPlan();
-    }, this._config.refresh_interval);
-  }
+  // Uses base helper now
 
   async _fetchAvailableUsers() {
     this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
@@ -273,34 +270,9 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _saveTask(task, updates) {
-    try {
-      const response = await TaskTrackerUtils.updateTask(this._hass, task.id, task.task_type, task.assigned_to, updates);
+  async _saveTask(task, updates) { await super._saveTask(task, updates); }
 
-      if (response && response.success) {
-        TaskTrackerUtils.showSuccess('Task updated successfully');
-      } else {
-        const errorMsg = (response && response.message) || 'Unknown error';
-        TaskTrackerUtils.showError(`Failed to update task: ${errorMsg}`);
-      }
-
-      // Refresh the daily plan after update
-      setTimeout(() => {
-        this._fetchPlan();
-      }, 100);
-
-    } catch (error) {
-      console.error('Failed to update task:', error);
-      TaskTrackerUtils.showError(`Failed to update task: ${error.message}`);
-    }
-  }
-
-  async _snoozeTask(task, snoozeUntil) {
-    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
-    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, username, () => {
-      this._fetchPlan();
-    });
-  }
+  async _snoozeTask(task, snoozeUntil) { await super._snoozeTask(task, snoozeUntil); }
 
   _renderDailyStateDisplay() {
     if (!this._dailyState || !this._dailyState.data) {
@@ -369,36 +341,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes, completed_at = null) {
-    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
-
-    // For 'current' user mode, username will be null and that's expected
-    // The backend will handle user mapping via call context
-    if (username === null && this._config.user_filter_mode !== 'current') {
-      TaskTrackerUtils.showError('No user configured for task completion');
-      return;
-    }
-
-    try {
-      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes, completed_at);
-
-      if (response && response.success) {
-        TaskTrackerUtils.showSuccess(response.spoken_response || `Task "${task.name}" completed successfully`);
-      } else {
-        const errorMsg = (response && response.message) || 'Unknown error';
-        TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
-      }
-
-      // Refresh plan after completion
-      setTimeout(() => {
-        this._fetchPlan();
-      }, 100);
-
-    } catch (error) {
-      console.error('Failed to complete task:', error);
-      TaskTrackerUtils.showError(`Failed to complete task: ${error.message}`);
-    }
-  }
+  async _completeTask(task, notes, completed_at = null) { await super._completeTask(task, notes, completed_at); }
 
   _render() {
     if (!this.shadowRoot) return;
@@ -610,20 +553,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       </style>
 
       <div class="card">
-        ${this._config.show_header ? `
-          <div class="header">
-            <h3 class="title">Daily Plan ${username ? `- ${TaskTrackerUtils.capitalize(username)}` : ''}</h3>
-            <div class="header-actions">
-              <button class="filter-toggle-btn ${this._showRecommendedOnly ? 'filtered' : ''}"
-                      title="${this._showRecommendedOnly ? 'Showing recommended tasks only - click to show all tasks' : 'Showing all tasks - click to show recommended only'}">
-                <ha-icon icon="${this._showRecommendedOnly ? 'mdi:filter-check' : 'mdi:filter-off'}"></ha-icon>
-              </button>
-              <button class="refresh-btn" title="Refresh daily plan">
-                <ha-icon icon="mdi:refresh"></ha-icon>
-              </button>
-            </div>
-          </div>
-        ` : ''}
+        ${this._renderHeader()}
 
         ${this._renderContent()}
       </div>
@@ -631,15 +561,11 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => this._fetchPlan());
-    }
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchPlan());
 
     // Filter toggle button handler
     const filterToggleBtn = this.shadowRoot.querySelector('.filter-toggle-btn');
-    if (filterToggleBtn) {
-      filterToggleBtn.addEventListener('click', () => this._toggleRecommendationFilter());
-    }
+    if (filterToggleBtn) filterToggleBtn.addEventListener('click', () => this._toggleRecommendationFilter());
 
     // Daily state button handler
     const dailyStateButton = this.shadowRoot.querySelector('.daily-state-button');
@@ -729,6 +655,22 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       });
     }
   }
+
+  // Base header integration
+  getCardTitle() {
+    const username = this._getUsername();
+    return `Daily Plan ${username ? `- ${TaskTrackerUtils.capitalize(username)}` : ''}`;
+  }
+  getHeaderActions() {
+    return `
+      <button class="filter-toggle-btn ${this._showRecommendedOnly ? 'filtered' : ''}"
+              title="${this._showRecommendedOnly ? 'Showing recommended tasks only - click to show all tasks' : 'Showing all tasks - click to show recommended only'}">
+        <ha-icon icon="${this._showRecommendedOnly ? 'mdi:filter-check' : 'mdi:filter-off'}"></ha-icon>
+      </button>
+    `;
+  }
+  onAutoRefresh() { this._fetchPlan(); }
+  onRefresh() { this._fetchPlan(); }
 
   _renderContent() {
     if (this._loading) {
@@ -1073,68 +1015,14 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 }
 
 // Config editor
-class TaskTrackerDailyPlanCardEditor extends HTMLElement {
+class TaskTrackerDailyPlanCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._config = {};
   }
 
-  setConfig(config) {
-    const isInitialRender = !this.shadowRoot.hasChildNodes();
-    this._config = { ...TaskTrackerDailyPlanCard.getStubConfig(), ...config };
-
-    if (isInitialRender) {
-      this._render();
-    } else {
-      // Update field values without re-rendering
-      this._updateFieldValues();
-    }
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-  }
-
-  _valueChanged(ev) {
-    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
-  }
-
-  _updateFieldValues() {
-    // Update field values without re-rendering
-    this.shadowRoot.querySelectorAll('input, select').forEach(input => {
-      const configKey = input.dataset.configKey;
-      if (configKey && this._config[configKey] !== undefined) {
-        if (input.type === 'checkbox') {
-          input.checked = this._config[configKey];
-        } else {
-          input.value = this._config[configKey] || '';
-        }
-      }
-    });
-
-    // Handle user_filter_mode visibility
-    const explicitUserRow = this.shadowRoot.querySelector('.explicit-user-row');
-    if (explicitUserRow) {
-      explicitUserRow.classList.toggle('hidden', this._config.user_filter_mode !== 'explicit');
-    }
-  }
-
-  _updateConfig(configKey, value) {
-    this._config = {
-      ...this._config,
-      [configKey]: value
-    };
-
-    // If user_filter_mode changed, show/hide explicit user field
-    if (configKey === 'user_filter_mode') {
-      const explicitUserRow = this.shadowRoot.querySelector('.explicit-user-row');
-      if (explicitUserRow) {
-        explicitUserRow.classList.toggle('hidden', value !== 'explicit');
-      }
-    }
-
-    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config } }));
+  getDefaultConfig() {
+    return { ...TaskTrackerDailyPlanCard.getStubConfig() };
   }
 
   _render() {
@@ -1233,6 +1121,13 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
         input.addEventListener('input', this._valueChanged.bind(this));
       }
     });
+  }
+
+  _updateConfig(configKey, value) {
+    super._updateConfig(configKey, value);
+    if (configKey === 'user_filter_mode') {
+      this._render();
+    }
   }
 }
 

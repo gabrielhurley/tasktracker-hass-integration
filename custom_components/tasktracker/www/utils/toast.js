@@ -1,7 +1,4 @@
-import { TaskTrackerStyles } from '../tasktracker-styles.js';
-
 export function showSuccess(message) {
-  TaskTrackerStyles.ensureGlobal();
   const toast = document.createElement('div');
   toast.className = 'tt-toast tt-toast--success';
   toast.textContent = message;
@@ -11,7 +8,6 @@ export function showSuccess(message) {
 }
 
 export function showError(message) {
-  TaskTrackerStyles.ensureGlobal();
   const toast = document.createElement('div');
   toast.className = 'tt-toast tt-toast--error';
   toast.textContent = message;

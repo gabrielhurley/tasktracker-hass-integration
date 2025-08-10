@@ -1,4 +1,4 @@
-import { TaskTrackerStyles } from '../../tasktracker-styles.js';
+import { TaskTrackerStyles } from '../styles.js';
 import { createStyledButton } from './components.js';
 import {
   formatDateTimeForInput,

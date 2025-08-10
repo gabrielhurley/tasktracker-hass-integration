@@ -1,5 +1,7 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
+import { TaskTrackerStyles } from './utils/styles.js';
+import { TaskTrackerBaseCard } from './utils/base-card.js';
+import { TaskTrackerBaseEditor } from './utils/base-config-editor.js';
 
 /**
  * TaskTracker Recent Tasks Card
@@ -11,10 +13,9 @@ import { TaskTrackerStyles } from './tasktracker-styles.js';
  * - Real-time API integration for completion data
  */
 
-class TaskTrackerRecentTasksCard extends HTMLElement {
+class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
     this._completions = [];
@@ -71,18 +72,9 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const wasInitialized = this._hass !== null;
-    this._hass = hass;
-
-    // Always set up auto-refresh and event listeners when hass changes
-    this._setupAutoRefresh();
-    this._setupEventListeners();
-
-    // Only fetch initial data on first hass assignment
-    if (!wasInitialized && hass) {
-      this._fetchRecentCompletions();
-    }
+    super.hass = hass;
   }
+  onHassFirstRun() { this._fetchRecentCompletions(); this._setupEventListeners(); }
 
   connectedCallback() {
     this._render();
@@ -104,15 +96,8 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
     }
   }
 
-  _setupAutoRefresh() {
-    if (this._refreshInterval) {
-      clearInterval(this._refreshInterval);
-    }
-
-    this._refreshInterval = TaskTrackerUtils.setupAutoRefresh(() => {
-      this._fetchRecentCompletions();
-    }, this._config.refresh_interval);
-  }
+  onAutoRefresh() { this._fetchRecentCompletions(); }
+  onRefresh() { this._fetchRecentCompletions(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
@@ -222,15 +207,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       </style>
 
       <div class="card">
-        ${this._config.show_header ? `
-          <div class="header">
-            <h3 class="title">Recent Completions</h3>
-            <button class="refresh-btn" title="Refresh completions">
-              <ha-icon icon="mdi:refresh"></ha-icon>
-            </button>
-            ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
-          </div>
-        ` : ''}
+        ${this._renderHeader()}
 
         ${!hasValidUserConfig ? `
           <div class="no-user-warning">
@@ -242,9 +219,7 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => this._fetchRecentCompletions());
-    }
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchRecentCompletions());
 
     // Add event listeners for edit buttons
     const editButtons = this.shadowRoot.querySelectorAll('.complete-btn[data-completion-id]');
@@ -256,6 +231,10 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       });
     });
   }
+
+  // Base header integration
+  getCardTitle() { return 'Recent Completions'; }
+  getHeaderStatusHTML() { return this._refreshing ? '<div class="refreshing-indicator"></div>' : ''; }
 
   _renderContent() {
     // Only show loading state on initial load
@@ -312,72 +291,30 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   }
 
   _setupEventListeners() {
-    // Clean up any existing listener
-    if (this._eventCleanup) {
-      this._eventCleanup().catch(error => {
-        // Suppress "not_found" errors which are common during dashboard editing
-        if (error?.code !== 'not_found') {
-          console.warn('Error cleaning up existing TaskTracker event listener:', error);
-        }
-      });
-      this._eventCleanup = null;
-    }
-
-    // Set up listeners for both task completions and leftover disposals
-    const taskCleanup = TaskTrackerUtils.setupTaskCompletionListener(
-      this._hass,
-      (eventData) => {
+    const cleanups = [];
+    cleanups.push(
+      TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
         const shouldRefresh = this._shouldRefreshForUser(eventData.username);
-        if (shouldRefresh) {
-          setTimeout(() => {
-            this._fetchRecentCompletions();
-          }, 500);
-        }
-      }
+        if (shouldRefresh) setTimeout(() => this._fetchRecentCompletions(), 500);
+      })
     );
-
-    const leftoverCleanup = TaskTrackerUtils.setupLeftoverDisposalListener(
-      this._hass,
-      (eventData) => {
+    cleanups.push(
+      TaskTrackerUtils.setupLeftoverDisposalListener(this._hass, (eventData) => {
         const shouldRefresh = this._shouldRefreshForUser(eventData.username);
-        if (shouldRefresh) {
-          setTimeout(() => {
-            this._fetchRecentCompletions();
-          }, 500);
-        }
-      }
+        if (shouldRefresh) setTimeout(() => this._fetchRecentCompletions(), 500);
+      })
     );
-
-    // Set up listeners for completion edits
-    const completionDeletedCleanup = TaskTrackerUtils.setupEventListener(
-      this._hass,
-      'tasktracker_completion_deleted',
-      () => {
-        setTimeout(() => {
-          this._fetchRecentCompletions();
-        }, 500);
-      }
+    cleanups.push(
+      TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_completion_deleted', () => {
+        setTimeout(() => this._fetchRecentCompletions(), 500);
+      })
     );
-
-    const completionUpdatedCleanup = TaskTrackerUtils.setupEventListener(
-      this._hass,
-      'tasktracker_completion_updated',
-      () => {
-        setTimeout(() => {
-          this._fetchRecentCompletions();
-        }, 500);
-      }
+    cleanups.push(
+      TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_completion_updated', () => {
+        setTimeout(() => this._fetchRecentCompletions(), 500);
+      })
     );
-
-    // Combined cleanup function
-    this._eventCleanup = async () => {
-      await Promise.all([
-        taskCleanup().catch(err => err.code !== 'not_found' && console.warn('Task cleanup error:', err)),
-        leftoverCleanup().catch(err => err.code !== 'not_found' && console.warn('Leftover cleanup error:', err)),
-        completionDeletedCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion deleted cleanup error:', err)),
-        completionUpdatedCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion updated cleanup error:', err))
-      ]);
-    };
+    this.setEventCleanups(cleanups);
   }
 
   _shouldRefreshForUser(completedByUsername) {
@@ -437,32 +374,14 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
   }
 }
 
-class TaskTrackerRecentTasksCardEditor extends HTMLElement {
+class TaskTrackerRecentTasksCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._config = {};
-    this._hass = null;
     this._debounceTimers = {};
   }
 
-  setConfig(config) {
-    this._config = { ...TaskTrackerRecentTasksCard.getStubConfig(), ...config };
-    this._render();
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-  }
-
-  configChanged(newConfig) {
-    const event = new Event('config-changed', {
-      bubbles: true,
-      composed: true,
-    });
-    event.detail = { config: newConfig };
-    this.dispatchEvent(event);
-  }
+  getDefaultConfig() { return { ...TaskTrackerRecentTasksCard.getStubConfig() }; }
 
   _render() {
     this.shadowRoot.innerHTML = `
@@ -528,29 +447,13 @@ class TaskTrackerRecentTasksCardEditor extends HTMLElement {
     // Add event listeners
     this.shadowRoot.querySelectorAll('input, select').forEach(input => {
       input.addEventListener('change', this._valueChanged.bind(this));
-      if (input.type === 'text' || input.type === 'number') {
-        input.addEventListener('input', this._valueChanged.bind(this));
-      }
+      if (input.type === 'text' || input.type === 'number') input.addEventListener('input', this._valueChanged.bind(this));
     });
   }
 
-  _valueChanged(ev) {
-    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
-  }
-
   _updateConfig(configKey, value) {
-    // Update config
-    this._config = {
-      ...this._config,
-      [configKey]: value
-    };
-
-    // If user_filter_mode changed, re-render to show/hide explicit user field
-    if (configKey === 'user_filter_mode') {
-      this._render();
-    }
-
-    this.configChanged(this._config);
+    super._updateConfig(configKey, value);
+    if (configKey === 'user_filter_mode') this._render();
   }
 }
 

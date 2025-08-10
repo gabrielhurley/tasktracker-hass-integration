@@ -1,4 +1,4 @@
-import { dateToUserTimezone, getUserLogicalDate } from './datetime-legacy.js';
+import { TaskTrackerDateTime } from './datetime-utils.js';
 
 export function formatDate(dateString) {
   try {
@@ -110,12 +110,7 @@ export function formatDateTime(dateString, userContext = null) {
     const now = new Date();
     const diffMs = now - date;
     if (userContext) {
-      const currentLogicalDate = getUserLogicalDate(userContext, now);
-      const dateLogical = dateToUserTimezone(date, userContext).toISOString().split('T')[0];
-      const currentDateObj = new Date(currentLogicalDate + 'T00:00:00');
-      const dateLogicalObj = new Date(dateLogical + 'T00:00:00');
-      const diffTime = currentDateObj.getTime() - dateLogicalObj.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = TaskTrackerDateTime.calculateLogicalDayDifference(dateString, userContext);
       const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
       if (diffDays === 0) {
@@ -146,21 +141,26 @@ export function formatDateTime(dateString, userContext = null) {
 // Note: formatDueDate and formatSelfCareDueDate remain to be migrated per card needs.
 export function formatDueDate(dueDateString, userContext = null, task = null) {
   if (!dueDateString) return 'Unknown';
-  const now = new Date();
-  const dueDate = new Date(dueDateString);
-  const diffTime = dueDate.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) {
-    const overdueDays = Math.abs(diffDays);
-    if (overdueDays === 0) return 'Today';
-    if (overdueDays === 1) return '1 day overdue';
-    return `${overdueDays} days overdue`;
-  } else if (diffDays === 0) {
-    return 'Today';
-  } else if (diffDays === 1) {
-    return 'Tomorrow';
+  try {
+    return TaskTrackerDateTime.formatDueDateLogical(dueDateString, userContext, task);
+  } catch {
+    // Fallback to simple calendar day diff if something goes wrong
+    const now = new Date();
+    const dueDate = new Date(dueDateString);
+    const diffTime = dueDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) {
+      const overdueDays = Math.abs(diffDays);
+      if (overdueDays === 0) return 'Today';
+      if (overdueDays === 1) return '1 day overdue';
+      return `${overdueDays} days overdue`;
+    } else if (diffDays === 0) {
+      return 'Today';
+    } else if (diffDays === 1) {
+      return 'Tomorrow';
+    }
+    return `${diffDays} days`;
   }
-  return `${diffDays} days`;
 }
 
 export function formatSelfCareDueDate() {

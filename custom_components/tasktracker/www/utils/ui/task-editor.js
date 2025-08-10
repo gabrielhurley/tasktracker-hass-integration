@@ -5,13 +5,14 @@
  * (RecurringTask, AdHocTask, SelfCareTask) and all editable fields.
  */
 
-import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
+import { TaskTrackerStyles } from '../styles.js';
+import { showModal, createStyledButton } from './components.js';
+import { showSuccess, showError } from '../toast.js';
 
 export class TaskTrackerTaskEditor {
   static openEditModal(task, config, onSave, availableUsers = [], enhancedUsers = null) {
     const modal = this.createTaskEditModal(task, config, onSave, availableUsers, enhancedUsers);
-    TaskTrackerUtils.showModal(modal);
+    showModal(modal);
     return modal;
   }
 
@@ -50,10 +51,10 @@ export class TaskTrackerTaskEditor {
     const footer = document.createElement('div');
     footer.className = 'tt-flex-end tt-gap-12 tt-mt-24';
 
-    const cancelButton = TaskTrackerUtils.createStyledButton('Cancel');
+    const cancelButton = createStyledButton('Cancel');
     cancelButton.type = 'button';
 
-    const saveButton = TaskTrackerUtils.createStyledButton('Save Changes');
+    const saveButton = createStyledButton('Save Changes');
     saveButton.type = 'submit';
 
     footer.appendChild(cancelButton);
@@ -91,14 +92,14 @@ export class TaskTrackerTaskEditor {
         const updates = this.collectFormData(form, task);
         if (Object.keys(updates).length > 0) {
           await onSave(task, updates);
-          TaskTrackerUtils.showSuccess('Task updated successfully');
+          showSuccess('Task updated successfully');
         } else {
-          TaskTrackerUtils.showSuccess('No changes detected');
+          showSuccess('No changes detected');
         }
         closeModal();
       } catch (error) {
         console.error('Failed to save task:', error);
-        TaskTrackerUtils.showError(`Failed to save task: ${error.message}`);
+        showError(`Failed to save task: ${error.message}`);
       }
     };
 

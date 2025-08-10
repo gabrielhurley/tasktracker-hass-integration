@@ -1,6 +1,8 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
-import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
+import { TaskTrackerStyles } from './utils/styles.js';
+import { TaskTrackerBaseCard } from './utils/base-card.js';
+import { TaskTrackerBaseEditor } from './utils/base-config-editor.js';
+import { TaskTrackerDateTime } from './utils/datetime-utils.js';
 
 /**
  * TaskTracker Leftovers Card
@@ -12,10 +14,9 @@ import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
  * - Real-time API integration for leftover management
  */
 
-class TaskTrackerLeftoversCard extends HTMLElement {
+class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
     this._leftovers = [];
@@ -68,18 +69,9 @@ class TaskTrackerLeftoversCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const wasInitialized = this._hass !== null;
-    this._hass = hass;
-
-    // Always set up auto-refresh and event listeners when hass changes
-    this._setupAutoRefresh();
-    this._setupEventListeners();
-
-    // Only fetch initial data on first hass assignment
-    if (!wasInitialized && hass) {
-      this._fetchLeftovers();
-    }
+    super.hass = hass;
   }
+  onHassFirstRun() { this._fetchLeftovers(); this._setupEventListeners(); }
 
   connectedCallback() {
     this._render();
@@ -101,15 +93,8 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     }
   }
 
-  _setupAutoRefresh() {
-    if (this._refreshInterval) {
-      clearInterval(this._refreshInterval);
-    }
-
-    this._refreshInterval = TaskTrackerUtils.setupAutoRefresh(() => {
-      this._fetchLeftovers();
-    }, this._config.refresh_interval);
-  }
+  onAutoRefresh() { this._fetchLeftovers(); }
+  onRefresh() { this._fetchLeftovers(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
@@ -225,57 +210,17 @@ class TaskTrackerLeftoversCard extends HTMLElement {
   }
 
   _setupEventListeners() {
-    // Clean up any existing listener
-    if (this._eventCleanup) {
-      this._eventCleanup().catch(error => {
-        // Suppress "not_found" errors which are common during dashboard editing
-        if (error?.code !== 'not_found') {
-          console.warn('Error cleaning up existing TaskTracker event listener:', error);
-        }
-      });
-      this._eventCleanup = null;
-    }
-
-    // Set up listeners for leftover disposals, leftover creations, and task completions
-    // (task completions needed because voice commands for leftover disposal fire task_completed events)
-    const disposalCleanup = TaskTrackerUtils.setupLeftoverDisposalListener(
-      this._hass,
-      (eventData) => {
-        // For leftovers, refresh when any leftover is disposed
-        setTimeout(() => {
-          this._fetchLeftovers();
-        }, 500);
-      }
+    const cleanups = [];
+    cleanups.push(
+      TaskTrackerUtils.setupLeftoverDisposalListener(this._hass, () => setTimeout(() => this._fetchLeftovers(), 500))
     );
-
-    const creationCleanup = TaskTrackerUtils.setupLeftoverCreationListener(
-      this._hass,
-      (eventData) => {
-        // Refresh when any leftover is created
-        setTimeout(() => {
-          this._fetchLeftovers();
-        }, 500);
-      }
+    cleanups.push(
+      TaskTrackerUtils.setupLeftoverCreationListener(this._hass, () => setTimeout(() => this._fetchLeftovers(), 500))
     );
-
-    const taskCompletionCleanup = TaskTrackerUtils.setupTaskCompletionListener(
-      this._hass,
-      (eventData) => {
-        // Refresh for task completions (covers voice commands for leftover disposal)
-        setTimeout(() => {
-          this._fetchLeftovers();
-        }, 500);
-      }
+    cleanups.push(
+      TaskTrackerUtils.setupTaskCompletionListener(this._hass, () => setTimeout(() => this._fetchLeftovers(), 500))
     );
-
-    // Combined cleanup function
-    this._eventCleanup = async () => {
-      await Promise.all([
-        disposalCleanup().catch(err => err.code !== 'not_found' && console.warn('Disposal cleanup error:', err)),
-        creationCleanup().catch(err => err.code !== 'not_found' && console.warn('Creation cleanup error:', err)),
-        taskCompletionCleanup().catch(err => err.code !== 'not_found' && console.warn('Task completion cleanup error:', err))
-      ]);
-    };
+    this.setEventCleanups(cleanups);
   }
 
   async _disposeLeftover(leftover, notes) {
@@ -395,15 +340,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       </style>
 
       <div class="card">
-        ${this._config.show_header ? `
-          <div class="header">
-            <h3 class="title">Leftovers</h3>
-            <button class="refresh-btn" title="Refresh leftovers">
-              <ha-icon icon="mdi:refresh"></ha-icon>
-            </button>
-            ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
-          </div>
-        ` : ''}
+        ${this._renderHeader()}
 
         ${!hasValidUserConfig ? `
           <div class="no-user-warning">
@@ -415,9 +352,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => this._fetchLeftovers());
-    }
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchLeftovers());
 
     if (hasValidUserConfig) {
       // Dispose button click handlers
@@ -433,6 +368,10 @@ class TaskTrackerLeftoversCard extends HTMLElement {
       });
     }
   }
+
+  // Base header integration
+  getCardTitle() { return 'Leftovers'; }
+  getHeaderStatusHTML() { return this._refreshing ? '<div class="refreshing-indicator"></div>' : ''; }
 
   _renderContent() {
     // Only show loading state on initial load
@@ -508,32 +447,14 @@ class TaskTrackerLeftoversCard extends HTMLElement {
   }
 }
 
-class TaskTrackerLeftoversCardEditor extends HTMLElement {
+class TaskTrackerLeftoversCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._config = {};
-    this._hass = null;
     this._debounceTimers = {};
   }
 
-  setConfig(config) {
-    this._config = { ...TaskTrackerLeftoversCard.getStubConfig(), ...config };
-    this._render();
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-  }
-
-  configChanged(newConfig) {
-    const event = new Event('config-changed', {
-      bubbles: true,
-      composed: true,
-    });
-    event.detail = { config: newConfig };
-    this.dispatchEvent(event);
-  }
+  getDefaultConfig() { return { ...TaskTrackerLeftoversCard.getStubConfig() }; }
 
   _render() {
     this.shadowRoot.innerHTML = `
@@ -585,25 +506,11 @@ class TaskTrackerLeftoversCardEditor extends HTMLElement {
     // Add event listeners
     this.shadowRoot.querySelectorAll('input, select').forEach(input => {
       input.addEventListener('change', this._valueChanged.bind(this));
-      if (input.type === 'text' || input.type === 'number') {
-        input.addEventListener('input', this._valueChanged.bind(this));
-      }
+      if (input.type === 'text' || input.type === 'number') input.addEventListener('input', this._valueChanged.bind(this));
     });
   }
 
-  _valueChanged(ev) {
-    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
-  }
-
-  _updateConfig(configKey, value) {
-    // Update config
-    this._config = {
-      ...this._config,
-      [configKey]: value
-    };
-
-    this.configChanged(this._config);
-  }
+  _updateConfig(configKey, value) { super._updateConfig(configKey, value); }
 }
 
 if (!customElements.get('tasktracker-leftovers-card')) {

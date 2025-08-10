@@ -1,4 +1,4 @@
-import { TaskTrackerStyles } from '../../tasktracker-styles.js';
+import { TaskTrackerStyles } from '../styles.js';
 
 export function createStyledButton(text, type = 'default', onClick = null) {
   const button = document.createElement('button');

@@ -1,7 +1,9 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
-import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
-import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
+import { TaskTrackerStyles } from './utils/styles.js';
+import { TaskTrackerDateTime } from './utils/datetime-utils.js';
+import { TaskTrackerTasksBaseCard } from './utils/task-cards-base.js';
+import { TaskTrackerTaskEditor } from './utils/ui/task-editor.js';
+import { TaskTrackerBaseEditor } from './utils/base-config-editor.js';
 
 /**
  * TaskTracker Available Tasks Card
@@ -13,10 +15,9 @@ import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
  * - Real-time API integration for task data
  */
 
-class TaskTrackerAvailableTasksCard extends HTMLElement {
+class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
     this._tasks = [];
@@ -37,6 +38,11 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement('tasktracker-available-tasks-card-editor');
   }
+
+  // Hooks consumed by TaskTrackerTasksBaseCard
+  onAfterComplete() { this._fetchAvailableTasks(); }
+  onAfterUpdate() { this._fetchAvailableTasks(); }
+  onAfterSnooze() { this._fetchAvailableTasks(); }
 
   static getStubConfig() {
     return {
@@ -78,16 +84,9 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const wasInitialized = this._hass !== null;
-    this._hass = hass;
-
-    // Always set up auto-refresh and event listeners when hass changes
-    this._setupAutoRefresh();
-    this._setupEventListeners();
-
-    // Only fetch initial data on first hass assignment
-    if (!wasInitialized && hass) {
-      this._fetchAvailableTasks();
+    super.hass = hass;
+    if (this._hass && !this._initialLoad) {
+      // noop
     }
   }
 
@@ -111,31 +110,15 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     }
   }
 
-  _setupAutoRefresh() {
-    if (this._refreshInterval) {
-      clearInterval(this._refreshInterval);
-    }
-
-    this._refreshInterval = TaskTrackerUtils.setupAutoRefresh(() => {
-      this._fetchAvailableTasks();
-    }, this._config.refresh_interval);
-  }
+  onHassFirstRun() { this._fetchAvailableTasks(); this._setupEventListeners(); }
+  onAutoRefresh() { this._fetchAvailableTasks(); }
+  onRefresh() { this._fetchAvailableTasks(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
   }
 
-  async _fetchAvailableUsers() {
-    try {
-      // Fetch both basic users (for backward compatibility) and enhanced users
-      this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
-      this._enhancedUsers = await TaskTrackerUtils.getEnhancedUsers(this._hass);
-    } catch (error) {
-      console.warn('Failed to fetch available users:', error);
-      this._availableUsers = [];
-      this._enhancedUsers = [];
-    }
-  }
+  // _fetchAvailableUsers inherited from TaskTrackerTasksBaseCard
 
   async _fetchAvailableTasks() {
     await this._fetchAvailableUsers();
@@ -204,25 +187,35 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 
   _categorizeTasksByStatus(tasks) {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
     const overdue = [];
     const due = [];
     const upcoming = [];
 
     tasks.forEach(task => {
-      if (task.due_date) {
-        const dueDate = new Date(task.due_date);
-        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      const dueDateISO = task.due_date;
+      if (!dueDateISO) {
+        upcoming.push(task);
+        return;
+      }
 
-        if (dueDateOnly < today) {
+      // Prefer API-provided flags when present
+      if (task.is_overdue !== undefined || task.days_overdue !== undefined) {
+        const isOverdue = !!task.is_overdue || (task.days_overdue || 0) > 0;
+        if (isOverdue) {
           overdue.push(task);
-        } else if (dueDateOnly.getTime() === today.getTime()) {
-          due.push(task);
         } else {
-          upcoming.push(task);
+          // Due today if not overdue and there is a due date
+          due.push(task);
         }
+        return;
+      }
+
+      // Fallback to logical-day aware calculation
+      const daysOverdue = TaskTrackerDateTime.calculateDaysOverdue(dueDateISO, this._userContext);
+      if (daysOverdue > 0) {
+        overdue.push(task);
+      } else if (daysOverdue === 0) {
+        due.push(task);
       } else {
         upcoming.push(task);
       }
@@ -262,70 +255,11 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes, completed_at = null) {
-    // Fetch available users if not already loaded and we're in current user mode
-    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
-      await this._fetchAvailableUsers();
-    }
+  async _completeTask(task, notes, completed_at = null) { await super._completeTask(task, notes, completed_at); }
 
-    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
+  async _snoozeTask(task, snoozeUntil) { await super._snoozeTask(task, snoozeUntil); }
 
-    // For 'current' user mode, username will be null and that's expected
-    // The backend will handle user mapping via call context
-    if (username === null && this._config.user_filter_mode !== 'current' && this._config.user_filter_mode !== 'all') {
-      TaskTrackerUtils.showError('No user configured for task completion');
-      return;
-    }
-
-    try {
-      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes, completed_at);
-
-      if (response && response.success) {
-        TaskTrackerUtils.showSuccess(response.spoken_response || `Task "${task.name}" completed successfully`);
-      } else {
-        const errorMsg = (response && response.message) || 'Unknown error';
-        TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
-      }
-
-      // Refresh tasks after completion
-      setTimeout(() => {
-        this._fetchAvailableTasks();
-      }, 100);
-
-    } catch (error) {
-      console.error('Failed to complete task:', error);
-      TaskTrackerUtils.showError(`Failed to complete task: ${error.message}`);
-    }
-  }
-
-    async _snoozeTask(task, snoozeUntil) {
-    const username = this._getCurrentUsername();
-    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, username, () => {
-      this._fetchAvailableTasks();
-    });
-  }
-
-  async _saveTask(task, updates) {
-    try {
-      const response = await TaskTrackerUtils.updateTask(this._hass, task.id, task.task_type, task.assigned_to, updates);
-
-      if (response && response.success) {
-        TaskTrackerUtils.showSuccess('Task updated successfully');
-      } else {
-        const errorMsg = (response && response.message) || 'Unknown error';
-        TaskTrackerUtils.showError(`Failed to update task: ${errorMsg}`);
-      }
-
-      // Refresh tasks after update
-      setTimeout(() => {
-        this._fetchAvailableTasks();
-      }, 100);
-
-    } catch (error) {
-      console.error('Failed to update task:', error);
-      TaskTrackerUtils.showError(`Failed to update task: ${error.message}`);
-    }
-  }
+  async _saveTask(task, updates) { await super._saveTask(task, updates); }
 
   _formatPriority(priority) {
     return TaskTrackerUtils.formatPriority(priority);
@@ -353,15 +287,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       </style>
 
       <div class="card">
-        ${this._config.show_header ? `
-          <div class="header">
-            <h3 class="title">Available Tasks</h3>
-            <button class="refresh-btn" title="Refresh tasks">
-              <ha-icon icon="mdi:refresh"></ha-icon>
-            </button>
-            ${this._refreshing ? '<div class="refreshing-indicator"></div>' : ''}
-          </div>
-        ` : ''}
+        ${this._renderHeader()}
 
         ${!hasValidUserConfig ? `
           <div class="no-user-warning">
@@ -373,9 +299,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => this._fetchAvailableTasks());
-    }
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchAvailableTasks());
 
     if (hasValidUserConfig) {
       // Task item click handlers
@@ -402,6 +326,12 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       });
     }
   }
+
+  // Base header integration
+  getCardTitle() { return 'Available Tasks'; }
+  getHeaderStatusHTML() { return this._refreshing ? '<div class="refreshing-indicator"></div>' : ''; }
+  onAutoRefresh() { this._fetchAvailableTasks(); }
+  onRefresh() { this._fetchAvailableTasks(); }
 
   _renderContent() {
     // Only show loading state on initial load
@@ -456,44 +386,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 
   _renderTaskItem(task, originalIndex) {
-    const priority = this._formatPriority(task.priority);
-    const dueDate = this._formatDueDate(task.due_date, task);
-    const duration = this._formatDuration(task.duration_minutes);
-
-    // Build metadata line with pipes
-    const metadataParts = [];
-    if (duration) metadataParts.push(duration);
-    metadataParts.push(priority);
-    metadataParts.push(dueDate);
-
-    // Calculate overdue status and border styling using helper method
-    const daysOverdue = TaskTrackerDateTime.calculateDaysOverdue(task.due_date, this._userContext);
-    const borderInfo = TaskTrackerUtils.getTaskBorderStyle(task, 'task', daysOverdue);
-
-    // Build CSS classes
-    const taskClasses = [
-      'task-item',
-      borderInfo.cssClasses.needsCompletion ? 'needs-completion' : '',
-      borderInfo.cssClasses.overdue ? 'overdue' : '',
-      borderInfo.cssClasses.dueToday ? 'due-today' : ''
-    ].filter(Boolean).join(' ');
-
-    const borderClass = borderInfo.borderClass || '';
-    return `
-      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" data-task-data='${JSON.stringify(task)}'>
-        <div class="task-content">
-          <div class="task-name">${task.name}</div>
-          <div class="task-metadata">${metadataParts.join(' | ')}</div>
-        </div>
-        ${this._config.show_completion_actions ? `
-          <div class="task-actions">
-            <button class="complete-btn" data-task-data='${JSON.stringify(task)}'>
-              Complete
-            </button>
-          </div>
-        ` : ''}
-      </div>
-    `;
+    return this.renderSimpleTaskRow(task, { showActions: this._config.show_completion_actions });
   }
 
   getCardSize() {
@@ -501,71 +394,32 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 
   _setupEventListeners() {
-    // Clean up any existing listener
-    if (this._eventCleanup) {
-      this._eventCleanup().catch(error => {
-        // Suppress "not_found" errors which are common during dashboard editing
-        if (error?.code !== 'not_found') {
-          console.warn('Error cleaning up existing TaskTracker event listener:', error);
-        }
-      });
-      this._eventCleanup = null;
-    }
+    const cleanups = [];
 
-    // Set up listeners for both task completions and task creations
-    const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(
-      this._hass,
-      (eventData) => {
+    cleanups.push(
+      TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
         const shouldRefresh = this._shouldRefreshForUser(eventData.username);
-        if (shouldRefresh) {
-          setTimeout(() => {
-            this._fetchAvailableTasks();
-          }, 500);
-        }
-      }
+        if (shouldRefresh) setTimeout(() => this._fetchAvailableTasks(), 500);
+      })
     );
-
-    const creationCleanup = TaskTrackerUtils.setupTaskCreationListener(
-      this._hass,
-      (eventData) => {
+    cleanups.push(
+      TaskTrackerUtils.setupTaskCreationListener(this._hass, (eventData) => {
         const shouldRefresh = this._shouldRefreshForUser(eventData.assigned_to);
-        if (shouldRefresh) {
-          setTimeout(() => {
-            this._fetchAvailableTasks();
-          }, 500);
-        }
-      }
+        if (shouldRefresh) setTimeout(() => this._fetchAvailableTasks(), 500);
+      })
+    );
+    cleanups.push(
+      TaskTrackerUtils.setupTaskUpdateListener(this._hass, () => {
+        setTimeout(() => this._fetchAvailableTasks(), 500);
+      })
+    );
+    cleanups.push(
+      TaskTrackerUtils.setupCompletionDeletionListener(this._hass, () => {
+        setTimeout(() => this._fetchAvailableTasks(), 500);
+      })
     );
 
-    const updateCleanup = TaskTrackerUtils.setupTaskUpdateListener(
-      this._hass,
-      (eventData) => {
-        // Refresh when any task is updated as it may change availability
-        setTimeout(() => {
-          this._fetchAvailableTasks();
-        }, 500);
-      }
-    );
-
-    const completionDeletionCleanup = TaskTrackerUtils.setupCompletionDeletionListener(
-      this._hass,
-      (eventData) => {
-        // Refresh when any completion is deleted as it may affect task availability
-        setTimeout(() => {
-          this._fetchAvailableTasks();
-        }, 500);
-      }
-    );
-
-    // Combined cleanup function
-    this._eventCleanup = async () => {
-      await Promise.all([
-        completionCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion cleanup error:', err)),
-        creationCleanup().catch(err => err.code !== 'not_found' && console.warn('Creation cleanup error:', err)),
-        updateCleanup().catch(err => err.code !== 'not_found' && console.warn('Update cleanup error:', err)),
-        completionDeletionCleanup().catch(err => err.code !== 'not_found' && console.warn('Completion deletion cleanup error:', err))
-      ]);
-    };
+    this.setEventCleanups(cleanups);
   }
 
   _shouldRefreshForUser(completedByUsername) {
@@ -586,32 +440,14 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
   }
 }
 
-class TaskTrackerAvailableTasksCardEditor extends HTMLElement {
+class TaskTrackerAvailableTasksCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._config = {};
-    this._hass = null;
     this._debounceTimers = {};
   }
 
-  setConfig(config) {
-    this._config = { ...TaskTrackerAvailableTasksCard.getStubConfig(), ...config };
-    this._render();
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-  }
-
-  configChanged(newConfig) {
-    const event = new Event('config-changed', {
-      bubbles: true,
-      composed: true,
-    });
-    event.detail = { config: newConfig };
-    this.dispatchEvent(event);
-  }
+  getDefaultConfig() { return { ...TaskTrackerAvailableTasksCard.getStubConfig() }; }
 
   _render() {
     this.shadowRoot.innerHTML = `
@@ -677,23 +513,9 @@ class TaskTrackerAvailableTasksCardEditor extends HTMLElement {
     });
   }
 
-  _valueChanged(ev) {
-    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
-  }
-
   _updateConfig(configKey, value) {
-    // Update config
-    this._config = {
-      ...this._config,
-      [configKey]: value
-    };
-
-    // If user_filter_mode changed, re-render to show/hide explicit user field
-    if (configKey === 'user_filter_mode') {
-      this._render();
-    }
-
-    this.configChanged(this._config);
+    super._updateConfig(configKey, value);
+    if (configKey === 'user_filter_mode') this._render();
   }
 }
 

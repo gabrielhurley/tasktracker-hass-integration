@@ -1,6 +1,7 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
-import { TaskTrackerDailyStateUI } from './tasktracker-daily-state-ui.js';
+import { TaskTrackerStyles } from './utils/styles.js';
+import { TaskTrackerBaseEditor } from './utils/base-config-editor.js';
+import { TaskTrackerDailyStateUI } from './utils/ui/daily-state-ui.js';
 
 class TaskTrackerDailyStateCard extends HTMLElement {
   constructor() {
@@ -336,33 +337,15 @@ class TaskTrackerDailyStateCard extends HTMLElement {
 // ---------------------------------------------------------------------------
 // Editor
 // ---------------------------------------------------------------------------
-class TaskTrackerDailyStateCardEditor extends HTMLElement {
+class TaskTrackerDailyStateCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._config = {};
   }
 
-  setConfig(config) {
-    this._config = { ...TaskTrackerDailyStateCard.getStubConfig(), ...config };
-    this._render();
-  }
+  getDefaultConfig() { return { ...TaskTrackerDailyStateCard.getStubConfig() }; }
 
-  set hass(hass) {
-    this._hass = hass;
-  }
-
-  _valueChanged(ev) {
-    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
-  }
-
-  _updateConfig(key, value) {
-    this._config = { ...this._config, [key]: value };
-    if (key === 'user_filter_mode') {
-      this._render();
-    }
-    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config } }));
-  }
+  _updateConfig(key, value) { super._updateConfig(key, value); if (key === 'user_filter_mode') this._render(); }
 
   _render() {
     if (!this.shadowRoot) return;

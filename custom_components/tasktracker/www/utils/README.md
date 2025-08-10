@@ -5,7 +5,7 @@ Modular utilities used by the TaskTracker Home Assistant cards. These replace fu
 ## Structure
 
 - `index.js` – Barrel re-exports for convenience
-- `datetime-legacy.js` – Deprecated logical-day helpers (prefer `TaskTrackerDateTime`)
+- `datetime-utils.js` – Centralized `TaskTrackerDateTime` utilities (logical day, overdue, formatting)
 - `users.js` – User discovery/mapping helpers
 - `toast.js` – Global success/error toasts (ensures global styles)
 - `formatters.js` – Display formatters (dates, durations, priorities, labels, capitalize)

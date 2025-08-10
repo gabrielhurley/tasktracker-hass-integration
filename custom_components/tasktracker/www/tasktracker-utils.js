@@ -6,7 +6,7 @@ import * as A from './utils/actions.js';
 import * as V from './utils/visuals.js';
 import * as C from './utils/config-editor.js';
 import * as Arr from './utils/arrays.js';
-import * as S from './utils/styles-bridge.js';
+import * as S from './utils/styles.js';
 import * as T from './utils/timers.js';
 import * as DS from './utils/daily-state.js';
 import { createStyledButton, showModal } from './utils/ui/components.js';
@@ -14,15 +14,10 @@ import { createTaskModal } from './utils/ui/task-modal.js';
 import { createCompletionEditModal } from './utils/ui/completion-edit-modal.js';
 import { createDailyStateModal } from './utils/ui/daily-state-modal.js';
 import { showSuccess as toastShowSuccess, showError as toastShowError } from './utils/toast.js';
-import { dateToUserTimezone, getUserLogicalDate, calculateLogicalDaysOverdue, isWithinCurrentLogicalDay, calculateDaysOverdue } from './utils/datetime-legacy.js';
+// Legacy datetime helpers removed. Use TaskTrackerDateTime from './utils/datetime-utils.js' where needed.
 
 export class TaskTrackerUtils {
-  // Deprecated timezone and logical-day helpers
-  static dateToUserTimezone = dateToUserTimezone;
-  static getUserLogicalDate = getUserLogicalDate;
-  static calculateLogicalDaysOverdue = calculateLogicalDaysOverdue;
-  static isWithinCurrentLogicalDay = isWithinCurrentLogicalDay;
-  static calculateDaysOverdue = calculateDaysOverdue;
+  // Date/time helpers are provided by TaskTrackerDateTime in './utils/datetime-utils.js'
 
   // Users
   static getAvailableUsers = U.getAvailableUsers;

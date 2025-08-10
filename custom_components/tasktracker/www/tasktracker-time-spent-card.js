@@ -1,5 +1,6 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
-import { TaskTrackerStyles } from './tasktracker-styles.js';
+import { TaskTrackerStyles } from './utils/styles.js';
+import { TaskTrackerBaseEditor } from './utils/base-config-editor.js';
 
 /**
  * TaskTracker Time Spent Card
@@ -342,31 +343,13 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
   }
 }
 
-class TaskTrackerTimeSpentCardEditor extends HTMLElement {
+class TaskTrackerTimeSpentCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._config = {};
-    this._hass = null;
   }
 
-  setConfig(config) {
-    this._config = { ...TaskTrackerTimeSpentCard.getStubConfig(), ...config };
-    this._render();
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-  }
-
-  configChanged(newConfig) {
-    const event = new Event('config-changed', {
-      bubbles: true,
-      composed: true,
-    });
-    event.detail = { config: newConfig };
-    this.dispatchEvent(event);
-  }
+  getDefaultConfig() { return { ...TaskTrackerTimeSpentCard.getStubConfig() }; }
 
   _render() {
     this.shadowRoot.innerHTML = `
@@ -426,29 +409,13 @@ class TaskTrackerTimeSpentCardEditor extends HTMLElement {
     // Add event listeners
     this.shadowRoot.querySelectorAll('input, select').forEach(input => {
       input.addEventListener('change', this._valueChanged.bind(this));
-      if (input.type === 'text' || input.type === 'number') {
-        input.addEventListener('input', this._valueChanged.bind(this));
-      }
+      if (input.type === 'text' || input.type === 'number') input.addEventListener('input', this._valueChanged.bind(this));
     });
   }
 
-  _valueChanged(ev) {
-    TaskTrackerUtils.handleConfigValueChange(ev, this, this._updateConfig.bind(this));
-  }
-
   _updateConfig(configKey, value) {
-    // Update config
-    this._config = {
-      ...this._config,
-      [configKey]: value
-    };
-
-    // If user_filter_mode changed, re-render to show/hide explicit user field
-    if (configKey === 'user_filter_mode') {
-      this._render();
-    }
-
-    this.configChanged(this._config);
+    super._updateConfig(configKey, value);
+    if (configKey === 'user_filter_mode') this._render();
   }
 }
 

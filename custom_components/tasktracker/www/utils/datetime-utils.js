@@ -302,7 +302,7 @@ export class TaskTrackerDateTime {
     return Math.max(0, daysDiff);
   }
 
-    /**
+  /**
    * Check if a date is today in the logical day context
    * @param {string} dateISO - Date in ISO format
    * @param {Object} userContext - User context object
@@ -313,7 +313,7 @@ export class TaskTrackerDateTime {
       return false;
     }
 
-        const context = this.parseUserContext(userContext);
+    const context = this.parseUserContext(userContext);
     const date = new Date(dateISO);
 
     // Get date portion directly in user's timezone (avoid double conversion)

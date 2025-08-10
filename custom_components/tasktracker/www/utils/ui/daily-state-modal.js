@@ -1,5 +1,5 @@
-import { TaskTrackerStyles } from '../../tasktracker-styles.js';
-import { TaskTrackerDailyStateUI } from '../../tasktracker-daily-state-ui.js';
+import { TaskTrackerStyles } from '../styles.js';
+import { TaskTrackerDailyStateUI } from './daily-state-ui.js';
 import {
   getDefaultDailyState,
   getPresetDailyStates,
