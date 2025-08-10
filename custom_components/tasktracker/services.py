@@ -128,26 +128,26 @@ GET_ALL_TASKS_SCHEMA = vol.Schema(
 UPDATE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
-        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
+        vol.Required("task_type"): vol.In(
+            ["RecurringTask", "AdHocTask", "SelfCareTask"]
+        ),
         vol.Required("assigned_to"): cv.string,
-
         # BaseTask fields
         vol.Optional("name"): cv.string,
         vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
         vol.Optional("notes"): cv.string,
         vol.Optional("is_active"): cv.boolean,
-        vol.Optional("overdue_severity"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
-
+        vol.Optional("overdue_severity"): vol.All(
+            cv.positive_int, vol.Range(min=1, max=3)
+        ),
         # DurationMixin field
         vol.Optional("duration_minutes"): cv.positive_int,
-
         # FrequencyMixin fields (RecurringTask, SelfCareTask)
         vol.Optional("frequency_value"): cv.positive_int,
         vol.Optional("frequency_unit"): vol.In(
             ["days", "weeks", "months", "years", "minutes", "hours"]
         ),
         vol.Optional("next_due"): cv.string,
-
         # TaskFitMixin fields
         vol.Optional("energy_cost"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
         vol.Optional("focus_cost"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
@@ -155,18 +155,18 @@ UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("motivation_boost"): vol.All(int, vol.Range(min=-5, max=5)),
         vol.Optional("satisfaction"): vol.All(cv.positive_int, vol.Range(min=0, max=5)),
         vol.Optional("impact"): vol.All(cv.positive_int, vol.Range(min=0, max=5)),
-        vol.Optional("suitable_after_hours"): vol.In(["yes", "if_necessary", "absolutely_not"]),
-
+        vol.Optional("suitable_after_hours"): vol.In(
+            ["yes", "if_necessary", "absolutely_not"]
+        ),
         # DayOfWeekConstraintMixin field
-        vol.Optional("allowed_days"): vol.All(cv.ensure_list, [vol.All(int, vol.Range(min=0, max=6))]),
-
+        vol.Optional("allowed_days"): vol.All(
+            cv.ensure_list, [vol.All(int, vol.Range(min=0, max=6))]
+        ),
         # FairWeatherConstraintMixin field
         vol.Optional("requires_fair_weather"): cv.boolean,
-
         # SelfCareTask specific fields
         vol.Optional("level"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
         vol.Optional("required_occurrences"): cv.positive_int,
-
         # Tags field
         vol.Optional("tags"): vol.All(cv.ensure_list, [cv.string]),
     }
@@ -597,12 +597,27 @@ async def async_setup_services(  # noqa: C901, PLR0915
 
                 # List of all possible update fields (excluding required ones)
                 update_fields = [
-                    "name", "priority", "notes", "is_active", "overdue_severity",
-                    "duration_minutes", "frequency_value", "frequency_unit", "next_due",
-                    "energy_cost", "focus_cost", "pain_cost", "motivation_boost",
-                    "satisfaction", "impact", "suitable_after_hours",
-                    "allowed_days", "requires_fair_weather",
-                    "level", "required_occurrences", "tags"
+                    "name",
+                    "priority",
+                    "notes",
+                    "is_active",
+                    "overdue_severity",
+                    "duration_minutes",
+                    "frequency_value",
+                    "frequency_unit",
+                    "next_due",
+                    "energy_cost",
+                    "focus_cost",
+                    "pain_cost",
+                    "motivation_boost",
+                    "satisfaction",
+                    "impact",
+                    "suitable_after_hours",
+                    "allowed_days",
+                    "requires_fair_weather",
+                    "level",
+                    "required_occurrences",
+                    "tags",
                 ]
 
                 # Extract any fields that are present in the call data
@@ -736,7 +751,9 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Unexpected error in get_daily_plan_service")
                 raise
 
-        async def get_daily_plan_encouragement_service(call: ServiceCall) -> dict[str, Any]:
+        async def get_daily_plan_encouragement_service(
+            call: ServiceCall,
+        ) -> dict[str, Any]:
             """Get AI-powered encouragement for the daily plan."""
             try:
                 username = call.data.get("username")
@@ -756,7 +773,9 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Failed to get daily plan encouragement")
                 raise
             except Exception:
-                _LOGGER.exception("Unexpected error in get_daily_plan_encouragement_service")
+                _LOGGER.exception(
+                    "Unexpected error in get_daily_plan_encouragement_service"
+                )
                 raise
 
         async def get_daily_state_service(call: ServiceCall) -> dict[str, Any]:

@@ -305,7 +305,9 @@ class TaskTrackerAPI:
         if username:
             params["username"] = username
 
-        return await self._request("GET", ENDPOINT_DAILY_PLAN_ENCOURAGEMENT, params=params)
+        return await self._request(
+            "GET", ENDPOINT_DAILY_PLAN_ENCOURAGEMENT, params=params
+        )
 
     async def get_daily_state(self, username: str) -> dict[str, Any]:
         """Retrieve the daily state for a user."""
