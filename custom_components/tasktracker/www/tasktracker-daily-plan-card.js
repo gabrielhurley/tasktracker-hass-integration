@@ -214,6 +214,13 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       }
     });
 
+    // Listen for generic task updates (includes deletions via reused event)
+    const taskUpdateCleanup = TaskTrackerUtils.setupTaskUpdateListener(this._hass, () => {
+      setTimeout(() => {
+        this._fetchPlan();
+      }, 500);
+    });
+
     // Listen for daily state events to refresh the plan
     const dailyStateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_daily_state_set', (event) => {
       const evUsername = event?.data?.username;
@@ -234,7 +241,8 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         dailyPlanCleanup().catch(() => {}),
         completionCleanup().catch(() => {}),
         moodUpdateCleanup().catch(() => {}),
-        dailyStateCleanup().catch(() => {})
+        dailyStateCleanup().catch(() => {}),
+        taskUpdateCleanup().catch(() => {})
       ]);
     };
   }
@@ -243,7 +251,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     // Show detail modal with edit button
     const modal = TaskTrackerUtils.createTaskModal(
       task,
-      this._config,
+      { ...(this._config || {}), userContext: this._userContext, user_context: this._userContext },
       async (notes, completed_at = null) => {
         await this._completeTask(task, notes, completed_at);
       },
@@ -265,6 +273,9 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       async (snoozeUntil) => {
         // Snooze button callback - updates task's due date
         await this._snoozeTask(task, snoozeUntil);
+      },
+      async () => {
+        await this._deleteTask(task);
       }
     );
     TaskTrackerUtils.showModal(modal);
@@ -353,203 +364,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       <style>
         ${TaskTrackerStyles.getCommonCardStyles()}
         ${TaskTrackerStyles.getDailyPlanCardStyles()}
-        .section-title {
-          font-weight: 600;
-          margin: 16px 0 8px 0;
-          color: var(--primary-text-color);
-        }
-        .section-title:first-child {
-          margin-top: 0;
-        }
-        .section-title.urgent {
-          color: var(--error-color, #f44336);
-          font-size: 1.1em;
-        }
-        .all-done-text {
-          font-weight: normal;
-          font-size: 0.9em;
-          font-style: italic;
-        }
-        .task-list {
-          margin-bottom: 16px;
-        }
-        .task-list:last-child {
-          margin-bottom: 0;
-        }
-        .debug {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          margin-top: 8px;
-          padding: 8px;
-          background: var(--secondary-background-color);
-          border-radius: 4px;
-        }
-        .notification-focus {
-          color: var(--primary-text-color);
-          padding: 12px;
-          border-radius: 4px;
-          margin-bottom: 16px;
-          font-weight: 500;
-          border: 1px solid rgba(76, 175, 80, 0.3);
-        }
-
-        /* Daily state prompt styles */
-        .daily-state-prompt {
-          margin-bottom: 16px;
-        }
-
-        .daily-state-button { /* now uses shared .btn classes */ }
-
-        .daily-state-help {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          font-style: italic;
-          text-align: center;
-          margin-top: 8px;
-        }
-
-        /* Daily state display styles */
-
-        .daily-state-container {
-          border-top: 1px solid var(--divider-color);
-          padding-top: 16px;
-        }
-
-        .daily-state-display {
-          background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
-          border-radius: 6px;
-          padding: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
-
-        .daily-state-values {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-        }
-
-        .state-value {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 0.85em;
-          color: var(--primary-text-color);
-        }
-
-        .state-label {
-          color: var(--secondary-text-color);
-          font-weight: 500;
-        }
-
-        .state-number {
-          font-weight: 600;
-          color: var(--light-primary-color);
-        }
-
-        .daily-state-edit-btn { /* uses shared .btn styles */ }
-
-        /* Urgent section styles */
-        .urgent-section {
-          margin-top: 16px;
-        }
-
-        .urgent-description {
-          color: var(--secondary-text-color);
-          font-size: 0.9em;
-          margin-bottom: 12px;
-          font-style: italic;
-        }
-
-        /* All caught up styles */
-        .all-caught-up {
-          text-align: center;
-          padding: 8px;
-          color: var(--secondary-text-color);
-          font-size: 0.9em;
-        }
-
-        .no-urgent-tasks {
-          text-align: center;
-          padding: 20px;
-          color: var(--secondary-text-color);
-          font-style: italic;
-        }
-
-        /* Self-care window styles */
-        .selfcare-windowed { border-radius: 6px; }
-        .selfcare-windowed.all-complete { opacity: 0.8; background: rgba(76, 175, 80, 0.1); }
-
-        /* Self-care task without windows */
-        .task-item[data-task-type="self_care"]:not(.selfcare-windowed) .task-metadata {
-          font-style: italic;
-        }
-
-        /* Fix spacing for self-care windowed tasks */
-        .selfcare-windowed .task-content {
-          padding-right: 0;
-        }
-
-        .selfcare-windowed .task-actions {
-          margin-top: 8px;
-          margin-left: 0; /* Reset margin since we use border + padding now */
-          border-left: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
-          padding-left: 12px;
-          margin-left: 12px;
-        }
-
-        /* Low recommendation score fade effect */
-        .task-item.low-recommendation {
-          opacity: 0.6;
-          transition: opacity 0.2s ease;
-        }
-
-        .task-item.low-recommendation:hover {
-          opacity: 0.8;
-        }
-
-        /* Full-height complete button styling */
-        .task-item {
-          display: flex;
-          align-items: stretch;
-        }
-
-        .task-content {
-          flex: 1;
-        }
-
-        .task-actions {
-          display: flex;
-          align-items: stretch;
-          border-left: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
-          padding-left: 12px;
-          margin-left: 12px;
-        }
-
-        .complete-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex: 1;
-        }
-
-        /* Filter toggle styles */
-        .filter-toggle-btn {
-          background: none;
-          border: none;
-          color: var(--primary-text-color);
-          cursor: pointer;
-          padding: 8px;
-          border-radius: 4px;
-          transition: background-color 0.2s ease, color 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-
       </style>
 
       <div class="card">
@@ -1018,7 +832,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
 class TaskTrackerDailyPlanCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
   }
 
   getDefaultConfig() {

@@ -24,6 +24,8 @@ from .const import (
     ENDPOINT_RECOMMENDED_TASKS,
     ENDPOINT_UPDATE_COMPLETION,
     ENDPOINT_UPDATE_TASK,
+    ENDPOINT_CREATE_TASK_FROM_DESCRIPTION,
+    ENDPOINT_DELETE_TASK,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -176,6 +178,35 @@ class TaskTrackerAPI:
             **kwargs,
         }
         return await self._request("POST", ENDPOINT_UPDATE_TASK, data=data)
+
+    async def create_task_from_description(
+        self,
+        task_type: str,
+        task_description: str,
+        assigned_to: str,
+    ) -> dict[str, Any]:
+        """Create a task from a natural-language description using AI on the server."""
+        data: dict[str, Any] = {
+            "task_type": task_type,
+            "task_description": task_description,
+            "assigned_to": assigned_to,
+        }
+        return await self._request("POST", ENDPOINT_CREATE_TASK_FROM_DESCRIPTION, data=data)
+
+    async def delete_task(
+        self,
+        task_id: int,
+        task_type: str,
+        assigned_to: str | None = None,
+    ) -> dict[str, Any]:
+        """Delete a task by id and type."""
+        data: dict[str, Any] = {
+            "task_id": task_id,
+            "task_type": task_type,
+        }
+        if assigned_to:
+            data["assigned_to"] = assigned_to
+        return await self._request("POST", ENDPOINT_DELETE_TASK, data=data)
 
     # Task query methods
     async def query_task(

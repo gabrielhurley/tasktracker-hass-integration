@@ -113,7 +113,9 @@ export class TaskTrackerStyles {
 
       /* Form containers */
       .tt-form { display: grid; gap: 16px; }
+      .tt-form ~ .tt-section { margin-top: 16px; }
       .tt-box { border: 1px solid var(--divider-color); border-radius: 6px; padding: 16px; background: var(--secondary-background-color); margin-bottom: 16px; }
+      .tt-box-sm { background: transparent; margin-bottom: 0; }
       .tt-box-title { margin: 0 0 12px 0; color: var(--primary-text-color); font-size: 14px; font-weight: 600; }
       .tt-multiselect { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; padding: 8px; border: 1px solid var(--divider-color); border-radius: 4px; background: var(--card-background-color); }
       .tt-checkbox { width: auto; margin-right: 8px; }
@@ -146,7 +148,7 @@ export class TaskTrackerStyles {
       .tt-text-muted { color: var(--secondary-text-color); }
       .tt-p-40 { padding: 40px; }
       .tt-justify-between { display: flex; justify-content: space-between; align-items: center; }
-      .tt-title--sm { font-size: 1em; }
+      .tt-title--sm { font-size: 1em; margin-top: 0; }
 
       /* Task items (unify tt-task-item and task-item) */
       .task-item, .tt-task-item {
@@ -237,6 +239,7 @@ export class TaskTrackerStyles {
       .error { color: var(--error-color); text-align: center; font-style: italic; padding: 16px; }
       .no-tasks { color: var(--secondary-text-color); }
       .no-user-warning { color: var(--primary-text-color); background: var(--secondary-background-color); padding: 12px; border-radius: 4px; border: 1px solid var(--divider-color); text-align: center; margin-bottom: 16px; }
+      .category-title { font-weight: 600; margin-bottom: 8px; margin-top: 8px; }
 
       /* Effects */
       .tt-focus-highlight { transition: box-shadow 0.3s ease; box-shadow: 0 0 20px rgba(255, 193, 7, 0.5); }
@@ -269,18 +272,54 @@ export class TaskTrackerStyles {
       .tt-modal__content {
         background: var(--card-background-color);
         border-radius: 8px;
-        padding: 24px;
+        padding: 0;
         width: 90%;
         max-width: 600px;
-        max-height: 90%;
-        overflow-y: auto;
+        max-height: 90vh; /* slightly less than full window height */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         font-family: var(--primary-font-family);
       }
 
-      .tt-modal__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+      .tt-modal__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--divider-color);
+        flex: 0 0 auto;
+        background: var(--card-background-color);
+        position: sticky; top: 0; z-index: 1;
+      }
       .tt-modal__title { margin: 0; color: var(--primary-text-color); font-size: 1.3em; font-weight: 500; }
       .tt-modal__close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--secondary-text-color); padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+
+      .tt-modal__body {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 16px 20px;
+      }
+
+      .tt-modal__footer {
+        flex: 0 0 auto;
+        padding: 12px 20px;
+        border-top: 1px solid var(--divider-color);
+        display: block;
+        background: var(--card-background-color);
+        position: sticky; bottom: 0; z-index: 1;
+      }
+
+      .tt-modal__footer-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .tt-modal__footer-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+      .tt-modal__footer-actions { display: flex; gap: 12px; align-items: center; margin-left: auto; }
 
       /* Toasts */
       .tt-toast {

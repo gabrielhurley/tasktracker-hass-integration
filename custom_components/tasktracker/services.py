@@ -35,6 +35,8 @@ from .const import (
     SERVICE_SET_DAILY_STATE,
     SERVICE_UPDATE_COMPLETION,
     SERVICE_UPDATE_TASK,
+    SERVICE_CREATE_TASK_FROM_DESCRIPTION,
+    SERVICE_DELETE_TASK,
 )
 from .utils import (
     get_available_tasktracker_usernames,
@@ -187,6 +189,15 @@ UPDATE_COMPLETION_SCHEMA = vol.Schema(
     }
 )
 
+# Create task from description schema
+CREATE_TASK_FROM_DESCRIPTION_SCHEMA = vol.Schema(
+    {
+        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
+        vol.Required("task_description"): cv.string,
+        vol.Optional("assigned_to"): cv.string,
+    }
+)
+
 # Service schemas
 GET_DAILY_PLAN_SCHEMA = vol.Schema(
     {
@@ -217,6 +228,15 @@ SET_DAILY_STATE_SCHEMA = vol.Schema(
         vol.Optional("pain"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
         vol.Optional("mood"): vol.All(int, vol.Range(min=-2, max=2)),
         vol.Optional("free_time"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+    }
+)
+
+# Delete task schema
+DELETE_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("task_id"): cv.positive_int,
+        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
+        vol.Optional("assigned_to"): cv.string,
     }
 )
 
@@ -854,6 +874,92 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Unexpected error in set_daily_state_service")
                 raise
 
+        async def create_task_from_description_service(call: ServiceCall) -> dict[str, Any]:
+            """Create a task using a natural-language description via server AI."""
+            try:
+                assigned_to = call.data.get("assigned_to")
+                if not assigned_to:
+                    user_id = call.context.user_id if call.context else None
+                    current_config = get_current_config()
+                    assigned_to = get_tasktracker_username_for_ha_user(
+                        hass, user_id, current_config
+                    )
+                    if not assigned_to:
+                        msg = "No assigned_to provided and could not determine from user context"
+                        raise TaskTrackerAPIError(msg)  # noqa: TRY301
+
+                result = await api.create_task_from_description(
+                    task_type=call.data["task_type"],
+                    task_description=call.data["task_description"],
+                    assigned_to=assigned_to,
+                )
+
+                if result.get("success"):
+                    data = result.get("data", {}) or {}
+                    task = data.get("task") or {}
+                    hass.bus.fire(
+                        "tasktracker_task_created",
+                        {
+                            "task_name": task.get("name") or call.data.get("task_description"),
+                            "assigned_to": assigned_to,
+                            "creation_data": result.get("data"),
+                        },
+                    )
+
+                _LOGGER.info("Task created from description: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to create task from description")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in create_task_from_description_service")
+                raise
+
+        async def delete_task_service(call: ServiceCall) -> dict[str, Any]:
+            """Delete a task by id and type."""
+            try:
+                assigned_to = call.data.get("assigned_to")
+                if not assigned_to:
+                    user_id = call.context.user_id if call.context else None
+                    current_config = get_current_config()
+                    assigned_to = get_tasktracker_username_for_ha_user(
+                        hass, user_id, current_config
+                    )
+                result = await api.delete_task(
+                    task_id=call.data["task_id"],
+                    task_type=call.data["task_type"],
+                    assigned_to=assigned_to,
+                )
+                if result.get("success"):
+                    # Reuse existing task update event so listeners refresh consistently
+                    hass.bus.fire(
+                        "tasktracker_task_updated",
+                        {
+                            "task_id": call.data["task_id"],
+                            "task_type": call.data["task_type"],
+                            "assigned_to": assigned_to,
+                            "deleted": True,
+                            "update_data": result.get("data"),
+                        },
+                    )
+                    hass.bus.fire(
+                        "tasktracker_task_deleted",
+                        {
+                            "task_id": call.data["task_id"],
+                            "task_type": call.data["task_type"],
+                            "assigned_to": assigned_to,
+                            "deletion_data": result.get("data"),
+                        },
+                    )
+                _LOGGER.info("Task deleted: %s", result)
+                return result  # noqa: TRY300
+            except TaskTrackerAPIError:
+                _LOGGER.exception("Failed to delete task")
+                raise
+            except Exception:
+                _LOGGER.exception("Unexpected error in delete_task_service")
+                raise
+
         # Register services
         _LOGGER.debug("Registering individual services...")
 
@@ -1015,6 +1121,24 @@ async def async_setup_services(  # noqa: C901, PLR0915
         )
         _LOGGER.debug("Registered service: %s", SERVICE_SET_DAILY_STATE)
 
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_CREATE_TASK_FROM_DESCRIPTION,
+            create_task_from_description_service,
+            schema=CREATE_TASK_FROM_DESCRIPTION_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_CREATE_TASK_FROM_DESCRIPTION)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_DELETE_TASK,
+            delete_task_service,
+            schema=DELETE_TASK_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_DELETE_TASK)
+
         _LOGGER.info("TaskTracker services registered successfully")
 
     except Exception:
@@ -1043,6 +1167,8 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT,
         SERVICE_GET_DAILY_STATE,
         SERVICE_SET_DAILY_STATE,
+        SERVICE_CREATE_TASK_FROM_DESCRIPTION,
+        SERVICE_DELETE_TASK,
     ]
 
     for service in services_to_remove:

@@ -450,7 +450,6 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
 class TaskTrackerLeftoversCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
     this._debounceTimers = {};
   }
 

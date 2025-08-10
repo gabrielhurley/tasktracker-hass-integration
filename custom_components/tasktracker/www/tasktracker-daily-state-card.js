@@ -340,7 +340,6 @@ class TaskTrackerDailyStateCard extends HTMLElement {
 class TaskTrackerDailyStateCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
   }
 
   getDefaultConfig() { return { ...TaskTrackerDailyStateCard.getStubConfig() }; }

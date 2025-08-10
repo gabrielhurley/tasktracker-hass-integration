@@ -198,12 +198,6 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
     this.shadowRoot.innerHTML = `
       <style>
         ${TaskTrackerStyles.getCommonCardStyles()}
-
-
-
-
-
-
       </style>
 
       <div class="card">
@@ -377,7 +371,6 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
 class TaskTrackerRecentTasksCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
     this._debounceTimers = {};
   }
 

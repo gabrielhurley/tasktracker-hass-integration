@@ -228,7 +228,7 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
     // Show detail modal with edit button
     const modal = TaskTrackerUtils.createTaskModal(
       task,
-      this._config,
+      { ...(this._config || {}), userContext: this._userContext, user_context: this._userContext },
       async (notes, completed_at = null) => {
         await this._completeTask(task, notes, completed_at);
       },
@@ -250,6 +250,9 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
       async (snoozeUntil) => {
         // Snooze button callback - updates task's due date
         await this._snoozeTask(task, snoozeUntil);
+      },
+      async () => {
+        await this._deleteTask(task);
       }
     );
     TaskTrackerUtils.showModal(modal);
@@ -413,6 +416,8 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
         setTimeout(() => this._fetchAvailableTasks(), 500);
       })
     );
+    // Also refresh on deletions via the reused task_updated event
+    // (already covered by setupTaskUpdateListener)
     cleanups.push(
       TaskTrackerUtils.setupCompletionDeletionListener(this._hass, () => {
         setTimeout(() => this._fetchAvailableTasks(), 500);
@@ -443,7 +448,6 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
 class TaskTrackerAvailableTasksCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
     this._debounceTimers = {};
   }
 

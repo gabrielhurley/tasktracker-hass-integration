@@ -119,11 +119,17 @@ export function createCompletionEditModal(
 
   // Assemble
   modalContent.appendChild(header);
-  modalContent.appendChild(taskNameField);
-  modalContent.appendChild(completedByField);
-  modalContent.appendChild(completedAtField);
-  modalContent.appendChild(notesField);
-  modalContent.appendChild(buttonContainer);
+  const body = document.createElement('div');
+  body.className = 'tt-modal__body';
+  body.appendChild(taskNameField);
+  body.appendChild(completedByField);
+  body.appendChild(completedAtField);
+  body.appendChild(notesField);
+  modalContent.appendChild(body);
+  const footer = document.createElement('div');
+  footer.className = 'tt-modal__footer';
+  footer.appendChild(buttonContainer);
+  modalContent.appendChild(footer);
   modal.appendChild(modalContent);
 
   const closeModal = () => {

@@ -89,6 +89,20 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     }
   }
 
+  async _deleteTask(task) {
+    try {
+      const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
+      const taskId = task.id || task.task_id;
+      const taskType = task.task_type;
+      await TaskTrackerUtils.deleteTask(this._hass, taskId, taskType, username || null);
+      if (typeof this.onAfterUpdate === 'function') {
+        setTimeout(() => this.onAfterUpdate(), 100);
+      }
+    } catch (error) {
+      // Toasts are handled in the action util
+    }
+  }
+
   buildTaskMetadata(task, { includeRecommendationScore = false } = {}) {
     const parts = [];
     if (task.duration_minutes) parts.push(TaskTrackerUtils.formatDuration(task.duration_minutes));

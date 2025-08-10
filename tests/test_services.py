@@ -13,6 +13,7 @@ from custom_components.tasktracker.const import (
     SERVICE_COMPLETE_TASK_BY_NAME,
     SERVICE_CREATE_ADHOC_TASK,
     SERVICE_CREATE_LEFTOVER,
+    SERVICE_CREATE_TASK_FROM_DESCRIPTION,
     SERVICE_GET_ALL_TASKS,
     SERVICE_GET_AVAILABLE_TASKS,
     SERVICE_GET_AVAILABLE_USERS,
@@ -604,6 +605,73 @@ class TestTaskTrackerServices:
         mock_api.get_all_tasks.assert_called_once_with(thin=False, assigned_to=None)
         assert response is not None
         assert response["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_task_from_description_uses_user_mapping(
+        self, hass: HomeAssistant, setup_integration: AsyncMock
+    ) -> None:
+        """Test creating a task from description uses HA→TaskTracker user mapping when not provided."""
+        mock_api = setup_integration
+        mock_api.create_task_from_description.return_value = {
+            "success": True,
+            "spoken_response": "Task created",
+            "data": {"task": {"id": 42, "name": "Do dishes", "task_type": "RecurringTask"}},
+        }
+
+        with patch(
+            "custom_components.tasktracker.services.get_tasktracker_username_for_ha_user"
+        ) as mock_get_user:
+            mock_get_user.return_value = "mapped_user"
+
+            from custom_components.tasktracker.services import async_setup_services
+            await async_setup_services(hass, mock_api, {})
+
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_CREATE_TASK_FROM_DESCRIPTION,
+                {"task_type": "RecurringTask", "task_description": "Do dishes every night"},
+                blocking=True,
+                return_response=True,
+            )
+
+            mock_api.create_task_from_description.assert_called_once_with(
+                task_type="RecurringTask",
+                task_description="Do dishes every night",
+                assigned_to="mapped_user",
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_task_from_description_with_explicit_user(
+        self, hass: HomeAssistant, setup_integration: AsyncMock
+    ) -> None:
+        """Test creating a task from description with explicit assigned_to passes through to API."""
+        mock_api = setup_integration
+        mock_api.create_task_from_description.return_value = {
+            "success": True,
+            "spoken_response": "Task created",
+            "data": {"task": {"id": 43, "name": "Stretch", "task_type": "SelfCareTask"}},
+        }
+
+        from custom_components.tasktracker.services import async_setup_services
+        await async_setup_services(hass, mock_api, {})
+
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_CREATE_TASK_FROM_DESCRIPTION,
+            {
+                "task_type": "SelfCareTask",
+                "task_description": "Stretch in the morning",
+                "assigned_to": "alice",
+            },
+            blocking=True,
+            return_response=True,
+        )
+
+        mock_api.create_task_from_description.assert_called_once_with(
+            task_type="SelfCareTask",
+            task_description="Stretch in the morning",
+            assigned_to="alice",
+        )
 
     @pytest.mark.asyncio
     async def test_service_missing_user_context(

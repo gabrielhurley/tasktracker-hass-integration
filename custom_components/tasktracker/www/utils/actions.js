@@ -83,3 +83,31 @@ export async function disposeLeftover(hass, leftoverName, username, notes) {
     return handleActionError('Failed to dispose leftover', error);
   }
 }
+
+export async function createTaskFromDescription(hass, taskType, taskDescription, assignedTo) {
+  try {
+    const params = { task_type: taskType, task_description: taskDescription };
+    if (assignedTo) params.assigned_to = assignedTo;
+    const response = await hass.callService('tasktracker', 'create_task_from_description', params, {}, true, true);
+    const data = ensureServiceSuccess(response);
+    showSuccess('Task created');
+    return data;
+  } catch (error) {
+    showError('Failed to create task');
+    return handleActionError('Failed to create task', error);
+  }
+}
+
+export async function deleteTask(hass, taskId, taskType, assignedTo = null) {
+  try {
+    const params = { task_id: taskId, task_type: taskType };
+    if (assignedTo) params.assigned_to = assignedTo;
+    const response = await hass.callService('tasktracker', 'delete_task', params, {}, true, true);
+    const data = ensureServiceSuccess(response);
+    showSuccess('Task deleted');
+    return data;
+  } catch (error) {
+    showError('Failed to delete task');
+    return handleActionError('Failed to delete task', error);
+  }
+}

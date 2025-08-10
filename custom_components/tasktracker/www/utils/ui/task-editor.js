@@ -62,8 +62,14 @@ export class TaskTrackerTaskEditor {
 
     // Assemble modal
     modalContent.appendChild(header);
-    modalContent.appendChild(form);
-    modalContent.appendChild(footer);
+    const body = document.createElement('div');
+    body.className = 'tt-modal__body';
+    body.appendChild(form);
+    modalContent.appendChild(body);
+    const footerContainer = document.createElement('div');
+    footerContainer.className = 'tt-modal__footer';
+    footerContainer.appendChild(footer);
+    modalContent.appendChild(footerContainer);
     modal.appendChild(modalContent);
 
     // Event handlers

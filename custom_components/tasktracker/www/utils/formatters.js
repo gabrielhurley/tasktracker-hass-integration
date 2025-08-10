@@ -144,22 +144,22 @@ export function formatDueDate(dueDateString, userContext = null, task = null) {
   try {
     return TaskTrackerDateTime.formatDueDateLogical(dueDateString, userContext, task);
   } catch {
-    // Fallback to simple calendar day diff if something goes wrong
+    // Fallback to calendar day comparison without user context
     const now = new Date();
-    const dueDate = new Date(dueDateString);
-    const diffTime = dueDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) {
-      const overdueDays = Math.abs(diffDays);
-      if (overdueDays === 0) return 'Today';
+    const due = new Date(dueDateString);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    const dayMs = 1000 * 60 * 60 * 24;
+    const dayDiff = Math.floor((startOfDueDay.getTime() - startOfToday.getTime()) / dayMs);
+
+    if (dayDiff < 0) {
+      const overdueDays = Math.abs(dayDiff);
       if (overdueDays === 1) return '1 day overdue';
       return `${overdueDays} days overdue`;
-    } else if (diffDays === 0) {
-      return 'Today';
-    } else if (diffDays === 1) {
-      return 'Tomorrow';
     }
-    return `${diffDays} days`;
+    if (dayDiff === 0) return 'Today';
+    if (dayDiff === 1) return 'Tomorrow';
+    return `${dayDiff} days`;
   }
 }
 

@@ -65,6 +65,8 @@ export class TaskTrackerUtils {
   static updateTask = A.updateTask;
   static snoozeTask = A.snoozeTask;
   static disposeLeftover = A.disposeLeftover;
+  static createTaskFromDescription = A.createTaskFromDescription;
+  static deleteTask = A.deleteTask;
 
   // Visuals
   static getOverdueColor = V.getOverdueColor;

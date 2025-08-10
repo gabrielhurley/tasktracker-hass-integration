@@ -43,7 +43,10 @@ export function createDailyStateModal(hass, username, config = {}, onSave = null
   contentContainer.innerHTML = '<div class="tt-text-center tt-p-40 tt-text-muted">Loading...</div>';
 
   modalContent.appendChild(header);
-  modalContent.appendChild(contentContainer);
+  const body = document.createElement('div');
+  body.className = 'tt-modal__body';
+  body.appendChild(contentContainer);
+  modalContent.appendChild(body);
   modal.appendChild(modalContent);
 
   const closeModal = () => {

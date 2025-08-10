@@ -346,7 +346,6 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
 class TaskTrackerTimeSpentCardEditor extends TaskTrackerBaseEditor {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
   }
 
   getDefaultConfig() { return { ...TaskTrackerTimeSpentCard.getStubConfig() }; }

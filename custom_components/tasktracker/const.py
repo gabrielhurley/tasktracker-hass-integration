@@ -60,6 +60,11 @@ JSMODULES = [
         "filename": "tasktracker-encouragement-card.js",
         "version": VERSION,
     },
+    {
+        "name": "TaskTracker Create Task Card",
+        "filename": "tasktracker-create-task-card.js",
+        "version": VERSION,
+    },
 ]
 
 # Configuration keys
@@ -88,6 +93,8 @@ SERVICE_GET_DAILY_PLAN: Final = "get_daily_plan"
 SERVICE_GET_DAILY_PLAN_ENCOURAGEMENT: Final = "get_daily_plan_encouragement"
 SERVICE_GET_DAILY_STATE: Final = "get_daily_state"
 SERVICE_SET_DAILY_STATE: Final = "set_daily_state"
+SERVICE_CREATE_TASK_FROM_DESCRIPTION: Final = "create_task_from_description"
+SERVICE_DELETE_TASK: Final = "delete_task"
 
 # Event names
 EVENT_DAILY_PLAN: Final = "tasktracker_daily_plan"
@@ -112,6 +119,8 @@ ENDPOINT_UPDATE_COMPLETION: Final = "/api/completions/update_completion/"
 ENDPOINT_DAILY_PLAN: Final = "/api/daily-plan/"
 ENDPOINT_DAILY_PLAN_ENCOURAGEMENT: Final = "/api/daily-plan/encouragement/"
 ENDPOINT_DAILY_STATE: Final = "/api/daily-state/"
+ENDPOINT_CREATE_TASK_FROM_DESCRIPTION: Final = "/api/tasks/create-task-from-description/"
+ENDPOINT_DELETE_TASK: Final = "/api/tasks/delete-task/"
 
 # Default values
 DEFAULT_SCAN_INTERVAL: Final = 300  # 5 minutes
