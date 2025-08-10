@@ -77,6 +77,9 @@ class JSModuleRegistration:
         # First, clean up any duplicate or malformed registrations
         await self._async_cleanup_duplicate_registrations()
 
+        # Then, remove stale TaskTracker resources that no longer exist in JSMODULES
+        await self._async_remove_stale_resources()
+
         # Get resources already registered
         resources = [
             resource
@@ -263,3 +266,31 @@ class JSModuleRegistration:
                 "Cleaned up %d duplicate TaskTracker resource registrations",
                 total_removed,
             )
+
+    async def _async_remove_stale_resources(self) -> None:
+        """Remove TaskTracker resources that are no longer in JSMODULES."""
+        if self.lovelace.mode != "storage":
+            return
+
+        allowed_paths = {f"{URL_BASE}/{m.get('filename')}" for m in JSMODULES}
+
+        stale = [
+            resource
+            for resource in self.lovelace.resources.async_items()
+            if str(resource["url"]).startswith(URL_BASE)
+            and self._get_resource_path(str(resource["url"])) not in allowed_paths
+        ]
+
+        if not stale:
+            return
+
+        _LOGGER.info("Removing %d stale TaskTracker resources", len(stale))
+        for resource in stale:
+            try:
+                await self.lovelace.resources.async_delete_item(resource.get("id"))
+            except Exception as e:  # noqa: BLE001
+                _LOGGER.warning(
+                    "Failed to remove stale resource %s: %s",
+                    resource.get("url"),
+                    e,
+                )

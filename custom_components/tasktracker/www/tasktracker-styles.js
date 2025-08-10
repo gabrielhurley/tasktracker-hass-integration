@@ -262,8 +262,9 @@ export class TaskTrackerStyles {
         z-index: 10000;
         display: flex; align-items: center; justify-content: center;
         opacity: 0; transition: opacity 0.2s ease;
+        pointer-events: none; /* Prevent blocking clicks when not visible */
       }
-      .tt-modal--visible { opacity: 1; }
+      .tt-modal--visible { opacity: 1; pointer-events: auto; }
 
       .tt-modal__content {
         background: var(--card-background-color);

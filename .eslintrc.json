@@ -1,0 +1,27 @@
+{
+  "root": true,
+  "env": { "es2021": true, "browser": true, "node": true },
+  "parserOptions": { "ecmaVersion": 2021, "sourceType": "module" },
+  "overrides": [
+    {
+      "files": ["custom_components/tasktracker/www/utils/**/*.js"],
+      "excludedFiles": ["custom_components/tasktracker/www/utils/ui/**/*.js"],
+      "rules": {
+        "max-lines": ["error", { "max": 500, "skipBlankLines": true, "skipComments": true }],
+        "no-restricted-imports": [
+          "error",
+          { "patterns": ["**/ui/*"] }
+        ]
+      }
+    },
+    {
+      "files": ["custom_components/tasktracker/www/utils/ui/**/*.js"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          { "patterns": ["../actions.js", "../**/actions.js", "**/actions.js"] }
+        ]
+      }
+    }
+  ]
+}
