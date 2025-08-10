@@ -6,6 +6,7 @@
  */
 
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 
 export class TaskTrackerTaskEditor {
   static openEditModal(task, config, onSave, availableUsers = [], enhancedUsers = null) {
@@ -15,73 +16,31 @@ export class TaskTrackerTaskEditor {
   }
 
   static createTaskEditModal(task, config, onSave, availableUsers = [], enhancedUsers = null) {
+    TaskTrackerStyles.ensureGlobal();
     const modal = document.createElement('div');
-    modal.className = 'task-edit-modal';
-    modal.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    `;
+    modal.className = 'tt-modal';
 
     const modalContent = document.createElement('div');
-    modalContent.className = 'task-edit-modal-content';
-    modalContent.style.cssText = `
-      background: var(--card-background-color, white);
-      border-radius: 8px;
-      padding: 24px;
-      width: 90%;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    `;
+    modalContent.className = 'tt-modal__content tt-modal__content--w-600';
 
     // Modal header
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--divider-color, #e0e0e0);
-      padding-bottom: 16px;
-    `;
+    header.className = 'tt-modal__header';
 
     const title = document.createElement('h3');
     title.textContent = `Edit ${task.task_type}: ${task.name}`;
-    title.style.cssText = `
-      margin: 0;
-      color: var(--primary-text-color, black);
-      font-size: 18px;
-    `;
+    title.className = 'tt-modal__title';
 
     const closeButton = document.createElement('button');
-    closeButton.innerHTML = '✕';
-    closeButton.style.cssText = `
-      background: none;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
-      color: var(--secondary-text-color, #666);
-      padding: 4px;
-    `;
+    closeButton.innerHTML = '&times;';
+    closeButton.className = 'tt-modal__close';
 
     header.appendChild(title);
     header.appendChild(closeButton);
 
     // Form container
     const form = document.createElement('form');
-    form.style.cssText = `
-      display: grid;
-      gap: 16px;
-    `;
+    form.className = 'tt-form';
 
     // Create form sections
     const sections = this.createFormSections(task, availableUsers, enhancedUsers);
@@ -89,38 +48,13 @@ export class TaskTrackerTaskEditor {
 
     // Modal footer
     const footer = document.createElement('div');
-    footer.style.cssText = `
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--divider-color, #e0e0e0);
-    `;
+    footer.className = 'tt-flex-end tt-gap-12 tt-mt-24';
 
-    const cancelButton = document.createElement('button');
+    const cancelButton = TaskTrackerUtils.createStyledButton('Cancel');
     cancelButton.type = 'button';
-    cancelButton.textContent = 'Cancel';
-    cancelButton.style.cssText = `
-      padding: 8px 16px;
-      border: 1px solid var(--divider-color, #ccc);
-      background: var(--card-background-color, white);
-      color: var(--primary-text-color, black);
-      border-radius: 4px;
-      cursor: pointer;
-    `;
 
-    const saveButton = document.createElement('button');
+    const saveButton = TaskTrackerUtils.createStyledButton('Save Changes');
     saveButton.type = 'submit';
-    saveButton.textContent = 'Save Changes';
-    saveButton.style.cssText = `
-      padding: 8px 16px;
-      border: none;
-      background: var(--primary-color, #03a9f4);
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-    `;
 
     footer.appendChild(cancelButton);
     footer.appendChild(saveButton);
@@ -133,7 +67,12 @@ export class TaskTrackerTaskEditor {
 
     // Event handlers
     const closeModal = () => {
-      document.body.removeChild(modal);
+      if (modal.parentNode) {
+        modal.classList.remove('tt-modal--visible');
+        setTimeout(() => {
+          if (modal.parentNode) modal.parentNode.removeChild(modal);
+        }, 200);
+      }
       document.removeEventListener('keydown', escapeHandler);
     };
 
@@ -292,28 +231,14 @@ export class TaskTrackerTaskEditor {
 
   static createSection(title, fields) {
     const section = document.createElement('div');
-    section.style.cssText = `
-      border: 1px solid var(--divider-color, #e0e0e0);
-      border-radius: 6px;
-      padding: 16px;
-      background: var(--secondary-background-color, #fafafa);
-    `;
+    section.className = 'tt-box';
 
     const sectionTitle = document.createElement('h4');
     sectionTitle.textContent = title;
-    sectionTitle.style.cssText = `
-      margin: 0 0 12px 0;
-      color: var(--primary-text-color, black);
-      font-size: 14px;
-      font-weight: 600;
-    `;
+    sectionTitle.className = 'tt-box-title';
 
     const fieldsContainer = document.createElement('div');
-    fieldsContainer.style.cssText = `
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    `;
+    fieldsContainer.className = 'tt-grid-auto';
 
     section.appendChild(sectionTitle);
     section.appendChild(fieldsContainer);
@@ -392,10 +317,7 @@ export class TaskTrackerTaskEditor {
       input.type = 'checkbox';
       input.name = name;
       input.checked = checked;
-      input.style.cssText = `
-        width: auto;
-        margin-right: 8px;
-      `;
+      input.className = 'tt-checkbox';
       return input;
     }, fullWidth);
   }
@@ -420,31 +342,18 @@ export class TaskTrackerTaskEditor {
   static createMultiSelectField(name, label, values, options, fullWidth = false) {
     return this.createFieldWrapper(name, label, () => {
       const container = document.createElement('div');
-      container.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 8px;
-        padding: 8px;
-        border: 1px solid var(--divider-color, #ccc);
-        border-radius: 4px;
-        background: var(--card-background-color, white);
-      `;
+      container.className = 'tt-multiselect';
 
       options.forEach(option => {
         const label = document.createElement('label');
-        label.style.cssText = `
-          display: flex;
-          align-items: center;
-          font-size: 12px;
-          cursor: pointer;
-        `;
+        label.className = 'tt-flex-row tt-gap-4';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.name = `${name}[]`;
         checkbox.value = option.value;
         checkbox.checked = values.includes(option.value);
-        checkbox.style.marginRight = '4px';
+        checkbox.className = 'tt-checkbox';
 
         label.appendChild(checkbox);
         label.appendChild(document.createTextNode(option.label));
@@ -469,21 +378,12 @@ export class TaskTrackerTaskEditor {
 
   static createFieldWrapper(name, label, inputCreator, fullWidth = false) {
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      align-items: flex-start;
-      ${fullWidth ? 'grid-column: 1 / -1;' : ''}
-    `;
+    wrapper.className = 'tt-form-row';
+    if (fullWidth) wrapper.classList.add('tt-col-span-full');
 
     const labelElement = document.createElement('label');
     labelElement.textContent = label;
-    labelElement.style.cssText = `
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--secondary-text-color, #666);
-    `;
+    labelElement.className = 'tt-label';
 
     const input = inputCreator();
     input.setAttribute('data-field', name);
@@ -495,16 +395,14 @@ export class TaskTrackerTaskEditor {
   }
 
   static styleInput(input) {
-    input.style.cssText = `
-      padding: 8px;
-      border: 1px solid var(--divider-color, #ccc);
-      border-radius: 4px;
-      background: var(--card-background-color, white);
-      color: var(--primary-text-color, black);
-      font-size: 14px;
-      width: 100%;
-      box-sizing: border-box;
-    `;
+    // Apply shared input classes
+    if (input.tagName === 'SELECT') {
+      input.className = 'tt-select';
+    } else if (input.tagName === 'TEXTAREA') {
+      input.className = 'tt-textarea';
+    } else {
+      input.className = 'tt-input';
+    }
   }
 
   static collectFormData(form, originalTask) {

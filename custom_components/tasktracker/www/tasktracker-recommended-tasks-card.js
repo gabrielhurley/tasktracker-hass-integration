@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
 import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
 
@@ -323,60 +324,7 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        ${TaskTrackerUtils.getCommonCardStyles()}
-
-        .time-control {
-          margin-bottom: 16px;
-        }
-
-        .time-label {
-          display: block;
-          margin-bottom: 8px;
-          color: var(--primary-text-color);
-          font-weight: 500;
-          font-size: 0.9em;
-        }
-
-        .time-slider-container {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .time-slider {
-          flex: 1;
-          height: 4px;
-          background: var(--divider-color);
-          border-radius: 2px;
-          outline: none;
-          -webkit-appearance: none;
-        }
-
-        .time-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 16px;
-          height: 16px;
-          background: var(--primary-color);
-          border-radius: 50%;
-          cursor: pointer;
-        }
-
-        .time-slider::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          background: var(--primary-color);
-          border-radius: 50%;
-          border: none;
-          cursor: pointer;
-        }
-
-        .time-value {
-          color: var(--primary-text-color);
-          font-weight: 500;
-          min-width: 60px;
-          text-align: right;
-          font-size: 0.9em;
-        }
+        ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
       <div class="card">
@@ -395,19 +343,19 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
             No user configured. Please set user in card configuration.
           </div>
         ` : `
-          <div class="time-control">
-            <label class="time-label">Available Time</label>
-            <div class="time-slider-container">
+          <div class="tt-ds-slider-row tt-mb-16">
+            <div class="tt-ds-slider-label">Available Time</div>
+            <div class="tt-ds-slider-container">
               <input
                 type="range"
-                class="time-slider"
+                class="tt-ds-range time-slider"
                 min="5"
                 max="180"
                 step="5"
                 value="${this._availableMinutes}"
               />
-              <span class="time-value">${this._availableMinutes} min</span>
             </div>
+            <div class="tt-ds-slider-value">${this._availableMinutes} min</div>
           </div>
 
           ${this._renderContent()}
@@ -422,8 +370,8 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
     }
 
     if (hasValidUserConfig) {
-      const slider = this.shadowRoot.querySelector('.time-slider');
-      const timeValue = this.shadowRoot.querySelector('.time-value');
+    const slider = this.shadowRoot.querySelector('.tt-ds-range');
+    const timeValue = this.shadowRoot.querySelector('.tt-ds-slider-value');
 
       if (slider) {
         slider.addEventListener('input', (e) => {
@@ -490,8 +438,9 @@ class TaskTrackerRecommendedTasksCard extends HTMLElement {
       borderInfo.cssClasses.dueToday ? 'due-today' : ''
     ].filter(Boolean).join(' ');
 
+    const borderClass = borderInfo.borderClass || '';
     return `
-      <div class="${taskClasses}" data-task-data='${JSON.stringify(task)}' style="${borderInfo.borderStyle}">
+      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" data-task-data='${JSON.stringify(task)}'>
         <div class="task-content">
           <div class="task-name">
             ${task.name}

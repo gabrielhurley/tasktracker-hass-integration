@@ -1,0 +1,51 @@
+---
+description: Frontend CSS rules for TaskTracker Home Assistant cards. Enforce DRY, class-based styling with shared utilities.
+globs:
+  - tasktracker-hass-integration/custom_components/tasktracker/www/**/*.js
+alwaysApply: true
+---
+
+## TaskTracker Frontend CSS Rules (Very Brief)
+
+- No inline CSS or per-element `style` attributes
+  - Global utilities: call `TaskTrackerStyles.ensureGlobal()` once (main DOM only)
+  - Card styles (shadow DOM): include `<style>${TaskTrackerStyles.getCommonCardStyles()}</style>`
+  - Single source of truth: both methods include `getSharedUtilitiesStyles()` to prevent drift
+
+- Use shared utility classes
+  - Buttons: `tt-btn`, `tt-btn--primary`, `tt-btn--link`
+  - Inputs: `tt-input`, `tt-select`, `tt-textarea`, `tt-checkbox`
+  - Layout: `tt-flex-row`, `tt-flex-end`, `tt-flex-1`, `tt-gap-4/8/12/16`, `tt-mb-12/16/20`, `tt-mt-12/24`, `tt-col-span-full`, `tt-text-center`, `tt-text-muted`, `tt-hidden`, `tt-p-40`, `tt-minh-300`, `tt-grid-2`, `tt-grid-auto`, `tt-justify-between`, `tt-title--sm`
+  - Containers: `tt-box`, `tt-section`
+  - Modals: `tt-modal`, `tt-modal--visible`, `tt-modal__content--w-450/tt-modal__content--w-600`
+  - Effects/Tooltips: `tt-focus-highlight`, `tt-tooltip`
+
+- Card frame and tasks
+  - Include: `<style>${TaskTrackerStyles.getCommonCardStyles()}</style>`
+  - Task container classes: `task-item`, add border class from `TaskTrackerUtils.getTaskBorderStyle(...).borderClass`
+    - Classes: `tt-task-border--due`, `tt-task-border--overdue` (prefer class over inline)
+
+- Self-care windows
+  - Use shared classes: `windows-container`, `window-item` with variants `completed`, `inferred-complete`, `incomplete`, `incomplete overdue`
+  - Labels/times/icons: `window-label`, `window-time`, `window-opportunity`
+
+- Daily state sliders
+  - Use `tt-ds-*` classes: `tt-ds-preset-btn`, `tt-ds-slider-row`, `tt-ds-range`, `tt-ds-slider-value`, `tt-ds-button-row`
+  - These are injected into both global and card scopes via `getDailyStateSharedStyles()`
+
+- Forms and editors
+  - Rows/labels: `tt-form-row`, `tt-label`
+  - Visibility toggles: `element.classList.toggle('hidden', ...)` (never `style.display`)
+  - Spacing: use `tt-gap-*` instead of `style.gap`
+
+- Toasts and messages
+  - Use `TaskTrackerUtils.showSuccess/showError` (toasts) and shared card message styles
+
+- Extending styles
+  - New shared patterns → add to `TaskTrackerStyles.getSharedUtilitiesStyles()`
+  - Keep per-card CSS minimal and semantic; prefer shared utilities
+
+- Shadow DOM vs Main DOM
+  - `ensureGlobal()` styles apply only to elements appended to `document.body` (e.g., modals, toasts)
+  - Cards render in shadow DOMs; always include `getCommonCardStyles()` inside each card’s `<style>`
+  - Keep per-card CSS minimal and semantic; prefer shared utilities

@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
 import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
 
@@ -331,7 +332,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           <div class="daily-state-values">
             ${valuesHtml}
           </div>
-          <button class="daily-state-edit-btn" title="Edit daily state">
+          <button class="btn daily-state-edit-btn" title="Edit daily state">
             Edit
           </button>
         </div>
@@ -407,7 +408,8 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        ${TaskTrackerUtils.getCommonCardStyles()}
+        ${TaskTrackerStyles.getCommonCardStyles()}
+        ${TaskTrackerStyles.getDailyPlanCardStyles()}
         .section-title {
           font-weight: 600;
           margin: 16px 0 8px 0;
@@ -453,23 +455,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           margin-bottom: 16px;
         }
 
-        .daily-state-button {
-          background: var(--primary-color);
-          color: var(--primary-text-color);
-          border: none;
-          border-radius: 6px;
-          padding: 10px 16px;
-          font-size: 0.95em;
-          font-weight: 500;
-          cursor: pointer;
-          transition: opacity 0.2s ease;
-          width: 100%;
-          text-align: center;
-        }
-
-        .daily-state-button:hover {
-          opacity: 0.9;
-        }
+        .daily-state-button { /* now uses shared .btn classes */ }
 
         .daily-state-help {
           font-size: 0.8em;
@@ -520,24 +506,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           color: var(--light-primary-color);
         }
 
-        .daily-state-edit-btn {
-          background: var(--secondary-background-color);
-          color: var(--secondary-text-color);
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          padding: 6px 12px;
-          font-size: 0.8em;
-          font-weight: 500;
-          cursor: pointer;
-          transition: opacity 0.2s ease;
-          flex-shrink: 0;
-        }
-
-        .daily-state-edit-btn:hover {
-          opacity: 0.9;
-          color: var(--primary-text-color);
-          background: var(--secondary-background-color);
-        }
+        .daily-state-edit-btn { /* uses shared .btn styles */ }
 
         /* Urgent section styles */
         .urgent-section {
@@ -567,160 +536,8 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
         }
 
         /* Self-care window styles */
-        .selfcare-windowed {
-          border-radius: 6px;
-        }
-
-        .selfcare-windowed.all-complete {
-          opacity: 0.8;
-          background: rgba(76, 175, 80, 0.1);
-        }
-
-        .windows-container {
-          margin-top: 8px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .window-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 0.9em;
-          transition: background-color 0.2s ease;
-        }
-
-        .window-item.completed {
-          background: rgba(76, 175, 80, 0.15);
-          color: var(--primary-text-color);
-        }
-
-        .window-item.inferred-complete {
-          background: rgba(76, 175, 80, 0.08);
-          color: var(--primary-text-color);
-          border-left: 2px solid rgba(76, 175, 80, 0.3);
-        }
-
-        .window-item.incomplete {
-          background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
-          color: var(--primary-text-color);
-          cursor: pointer;
-        }
-
-        .window-item.incomplete:hover {
-          background: var(--divider-color, rgba(0, 0, 0, 0.1));
-        }
-
-        .window-item.incomplete:focus {
-          outline: 2px solid var(--primary-color);
-          outline-offset: 2px;
-          background: var(--divider-color, rgba(0, 0, 0, 0.1));
-        }
-
-        /* Styling for incomplete windows based on task status */
-        .selfcare-windowed.needs-completion.due-today .window-item.incomplete {
-          background: rgba(3, 169, 244, 0.1);
-        }
-
-        .selfcare-windowed.needs-completion.due-today .window-item.incomplete:hover {
-          background: rgba(3, 169, 244, 0.2);
-        }
-
-        .selfcare-windowed.needs-completion.due-today .window-item.incomplete:focus {
-          background: rgba(3, 169, 244, 0.2);
-        }
-
-        /* Overdue styling for incomplete windows */
-        .selfcare-windowed.needs-completion.overdue .window-item.incomplete {
-          background: rgba(255, 193, 7, 0.1);
-        }
-
-        .selfcare-windowed.needs-completion.overdue .window-item.incomplete:hover {
-          background: rgba(255, 193, 7, 0.2);
-        }
-
-        .selfcare-windowed.needs-completion.overdue .window-item.incomplete:focus {
-          background: rgba(255, 193, 7, 0.2);
-        }
-
-        /* Individual window overdue styling */
-        .selfcare-windowed.needs-completion .window-item.incomplete.overdue {
-          background: rgba(255, 193, 7, 0.1);
-        }
-
-        .selfcare-windowed.needs-completion .window-item.incomplete.overdue:hover {
-          background: rgba(255, 193, 7, 0.2);
-        }
-
-        .selfcare-windowed.needs-completion .window-item.incomplete.overdue:focus {
-          background: rgba(255, 193, 7, 0.2);
-        }
-
-        /* Individual window overdue opportunity icon styling */
-        .selfcare-windowed.needs-completion .window-item.incomplete.overdue .window-opportunity {
-          color: var(--error-color, #f44336);
-        }
-
-        /* Fallback for tasks that need completion (legacy support) */
-        .selfcare-windowed.needs-completion .window-item.incomplete {
-          background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
-        }
-
-        .selfcare-windowed.needs-completion .window-item.incomplete:hover {
-          background: var(--divider-color, rgba(0, 0, 0, 0.1));
-        }
-
-        .selfcare-windowed.needs-completion .window-item.incomplete:focus {
-          background: var(--divider-color, rgba(0, 0, 0, 0.1));
-        }
-
-        .window-check {
-          color: var(--success-color, #4caf50);
-          font-weight: bold;
-          font-size: 1em;
-        }
-
-        .window-check.inferred {
-          color: rgba(76, 175, 80, 0.7);
-          font-weight: bold;
-          font-size: 1em;
-        }
-
-        .window-opportunity {
-          color: var(--secondary-text-color);
-          font-size: 1em;
-          display: flex;
-          align-items: center;
-        }
-
-        .window-opportunity ha-icon {
-          --mdc-icon-size: 16px;
-          color: inherit;
-        }
-
-        /* Due today styling for opportunity circle */
-        .selfcare-windowed.needs-completion.due-today .window-opportunity {
-          color: var(--primary-color);
-        }
-
-        /* Overdue styling for opportunity circle */
-        .selfcare-windowed.needs-completion.overdue .window-opportunity {
-          color: var(--error-color, #f44336);
-        }
-
-        .window-label {
-          font-weight: 500;
-          min-width: 60px;
-        }
-
-        .window-time {
-          color: var(--secondary-text-color);
-          font-size: 0.85em;
-          margin-left: auto;
-        }
+        .selfcare-windowed { border-radius: 6px; }
+        .selfcare-windowed.all-complete { opacity: 0.8; background: rgba(76, 175, 80, 0.1); }
 
         /* Self-care task without windows */
         .task-item[data-task-type="self_care"]:not(.selfcare-windowed) .task-metadata {
@@ -789,23 +606,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
           justify-content: center;
         }
 
-        .filter-toggle-btn:hover {
-          background: var(--secondary-background-color);
-        }
 
-        .filter-toggle-btn.filtered {
-          background: var(--secondary-background-color);
-        }
-
-        .filter-toggle-btn ha-icon {
-          --mdc-icon-size: 20px;
-        }
-
-        .header-actions {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
       </style>
 
       <div class="card">
@@ -996,7 +797,7 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
 
     return `
       <div class="daily-state-prompt">
-        <button class="daily-state-button">Set Your Daily State</button>
+        <button class="daily-state-button btn btn--primary btn--block">Set Your Daily State</button>
         <div class="daily-state-help">A daily plan will be available once your state is set</div>
       </div>
 
@@ -1087,11 +888,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       hasLowScore ? 'low-recommendation' : ''
     ].filter(Boolean).join(' ');
 
+    const borderClass = borderInfo.borderClass || '';
     return `
-      <div class="${taskClasses}"
+      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}"
            data-task-data='${JSON.stringify(task)}'
            data-task-type="${taskType}"
-           style="${borderInfo.borderStyle}">
+           >
         <div class="task-content">
           <div class="task-name">
             ${task.name}
@@ -1234,11 +1036,12 @@ class TaskTrackerDailyPlanCard extends HTMLElement {
       hasLowScore ? 'low-recommendation' : ''
     ].filter(Boolean).join(' ');
 
+    const borderClass2 = borderInfo.borderClass || '';
     return `
-      <div class="${statusClasses}"
+      <div class="${[statusClasses, borderClass2].filter(Boolean).join(' ')}"
            data-task-data='${JSON.stringify(task)}'
            data-task-type="self_care"
-           style="${borderInfo.borderStyle}">
+           >
         <div class="task-content">
           <div class="task-name">
             ${task.name}
@@ -1313,7 +1116,7 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
     // Handle user_filter_mode visibility
     const explicitUserRow = this.shadowRoot.querySelector('.explicit-user-row');
     if (explicitUserRow) {
-      explicitUserRow.style.display = this._config.user_filter_mode === 'explicit' ? 'block' : 'none';
+      explicitUserRow.classList.toggle('hidden', this._config.user_filter_mode !== 'explicit');
     }
   }
 
@@ -1327,7 +1130,7 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
     if (configKey === 'user_filter_mode') {
       const explicitUserRow = this.shadowRoot.querySelector('.explicit-user-row');
       if (explicitUserRow) {
-        explicitUserRow.style.display = value === 'explicit' ? 'block' : 'none';
+        explicitUserRow.classList.toggle('hidden', value !== 'explicit');
       }
     }
 
@@ -1399,7 +1202,7 @@ class TaskTrackerDailyPlanCardEditor extends HTMLElement {
           ])
         )}
 
-        <div class="explicit-user-row" style="display: ${this._config.user_filter_mode === 'explicit' ? 'block' : 'none'}">
+        <div class="explicit-user-row ${this._config.user_filter_mode === 'explicit' ? '' : 'hidden'}">
           ${TaskTrackerUtils.createConfigRow(
             'Username',
             'Specific username for daily plan',

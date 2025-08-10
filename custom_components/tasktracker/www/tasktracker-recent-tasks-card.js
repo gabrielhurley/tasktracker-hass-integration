@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 
 /**
  * TaskTracker Recent Tasks Card
@@ -211,24 +212,9 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        ${TaskTrackerUtils.getCommonCardStyles()}
+        ${TaskTrackerStyles.getCommonCardStyles()}
 
-        .completion-details {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          margin-bottom: 4px;
-        }
 
-        .completion-notes {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          font-style: italic;
-          margin-top: 4px;
-          padding: 4px 8px;
-          background: var(--card-background-color);
-          border-radius: 4px;
-          border: 1px solid var(--divider-color);
-        }
 
 
 
@@ -305,9 +291,9 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
       <div class="task-item completion-item completed">
         <div class="task-content completion-content">
           <div class="task-name">${taskName}</div>
-          <div class="task-metadata completion-details">${metadataParts.join(' ')}</div>
+          <div class="task-metadata">${metadataParts.join(' ')}</div>
           ${this._config.show_notes && completion.notes ? `
-            <div class="completion-notes">"${completion.notes}"</div>
+            <div class="note">"${completion.notes}"</div>
           ` : ''}
         </div>
         ${showEditButton ? `
@@ -443,7 +429,8 @@ class TaskTrackerRecentTasksCard extends HTMLElement {
         this._fetchRecentCompletions();
       },
       availableUsers,
-      enhancedUsers
+      enhancedUsers,
+      this._userContext
     );
 
     TaskTrackerUtils.showModal(modal);

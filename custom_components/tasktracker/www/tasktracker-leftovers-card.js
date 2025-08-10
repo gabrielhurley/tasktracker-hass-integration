@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
 
 /**
@@ -390,18 +391,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        ${TaskTrackerUtils.getCommonCardStyles()}
-        .leftover-item.fresh {
-          border-left: 2px solid #4caf50;
-        }
-
-        .leftover-item.warning {
-          border-left: 2px solid #ff9800;
-        }
-
-        .leftover-item.expired {
-          border-left: 2px solid #f44336;
-        }
+        ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
       <div class="card">
@@ -497,7 +487,7 @@ class TaskTrackerLeftoversCard extends HTMLElement {
     metadataParts.push(expirationStatus);
 
     return `
-      <div class="task-item leftover-item ${isExpired ? 'expired' : 'fresh'}">
+      <div class="task-item leftover-item ${isExpired ? 'status-error' : 'status-success'}">
         <div class="task-content leftover-content">
           <div class="task-name leftover-name">${leftover.name}</div>
           <div class="task-metadata leftover-metadata">${metadataParts.join(' | ')}</div>

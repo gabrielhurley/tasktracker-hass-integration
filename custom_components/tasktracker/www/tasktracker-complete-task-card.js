@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 
 /**
  * TaskTracker Complete Task Card
@@ -282,138 +283,8 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host {
-          display: block;
-        }
-
-        .tasktracker-complete-task-card {
-          background: var(--card-background-color);
-          border-radius: 4px;
-          padding: 16px;
-          box-shadow: var(--ha-card-box-shadow);
-          border: 1px solid var(--divider-color);
-        }
-
-        .tasktracker-complete-task-card .header {
-          margin-bottom: 16px;
-          padding-bottom: 10px;
-          padding-top: 4px;
-          border-bottom: 1px solid var(--divider-color);
-        }
-
-        .title {
-          font-size: 1.1em;
-          font-weight: 500;
-          color: var(--primary-text-color);
-          margin: 0;
-        }
-
-        .loading, .error {
-          text-align: center;
-          padding: 24px 0;
-          color: var(--secondary-text-color);
-          font-size: 0.9em;
-        }
-
-        .error {
-          color: var(--error-color, var(--primary-text-color));
-          background: var(--secondary-background-color);
-          padding: 12px;
-          border-radius: 4px;
-          border: 1px solid var(--divider-color);
-        }
-
-        .form-group {
-          margin-bottom: 16px;
-        }
-
-        .form-group:last-of-type {
-          margin-bottom: 20px;
-        }
-
-        .form-label {
-          display: block;
-          margin-bottom: 6px;
-          font-weight: 500;
-          color: var(--primary-text-color);
-          font-size: 0.9em;
-        }
-
-        .form-control {
-          width: 100%;
-          padding: 8px 12px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          font-family: inherit;
-          font-size: 0.9em;
-          box-sizing: border-box;
-        }
-
-        .form-control:focus {
-          outline: none;
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 1px var(--primary-color);
-        }
-
-        .form-control:disabled {
-          background: var(--secondary-background-color);
-          color: var(--secondary-text-color);
-          cursor: not-allowed;
-        }
-
-        select.form-control {
-          cursor: pointer;
-        }
-
-        select.form-control:disabled {
-          cursor: not-allowed;
-        }
-
-        textarea.form-control {
-          resize: vertical;
-          min-height: 60px;
-          max-height: 120px;
-        }
-
-        .task-details {
-          margin-top: 6px;
-          padding: 8px 12px;
-          background: var(--secondary-background-color);
-          border-radius: 4px;
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-          border: 1px solid var(--divider-color);
-        }
-
-        .complete-btn {
-          width: 100%;
-          padding: 12px;
-          background: var(--secondary-background-color);
-          color: white;
-          border: none;
-          border-radius: 4px;
-          font-size: 0.95em;
-          font-weight: 500;
-          cursor: pointer;
-          font-family: inherit;
-        }
-
-        .complete-btn:hover:not(:disabled) {
-          background: var(--secondary-text-color);
-          filter: brightness(0.9);
-        }
-
-        .complete-btn:disabled {
-          background: var(--secondary-text-color);
-          cursor: not-allowed;
-          opacity: 0.6;
-        }
-
-        .completing {
-          opacity: 0.7;
-        }
+        ${TaskTrackerStyles.getCommonCardStyles()}
+        ${TaskTrackerStyles.getCompleteTaskCardStyles()}
       </style>
 
       <div class="tasktracker-complete-task-card card">

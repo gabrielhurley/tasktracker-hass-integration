@@ -1,4 +1,6 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
+import { TaskTrackerDailyStateUI } from './tasktracker-daily-state-ui.js';
 
 class TaskTrackerDailyStateCard extends HTMLElement {
   constructor() {
@@ -13,7 +15,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
     this._eventCleanup = null;
     this._showAdvanced = false;
     this._saving = false;
-    this._lastSavedTimestamp = null;
+
     this._currentPreset = null; // stores the matching preset key if current state matches a preset
   }
 
@@ -88,7 +90,6 @@ class TaskTrackerDailyStateCard extends HTMLElement {
       if (evUsername === username) {
         this._state = { ...this._state, ...event.state };
         this._currentPreset = TaskTrackerUtils.findMatchingDailyStatePreset(this._state);
-        this._lastSavedTimestamp = new Date();
         this._render();
       }
     });
@@ -114,10 +115,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
     // Determine initial view based on config and matching preset
     this._showAdvanced = this._determineInitialView();
 
-    // If we have a saved state, assume it was saved recently for display purposes
-    if (this._state && Object.keys(this._state).length > 0) {
-      this._lastSavedTimestamp = new Date();
-    }
+    // No last-saved timestamp tracking
   }
 
   _getCurrentStateOrDefaults() {
@@ -147,22 +145,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
 
 
 
-  async _handlePresetSelection(presetKey) {
-    const presets = TaskTrackerUtils.getPresetDailyStates();
-    const preset = presets[presetKey];
-
-    if (!preset) return;
-
-    if (presetKey === 'complicated') {
-      // Switch to advanced mode
-      this._showAdvanced = true;
-      this._render();
-      return;
-    }
-
-    // Save the preset values
-    await this._saveState(preset.values);
-  }
+  // Removed: preset selection handled by shared UI
 
   async _saveState(stateValues) {
     const username = this._getUsername();
@@ -177,7 +160,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
       // Update local state
       this._state = { ...stateValues };
       this._currentPreset = TaskTrackerUtils.findMatchingDailyStatePreset(this._state);
-      this._lastSavedTimestamp = new Date();
+      // No last-saved timestamp tracking
 
       // Show success toast
       this._showToast('State saved', 'success');
@@ -222,40 +205,13 @@ class TaskTrackerDailyStateCard extends HTMLElement {
   }
 
   _showToast(message, type = 'info') {
-    // Create toast element
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: ${type === 'success' ? 'var(--success-color, #4caf50)' : 'var(--error-color, #f44336)'};
-      color: white;
-      padding: 12px 20px;
-      border-radius: 4px;
-      z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
-    `;
-
-    document.body.appendChild(toast);
-
-    // Animate in
-    requestAnimationFrame(() => {
-      toast.style.transform = 'translateX(0)';
-    });
-
-    // Remove after 2 seconds
-    setTimeout(() => {
-      toast.style.transform = 'translateX(100%)';
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300);
-    }, 2000);
+    if (type === 'success') {
+      TaskTrackerUtils.showSuccess(message);
+    } else if (type === 'error') {
+      TaskTrackerUtils.showError(message);
+    } else {
+      TaskTrackerUtils.showSuccess(message);
+    }
   }
 
   _toggleAdvanced() {
@@ -263,10 +219,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
     this._render();
   }
 
-  _formatTimestamp(timestamp) {
-    if (!timestamp) return '';
-    return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
+
 
   _getMoodLabel(value) {
     return TaskTrackerUtils.getMoodLabel(value, this._config.use_emoji_labels);
@@ -283,253 +236,21 @@ class TaskTrackerDailyStateCard extends HTMLElement {
       this._render();
     }
 
-    // Add a temporary highlight effect
+    // Add a temporary highlight effect using class
     const card = this.shadowRoot.querySelector('.card');
     if (card) {
-      card.style.transition = 'box-shadow 0.3s ease';
-      card.style.boxShadow = '0 0 20px rgba(255, 193, 7, 0.5)';
-
-      setTimeout(() => {
-        card.style.boxShadow = '';
-      }, 2000);
+      card.classList.add('tt-focus-highlight');
+      setTimeout(() => card.classList.remove('tt-focus-highlight'), 2000);
     }
   }
 
   _render() {
     this.shadowRoot.innerHTML = `
       <style>
-        ${TaskTrackerUtils.getCommonCardStyles()}
-
-        .main-content {
-          padding: 16px;
-        }
-
-                 .quick-flow {
-           margin-bottom: 16px;
-         }
-
-         .quick-prompt {
-           font-size: 16px;
-           margin-bottom: 16px;
-           color: var(--primary-text-color);
-           text-align: center;
-         }
-
-         .no-state-message {
-           font-size: 14px;
-           margin-bottom: 12px;
-           color: var(--secondary-text-color);
-           text-align: center;
-           font-style: italic;
-         }
-
-         .preset-grid {
-           display: grid;
-           grid-template-columns: repeat(2, 1fr);
-           gap: 8px;
-           margin-bottom: 16px;
-         }
-
-         .preset-btn {
-           background: var(--card-background-color);
-           border: 2px solid var(--divider-color);
-           border-radius: 8px;
-           padding: 16px 12px;
-           cursor: pointer;
-           font-size: 14px;
-           font-weight: 500;
-           color: var(--primary-text-color);
-           transition: all 0.2s ease;
-           text-align: center;
-           min-height: 60px;
-           display: flex;
-           align-items: center;
-           justify-content: center;
-         }
-
-         .preset-btn:hover {
-           border-color: var(--primary-color);
-           background: var(--primary-color);
-           color: var(--primary-text-color);
-         }
-
-         .preset-btn:active {
-           transform: scale(0.98);
-         }
-
-                   .preset-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-
-          .preset-btn.selected {
-            border-color: var(--primary-color);
-            background: var(--primary-color);
-            color: var(--primary-text-color);
-          }
-
-         @media (min-width: 500px) {
-           .preset-grid {
-             grid-template-columns: repeat(4, 1fr);
-           }
-         }
-
-        .button-row {
-          display: flex;
-          justify-content: flex-end;
-          gap: 8px;
-          align-items: center;
-        }
-
-        .btn {
-          background: var(--primary-color);
-          color: var(--primary-text-color);
-          border: none;
-          border-radius: 4px;
-          padding: 8px 16px;
-          cursor: pointer;
-          font-size: 14px;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          transition: background-color 0.2s;
-        }
-
-        .btn:hover {
-          background: var(--primary-color);
-          opacity: 0.9;
-        }
-
-        .btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .btn-secondary {
-          background: var(--secondary-background-color);
-          color: var(--primary-text-color);
-          border: 1px solid var(--divider-color);
-        }
-
-        .advanced-toggle {
-          background: none;
-          border: none;
-          color: var(--primary-color);
-          cursor: pointer;
-          font-size: 14px;
-          text-decoration: underline;
-          padding: 4px;
-          margin-top: 8px;
-        }
-
-        .advanced-section {
-          margin-top: 16px;
-          border-top: 1px solid var(--divider-color);
-          padding-top: 16px;
-        }
-
-        .slider-row {
-          display: grid;
-          grid-template-columns: 100px 1fr 60px;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 12px;
-        }
-
-        .slider-label {
-          font-weight: 500;
-          color: var(--primary-text-color);
-        }
-
-        .slider-container {
-          position: relative;
-        }
-
-        input[type="range"] {
-          width: 100%;
-          height: 6px;
-          border-radius: 3px;
-          background: var(--disabled-text-color);
-          outline: none;
-          -webkit-appearance: none;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: var(--primary-color);
-          cursor: pointer;
-        }
-
-        input[type="range"]::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: var(--primary-color);
-          cursor: pointer;
-          border: none;
-        }
-
-        .slider-value {
-          text-align: center;
-          font-weight: 500;
-          min-width: 60px;
-          color: var(--primary-text-color);
-        }
-
-        .tooltip {
-          position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%);
-          background: var(--card-background-color);
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          padding: 8px;
-          font-size: 12px;
-          white-space: nowrap;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.2s;
-          z-index: 100;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .slider-container:hover .tooltip {
-          opacity: 1;
-        }
-
-        .footer {
-          margin-top: 16px;
-          padding-top: 8px;
-          border-top: 1px solid var(--divider-color);
-          font-size: 12px;
-          color: var(--secondary-text-color);
-          text-align: center;
-        }
-
-                 @media (max-width: 400px) {
-           .slider-row {
-             grid-template-columns: 1fr;
-             gap: 8px;
-             text-align: center;
-           }
-
-           .preset-grid {
-             grid-template-columns: 1fr;
-             gap: 12px;
-           }
-
-           .preset-btn {
-             min-height: 50px;
-           }
-
-           .button-row {
-             flex-direction: column;
-           }
-         }
+        ${TaskTrackerStyles.getCommonCardStyles()}
+        ${TaskTrackerStyles.getDailyStateSharedStyles()}
+        ${TaskTrackerStyles.getDailyStateCardStyles()}
+        ${TaskTrackerStyles.getCompleteTaskCardStyles()}
       </style>
 
       <div class="card">
@@ -540,91 +261,62 @@ class TaskTrackerDailyStateCard extends HTMLElement {
           </div>
         ` : ''}
 
-        <div class="main-content">
-          ${this._loading ? '<div class="loading">Loading…</div>' :
-            this._error ? `<div class="error">${this._error}</div>` :
-            this._renderContent()}
-        </div>
+        ${this._loading ? '<div class="loading">Loading…</div>' :
+          this._error ? `<div class="error">${this._error}</div>` :
+          '<div class="tt-ds-mount"></div>'}
       </div>
     `;
 
     this._attachEventListeners();
-  }
 
-      _renderContent() {
-    // For advanced view, always show values (use defaults if no state exists)
-    const currentState = this._getCurrentStateOrDefaults();
+    if (!this._loading && !this._error) {
+      // Mount the shared UI
+      const mount = this.shadowRoot.querySelector('.tt-ds-mount');
+      if (mount) {
+        const presets = TaskTrackerUtils.getPresetDailyStates();
+        const currentState = this._getCurrentStateOrDefaults();
+        const currentPreset = TaskTrackerUtils.findMatchingDailyStatePreset(currentState);
+        const useEmoji = this._config.use_emoji_labels;
 
-    return `
-      ${!this._showAdvanced ? `
-        <div class="quick-flow">
-          <div class="quick-prompt">How are you feeling today?</div>
-          <div class="preset-grid">
-            ${this._renderPresetButtons()}
-          </div>
-        </div>
-      ` : ''}
-
-      ${this._showAdvanced ? `
-        <div class="advanced-section">
-          ${this._renderSlider('energy', 'Energy', currentState.energy, 1, 5, 'Higher energy enables more demanding tasks')}
-          ${this._renderSlider('motivation', 'Motivation', currentState.motivation, 1, 5, 'Higher motivation suggests more challenging tasks')}
-          ${this._renderSlider('focus', 'Focus', currentState.focus, 1, 5, 'Higher focus enables detail-oriented work')}
-          ${this._renderSlider('pain', 'Pain', currentState.pain, 1, 5, 'Higher pain reduces strenuous task suggestions')}
-          ${this._renderSlider('mood', 'Mood', currentState.mood, -2, 2, 'Mood affects task type and difficulty recommendations', true)}
-          ${this._renderSlider('free_time', 'Free Time', currentState.free_time, 1, 5, 'More free time allows longer task suggestions', false, true)}
-
-          <div class="button-row">
-            <button class="btn-secondary advanced-toggle">⌃ Simple</button>
-            <button class="btn advanced-save-btn" ${this._saving ? 'disabled' : ''}>
-              <ha-icon icon="mdi:check"></ha-icon>
-              ${this._saving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </div>
-      ` : ''}
-
-      ${this._lastSavedTimestamp ? `
-        <div class="footer">
-          Saved ${this._formatTimestamp(this._lastSavedTimestamp)}
-        </div>
-      ` : ''}
-    `;
-  }
-
-    _renderPresetButtons() {
-    const presets = TaskTrackerUtils.getPresetDailyStates();
-    return Object.keys(presets).map(key => {
-      const preset = presets[key];
-      // Only highlight if we have existing state that matches this preset
-      const isSelected = this._hasExistingState() && this._currentPreset === key;
-      return `
-        <button class="preset-btn ${isSelected ? 'selected' : ''}" data-preset="${key}" ${this._saving ? 'disabled' : ''}>
-          ${preset.label}
-        </button>
-      `;
-    }).join('');
-  }
-
-  _renderSlider(key, label, value, min, max, tooltip, isMood = false, isFreeTime = false) {
-    let displayValue = value;
-    if (isMood) {
-      displayValue = this._getMoodLabel(value);
-    } else if (isFreeTime) {
-      displayValue = this._getFreeTimeLabel(value);
+        // Keep a reference to update on re-render
+        this._uiController = TaskTrackerDailyStateUI.render(mount, {
+          mode: 'embedded',
+          state: currentState,
+          hasExistingState: this._hasExistingState(),
+          currentPreset,
+          showAdvanced: this._showAdvanced,
+          useEmojiLabels: useEmoji,
+          saving: this._saving,
+          presets,
+          getMoodLabel: (v) => this._getMoodLabel(v),
+          getFreeTimeLabel: (v) => this._getFreeTimeLabel(v),
+          onSelectPreset: async (presetKey) => {
+            const preset = presets[presetKey];
+            if (presetKey === 'complicated') {
+              this._showAdvanced = true;
+              this._uiController.update({ showAdvanced: true });
+              return;
+            }
+            if (preset && preset.values) {
+              await this._saveState(preset.values);
+            }
+          },
+          onSave: async () => {
+            // In embedded mode, saving uses current internal state
+            await this._handleAdvancedSave();
+          },
+          onToggleBackToSimple: () => {
+            this._toggleAdvanced();
+          },
+          onSliderChange: (axis, value) => {
+            this._handleStateChange(axis, value);
+          }
+        });
+      }
     }
-
-    return `
-      <div class="slider-row">
-        <div class="slider-label">${label}</div>
-        <div class="slider-container">
-          <input type="range" min="${min}" max="${max}" step="1" value="${value}" data-axis="${key}">
-          <div class="tooltip">${tooltip}</div>
-        </div>
-        <div class="slider-value">${displayValue}</div>
-      </div>
-    `;
   }
+
+  // Old _renderContent and render helpers removed. Shared UI handles rendering.
 
   _attachEventListeners() {
     // Header refresh button
@@ -633,57 +325,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
       refreshBtn.addEventListener('click', () => this._handleRefresh());
     }
 
-    // Preset buttons
-    const presetBtns = this.shadowRoot.querySelectorAll('.preset-btn');
-    presetBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const presetKey = e.target.dataset.preset;
-        this._handlePresetSelection(presetKey);
-      });
-    });
-
-    // Advanced save button
-    const advancedSaveBtn = this.shadowRoot.querySelector('.advanced-save-btn');
-    if (advancedSaveBtn) {
-      advancedSaveBtn.addEventListener('click', () => this._handleAdvancedSave());
-    }
-
-    // Advanced toggle buttons
-    const toggleBtns = this.shadowRoot.querySelectorAll('.advanced-toggle');
-    toggleBtns.forEach(btn => {
-      btn.addEventListener('click', () => this._toggleAdvanced());
-    });
-
-    // Sliders
-    const sliders = this.shadowRoot.querySelectorAll('input[type="range"]');
-    sliders.forEach(slider => {
-      slider.addEventListener('input', (e) => {
-        const axis = e.target.dataset.axis;
-        const val = parseInt(e.target.value);
-        this._handleStateChange(axis, val);
-      });
-
-      // Keyboard navigation
-      slider.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-          e.preventDefault();
-          const axis = e.target.dataset.axis;
-          const currentVal = parseInt(e.target.value);
-          const min = parseInt(e.target.min);
-          const max = parseInt(e.target.max);
-
-          let newVal = currentVal;
-          if (e.key === 'ArrowLeft' && currentVal > min) {
-            newVal = currentVal - 1;
-          } else if (e.key === 'ArrowRight' && currentVal < max) {
-            newVal = currentVal + 1;
-          }
-
-          e.target.value = newVal;
-          this._handleStateChange(axis, newVal);
-        }
-      });
-    });
+    // Shared UI attaches its own listeners on mount
   }
 
   getCardSize() {

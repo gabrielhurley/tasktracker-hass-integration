@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 import { TaskTrackerDateTime } from './tasktracker-datetime-utils.js';
 import { TaskTrackerTaskEditor } from './tasktracker-task-editor.js';
 
@@ -348,7 +349,7 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        ${TaskTrackerUtils.getCommonCardStyles()}
+        ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
       <div class="card">
@@ -477,8 +478,9 @@ class TaskTrackerAvailableTasksCard extends HTMLElement {
       borderInfo.cssClasses.dueToday ? 'due-today' : ''
     ].filter(Boolean).join(' ');
 
+    const borderClass = borderInfo.borderClass || '';
     return `
-      <div class="${taskClasses}" data-task-data='${JSON.stringify(task)}' style="${borderInfo.borderStyle}">
+      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" data-task-data='${JSON.stringify(task)}'>
         <div class="task-content">
           <div class="task-name">${task.name}</div>
           <div class="task-metadata">${metadataParts.join(' | ')}</div>

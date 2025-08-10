@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 
 /**
  * TaskTracker Encouragement Card
@@ -170,37 +171,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        ${TaskTrackerUtils.getCommonCardStyles()}
-        .encouragement-content {
-          text-align: center;
-          font-size: 1em;
-          line-height: 1.4;
-          color: var(--primary-text-color);
-          font-weight: 500;
-        }
-        .encouragement-text {
-          font-style: italic;
-        }
-        .no-encouragement {
-          text-align: center;
-          color: var(--secondary-text-color);
-          font-style: italic;
-        }
-        .error-state {
-          text-align: center;
-          color: var(--error-color, #f44336);
-          background: rgba(244, 67, 54, 0.1);
-          border-radius: 4px;
-          margin: 8px;
-        }
-        .ai-unavailable {
-          text-align: center;
-          color: var(--secondary-text-color);
-          font-style: italic;
-          border: 1px dashed var(--divider-color);
-          border-radius: 4px;
-          margin: 8px;
-        }
+        ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
       <div class="card">
@@ -230,16 +201,15 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     }
 
     if (this._error) {
-      // Check if error indicates AI service is not available
       if (this._error.includes('AI') || this._error.includes('configuration') || this._error.includes('500')) {
         return `
-          <div class="ai-unavailable">
+          <div class="message message--muted">
             AI encouragement is not available right now.<br>
             <small>AI service may not be configured or is temporarily unavailable.</small>
           </div>
         `;
       }
-      return `<div class="error-state">Error: ${this._error}</div>`;
+      return `<div class="error">Error: ${this._error}</div>`;
     }
 
     if (!TaskTrackerUtils.hasValidUserConfig(this._config)) {
@@ -247,7 +217,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     }
 
     if (!this._encouragement || !this._encouragement.success) {
-      return '<div class="no-encouragement">No encouragement available.</div>';
+      return '<div class="no-tasks">No encouragement available.</div>';
     }
 
     const encouragementText = this._encouragement.data?.encouragement || this._encouragement.spoken_response;
@@ -257,8 +227,8 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     }
 
     return `
-      <div class="encouragement-content">
-        <div class="encouragement-text">${encouragementText}</div>
+      <div class="text-center">
+        <div class="italic">${encouragementText}</div>
       </div>
     `;
   }
@@ -312,7 +282,7 @@ class TaskTrackerEncouragementCardEditor extends HTMLElement {
     // Handle user_filter_mode visibility
     const explicitUserRow = this.shadowRoot.querySelector('.explicit-user-row');
     if (explicitUserRow) {
-      explicitUserRow.style.display = this._config.user_filter_mode === 'explicit' ? 'block' : 'none';
+      explicitUserRow.classList.toggle('hidden', this._config.user_filter_mode !== 'explicit');
     }
   }
 
@@ -326,7 +296,7 @@ class TaskTrackerEncouragementCardEditor extends HTMLElement {
     if (configKey === 'user_filter_mode') {
       const explicitUserRow = this.shadowRoot.querySelector('.explicit-user-row');
       if (explicitUserRow) {
-        explicitUserRow.style.display = value === 'explicit' ? 'block' : 'none';
+        explicitUserRow.classList.toggle('hidden', value !== 'explicit');
       }
     }
 
@@ -358,7 +328,7 @@ class TaskTrackerEncouragementCardEditor extends HTMLElement {
           ])
         )}
 
-        <div class="explicit-user-row" style="display: ${this._config.user_filter_mode === 'explicit' ? 'block' : 'none'}">
+        <div class="explicit-user-row ${this._config.user_filter_mode === 'explicit' ? '' : 'hidden'}">
           ${TaskTrackerUtils.createConfigRow(
             'Username',
             'Specific username for encouragement',

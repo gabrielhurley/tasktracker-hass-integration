@@ -1,4 +1,5 @@
 import { TaskTrackerUtils } from './tasktracker-utils.js';
+import { TaskTrackerStyles } from './tasktracker-styles.js';
 
 /**
  * TaskTracker Time Spent Card
@@ -217,19 +218,7 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        ${TaskTrackerUtils.getCommonCardStyles()}
-
-        .compact-time {
-          text-align: center;
-          color: var(--primary-text-color);
-          font-size: 1em;
-        }
-
-        .no-time {
-          text-align: center;
-          padding: 24px 16px;
-          color: var(--secondary-text-color);
-        }
+        ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
       <div class="card">
@@ -270,7 +259,7 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
 
     if (this._totalMinutes === 0) {
       return `
-        <div class="no-time">
+        <div class="no-tasks">
           No time spent on tasks in the last ${this._config.days} day${this._config.days !== 1 ? 's' : ''}
         </div>
       `;
@@ -280,7 +269,7 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
     const dayText = this._config.days === 1 ? 'day' : 'days';
 
     return `
-      <div class="compact-time">
+      <div class="text-center">
         ${formattedTime} spent on tasks in the last ${this._config.days} ${dayText}
       </div>
     `;

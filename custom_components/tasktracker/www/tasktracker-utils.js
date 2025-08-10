@@ -1,3 +1,6 @@
+import { TaskTrackerStyles } from './tasktracker-styles.js';
+import { TaskTrackerDailyStateUI } from './tasktracker-daily-state-ui.js';
+
 /**
  * TaskTracker Shared Utilities
  *
@@ -261,55 +264,23 @@ export class TaskTrackerUtils {
 
   // Toast notification utilities
   static showSuccess(message) {
+    TaskTrackerStyles.ensureGlobal();
     const toast = document.createElement('div');
+    toast.className = 'tt-toast tt-toast--success';
     toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--primary-color);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      font-size: 0.9em;
-    `;
-
     document.body.appendChild(toast);
-
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 3000);
+    requestAnimationFrame(() => toast.classList.add('tt-show'));
+    setTimeout(() => toast.remove(), 3000);
   }
 
   static showError(message) {
+    TaskTrackerStyles.ensureGlobal();
     const toast = document.createElement('div');
+    toast.className = 'tt-toast tt-toast--error';
     toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--secondary-text-color);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-      font-size: 0.9em;
-    `;
-
     document.body.appendChild(toast);
-
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 5000);
+    requestAnimationFrame(() => toast.classList.add('tt-show'));
+    setTimeout(() => toast.remove(), 5000);
   }
 
   // Date and time formatting utilities
@@ -1077,51 +1048,10 @@ export class TaskTrackerUtils {
   static createStyledButton(text, type = 'default', onClick = null) {
     const button = document.createElement('button');
     button.textContent = text;
-
-    if (type === 'error') {
-      button.style.cssText = `
-        padding: 6px 12px;
-        border: 1px solid var(--error-color, #f44336);
-        border-radius: 4px;
-        background: transparent;
-        color: var(--error-color, #f44336);
-        cursor: pointer;
-        font-family: inherit;
-        font-size: 0.8em;
-      `;
-
-      // Error button hover effect
-      button.addEventListener('mouseenter', () => {
-        button.style.background = 'var(--error-color, #f44336)';
-        button.style.color = 'white';
-      });
-      button.addEventListener('mouseleave', () => {
-        button.style.background = 'transparent';
-        button.style.color = 'var(--error-color, #f44336)';
-      });
-    } else {
-      // Default button styling
-      button.style.cssText = `
-        padding: 6px 12px;
-        border: none;
-        background: transparent;
-        color: var(--secondary-text-color);
-        border-radius: 4px;
-        cursor: pointer;
-        font-family: inherit;
-        font-size: 0.8em;
-      `;
-
-      // Default button hover effect
-      button.addEventListener('mouseenter', () => {
-        button.style.background = 'var(--divider-color)';
-        button.style.color = 'var(--primary-text-color)';
-      });
-      button.addEventListener('mouseleave', () => {
-        button.style.background = 'transparent';
-        button.style.color = 'var(--secondary-text-color)';
-      });
-    }
+    TaskTrackerStyles.ensureGlobal();
+    button.className = 'tt-btn';
+    if (type === 'error') button.classList.add('tt-btn--error');
+    if (type === 'link') button.classList.add('tt-btn--link');
 
     if (onClick) {
       button.addEventListener('click', onClick);
@@ -1131,31 +1061,12 @@ export class TaskTrackerUtils {
   }
 
   static createTaskModal(task, config, onComplete, onSave = null, availableUsers = [], enhancedUsers = null, onEdit = null, onSnooze = null) {
+    TaskTrackerStyles.ensureGlobal();
     const modal = document.createElement('div');
-    modal.className = 'task-modal';
-    modal.style.cssText = `
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    modal.className = 'tt-modal';
 
     const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-      background: var(--card-background-color);
-      border-radius: 8px;
-      padding: 24px;
-      width: 90%;
-      max-width: 500px;
-      max-height: 90%;
-      overflow-y: auto;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-      font-family: var(--primary-font-family);
-    `;
+    modalContent.className = 'tt-modal__content';
 
     const taskName = task.name || task.task_name;
     const taskDuration = task.duration_minutes || task.task_duration_minutes || 0;
@@ -1173,60 +1084,29 @@ export class TaskTrackerUtils {
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 20px;
-    `;
+    header.className = 'tt-modal__header';
 
     const title = document.createElement('h3');
     title.textContent = taskName;
-    title.style.cssText = `
-      margin: 0;
-      color: var(--primary-text-color);
-      font-size: 1.5em;
-      font-weight: 500;
-    `;
+    title.className = 'tt-modal__title';
 
     const closeButton = document.createElement('button');
     closeButton.innerHTML = '&times;';
-    closeButton.style.cssText = `
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: var(--secondary-text-color);
-      padding: 0;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    closeButton.className = 'tt-modal__close';
 
     header.appendChild(title);
     header.appendChild(closeButton);
 
     // Task details grid
     const detailsGrid = document.createElement('div');
-    detailsGrid.style.cssText = `
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 20px;
-    `;
+    detailsGrid.className = 'tt-grid-2 tt-gap-16 tt-mb-20';
 
     // Duration field (editable if onSave is provided)
     const durationField = document.createElement('div');
-    durationField.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+      durationField.className = 'tt-form-row';
     const durationLabel = document.createElement('label');
     durationLabel.textContent = 'Duration';
-    durationLabel.style.cssText = `
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
+      durationLabel.className = 'tt-label';
 
     let durationControl;
     if (onSave) {
@@ -1234,22 +1114,11 @@ export class TaskTrackerUtils {
       durationControl.type = 'number';
       durationControl.value = taskDuration;
       durationControl.min = '1';
-      durationControl.style.cssText = `
-        padding: 8px;
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        background: var(--card-background-color);
-        color: var(--primary-text-color);
-        font-size: 14px;
-      `;
+        durationControl.className = 'tt-input';
     } else {
       durationControl = document.createElement('span');
       durationControl.textContent = TaskTrackerUtils.formatDuration(taskDuration);
-      durationControl.style.cssText = `
-        padding: 8px;
-        color: var(--primary-text-color);
-        font-size: 14px;
-      `;
+        durationControl.className = '';
     }
 
     durationField.appendChild(durationLabel);
@@ -1257,26 +1126,15 @@ export class TaskTrackerUtils {
 
     // Priority field (editable if onSave is provided)
     const priorityField = document.createElement('div');
-    priorityField.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+      priorityField.className = 'tt-form-row';
     const priorityLabel = document.createElement('label');
     priorityLabel.textContent = 'Priority';
-    priorityLabel.style.cssText = `
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
+      priorityLabel.className = 'tt-label';
 
     let priorityControl;
     if (onSave) {
       priorityControl = document.createElement('select');
-      priorityControl.style.cssText = `
-        padding: 8px;
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        background: var(--card-background-color);
-        color: var(--primary-text-color);
-        font-size: 14px;
-      `;
+        priorityControl.className = 'tt-select';
       TaskTrackerUtils.getPriorityOptions().forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option.value;
@@ -1287,11 +1145,7 @@ export class TaskTrackerUtils {
     } else {
       priorityControl = document.createElement('span');
       priorityControl.textContent = TaskTrackerUtils.formatPriority(taskPriority);
-      priorityControl.style.cssText = `
-        padding: 8px;
-        color: var(--primary-text-color);
-        font-size: 14px;
-      `;
+        priorityControl.className = '';
     }
 
     priorityField.appendChild(priorityLabel);
@@ -1300,39 +1154,37 @@ export class TaskTrackerUtils {
     detailsGrid.appendChild(durationField);
     detailsGrid.appendChild(priorityField);
 
+    // Task notes (read-only display with other task data)
+    const taskNotesField = document.createElement('div');
+    taskNotesField.className = 'tt-form-row tt-col-span-full';
+    const taskNotesLabel = document.createElement('label');
+    taskNotesLabel.textContent = 'Task Notes';
+    taskNotesLabel.className = 'tt-label';
+    const taskNotes = document.createElement('div');
+    taskNotes.textContent = task.notes || '';
+    taskNotes.className = 'tt-box';
+    taskNotesField.appendChild(taskNotesLabel);
+    taskNotesField.appendChild(taskNotes);
+    detailsGrid.appendChild(taskNotesField);
+
     // Due date field (editable if onSave is provided and task is recurring)
     if (isRecurringTask) {
       const dueDateField = document.createElement('div');
-      dueDateField.style.cssText = 'display: flex; flex-direction: column; gap: 4px; grid-column: 1 / -1;';
+      dueDateField.className = 'tt-form-row tt-col-span-full';
       const dueDateLabel = document.createElement('label');
       dueDateLabel.textContent = 'Due Date';
-      dueDateLabel.style.cssText = `
-        font-size: 0.85em;
-        color: var(--secondary-text-color);
-        font-weight: 500;
-      `;
+      dueDateLabel.className = 'tt-label';
 
       let dueDateControl;
       if (onSave) {
         dueDateControl = document.createElement('input');
         dueDateControl.type = 'datetime-local';
         dueDateControl.value = formattedDueDate;
-        dueDateControl.style.cssText = `
-          padding: 8px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          font-size: 14px;
-        `;
+        dueDateControl.className = 'tt-input';
       } else {
         dueDateControl = document.createElement('span');
         dueDateControl.textContent = dueDate ? TaskTrackerUtils.formatDateTime(dueDate) : 'Not set';
-        dueDateControl.style.cssText = `
-          padding: 8px;
-          color: var(--primary-text-color);
-          font-size: 14px;
-        `;
+        dueDateControl.className = '';
       }
 
       dueDateField.appendChild(dueDateLabel);
@@ -1343,24 +1195,13 @@ export class TaskTrackerUtils {
     // Assignment field (editable if onSave is provided and users available)
     if (onSave && availableUsers && availableUsers.length > 0) {
       const assignmentField = document.createElement('div');
-      assignmentField.style.cssText = 'display: flex; flex-direction: column; gap: 4px; grid-column: 1 / -1;';
+      assignmentField.className = 'tt-form-row tt-col-span-full';
       const assignmentLabel = document.createElement('label');
       assignmentLabel.textContent = 'Assigned To';
-      assignmentLabel.style.cssText = `
-        font-size: 0.85em;
-        color: var(--secondary-text-color);
-        font-weight: 500;
-      `;
+      assignmentLabel.className = 'tt-label';
 
       const assignmentControl = document.createElement('select');
-      assignmentControl.style.cssText = `
-        padding: 8px;
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        background: var(--card-background-color);
-        color: var(--primary-text-color);
-        font-size: 14px;
-      `;
+      assignmentControl.className = 'tt-select';
 
       availableUsers.forEach(username => {
         const optionElement = document.createElement('option');
@@ -1382,40 +1223,19 @@ export class TaskTrackerUtils {
       // Toggle
       const advancedToggle = document.createElement('button');
       advancedToggle.textContent = 'Advanced';
-      advancedToggle.style.cssText = `
-        margin-top: 8px;
-        padding: 6px 10px;
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        background: var(--card-background-color);
-        color: var(--primary-text-color);
-        font-size: 0.75em;
-        cursor: pointer;
-        grid-column: 1 / -1;
-        justify-self: start;
-      `;
+      advancedToggle.className = 'tt-btn tt-col-span-full';
 
       // Container for advanced inputs
       const advancedContainer = document.createElement('div');
-      advancedContainer.style.cssText = `
-        display: none;
-        grid-column: 1 / -1;
-        margin-top: 12px;
-        gap: 12px;
-        grid-template-columns: 1fr 1fr;
-      `;
+      advancedContainer.className = 'tt-form tt-col-span-full tt-hidden';
 
       const makeNumberField = (labelText, initialValue, min, max, step = 1) => {
         const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+        wrapper.className = 'tt-form-row';
 
         const lbl = document.createElement('label');
         lbl.textContent = labelText;
-        lbl.style.cssText = `
-          font-size: 0.75em;
-          color: var(--secondary-text-color);
-          font-weight: 500;
-        `;
+        lbl.className = 'tt-label';
 
         const inp = document.createElement('input');
         inp.type = 'number';
@@ -1423,14 +1243,7 @@ export class TaskTrackerUtils {
         inp.min = min;
         inp.max = max;
         inp.step = step;
-        inp.style.cssText = `
-          padding: 6px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          font-size: 13px;
-        `;
+        inp.className = 'tt-input';
 
         wrapper.appendChild(lbl);
         wrapper.appendChild(inp);
@@ -1445,23 +1258,12 @@ export class TaskTrackerUtils {
 
       // Overdue severity select
       const severityWrapper = document.createElement('div');
-      severityWrapper.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+      severityWrapper.className = 'tt-form-row';
       const sevLbl = document.createElement('label');
       sevLbl.textContent = 'Overdue Severity';
-      sevLbl.style.cssText = `
-        font-size: 0.75em;
-        color: var(--secondary-text-color);
-        font-weight: 500;
-      `;
+      sevLbl.className = 'tt-label';
       severitySelect = document.createElement('select');
-      severitySelect.style.cssText = `
-        padding: 6px;
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        background: var(--card-background-color);
-        color: var(--primary-text-color);
-        font-size: 13px;
-      `;
+      severitySelect.className = 'tt-select';
       [
         { value: 1, label: 'Low' },
         { value: 2, label: 'Medium' },
@@ -1485,172 +1287,68 @@ export class TaskTrackerUtils {
 
       // Toggle logic
       advancedToggle.addEventListener('click', () => {
-        advancedContainer.style.display = advancedContainer.style.display === 'none' ? 'grid' : 'none';
+        const hidden = advancedContainer.classList.contains('tt-hidden');
+        advancedContainer.classList.toggle('tt-hidden', !hidden);
       });
 
       detailsGrid.appendChild(advancedToggle);
       detailsGrid.appendChild(advancedContainer);
     }
 
-    // Notes section
-    const notesSection = document.createElement('div');
-    notesSection.style.cssText = 'margin-bottom: 20px;';
-
-    const notesLabel = document.createElement('label');
-    notesLabel.textContent = 'Task Notes';
-    notesLabel.style.cssText = `
-      display: block;
-      margin-bottom: 8px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
-
-    const taskNotes = document.createElement('div');
-    taskNotes.textContent = task.notes;
-    taskNotes.style.cssText = `
-      padding: 12px;
-      background: var(--secondary-background-color);
-      border-radius: 4px;
-      color: var(--primary-text-color);
-      font-size: 14px;
-      line-height: 1.4;
-      margin-bottom: 16px;
-      min-height: 40px;
-    `;
+    // Completion notes section
+    const completionNotesSection = document.createElement('div');
+    completionNotesSection.className = 'tt-section';
 
     const completionNotesLabel = document.createElement('label');
     completionNotesLabel.textContent = config.show_completion_notes !== false ? 'Completion Notes (Optional)' : '';
-    completionNotesLabel.style.cssText = `
-      display: ${config.show_completion_notes !== false ? 'block' : 'none'};
-      margin-bottom: 8px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
+    completionNotesLabel.className = 'tt-label';
+    if (config.show_completion_notes === false) completionNotesLabel.classList.add('tt-hidden');
 
     const completionNotesTextarea = document.createElement('textarea');
     completionNotesTextarea.placeholder = 'Add completion notes...';
-    completionNotesTextarea.style.cssText = `
-      width: 100%;
-      min-height: 80px;
-      padding: 12px;
-      border: 1px solid var(--divider-color);
-      border-radius: 4px;
-      background: var(--card-background-color);
-      color: var(--primary-text-color);
-      font-size: 14px;
-      font-family: inherit;
-      resize: vertical;
-      box-sizing: border-box;
-      display: ${config.show_completion_notes !== false ? 'block' : 'none'};
-    `;
+    completionNotesTextarea.className = 'tt-textarea';
+    if (config.show_completion_notes === false) completionNotesTextarea.classList.add('tt-hidden');
 
-    notesSection.appendChild(notesLabel);
-    notesSection.appendChild(taskNotes);
-    notesSection.appendChild(completionNotesLabel);
-    notesSection.appendChild(completionNotesTextarea);
+    completionNotesSection.appendChild(completionNotesLabel);
+    completionNotesSection.appendChild(completionNotesTextarea);
 
     // Buttons
     // Past completion section (initially hidden)
     const pastCompletionSection = document.createElement('div');
-    pastCompletionSection.style.cssText = `
-      display: none;
-      margin-top: 16px;
-      padding: 16px;
-      background: var(--secondary-background-color);
-      border-radius: 8px;
-      border-left: 4px solid var(--primary-color);
-    `;
+    pastCompletionSection.className = 'tt-section tt-section--muted tt-hidden';
 
     const pastCompletionTitle = document.createElement('h4');
     pastCompletionTitle.textContent = 'When was this completed?';
-    pastCompletionTitle.style.cssText = `
-      margin: 0 0 12px 0;
-      color: var(--primary-text-color);
-      font-size: 1em;
-      font-weight: 500;
-    `;
+    pastCompletionTitle.className = 'tt-modal__title tt-title--sm';
 
     const quickOptionsContainer = document.createElement('div');
-    quickOptionsContainer.style.cssText = `
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    `;
+    quickOptionsContainer.className = 'tt-flex-row tt-gap-12';
 
     const yesterdayButton = document.createElement('button');
     yesterdayButton.textContent = 'Yesterday';
-    yesterdayButton.style.cssText = `
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid var(--divider-color);
-      border-radius: 4px;
-      background: transparent;
-      color: var(--primary-text-color);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.9em;
-      text-align: center;
-    `;
+    yesterdayButton.className = 'tt-btn tt-flex-1';
 
     const customDateButton = document.createElement('button');
     customDateButton.textContent = 'Choose Date/Time';
-    customDateButton.style.cssText = `
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid var(--divider-color);
-      border-radius: 4px;
-      background: transparent;
-      color: var(--primary-text-color);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.9em;
-      text-align: center;
-    `;
+    customDateButton.className = 'tt-btn tt-flex-1';
 
     // Add hover effects for both buttons
-    [yesterdayButton, customDateButton].forEach(button => {
-      button.addEventListener('mouseenter', () => {
-        button.style.background = 'var(--divider-color)';
-      });
-      button.addEventListener('mouseleave', () => {
-        button.style.background = 'transparent';
-      });
-    });
+    // hover handled by CSS
 
     quickOptionsContainer.appendChild(yesterdayButton);
     quickOptionsContainer.appendChild(customDateButton);
 
     // Custom date/time input (initially hidden)
     const customDateContainer = document.createElement('div');
-    customDateContainer.style.cssText = `
-      display: none;
-      margin-top: 12px;
-    `;
+    customDateContainer.className = 'tt-hidden tt-mt-12';
 
     const customDateLabel = document.createElement('label');
     customDateLabel.textContent = 'Completion Date & Time';
-    customDateLabel.style.cssText = `
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
+    customDateLabel.className = 'tt-label';
 
     const customDateInput = document.createElement('input');
     customDateInput.type = 'datetime-local';
-    customDateInput.style.cssText = `
-      width: 100%;
-      padding: 8px;
-      border: 1px solid var(--divider-color);
-      border-radius: 4px;
-      background: var(--card-background-color);
-      color: var(--primary-text-color);
-      font-size: 14px;
-      box-sizing: border-box;
-    `;
+    customDateInput.className = 'tt-input';
 
     // Set default to yesterday at current time
     const yesterday = new Date();
@@ -1661,23 +1359,13 @@ export class TaskTrackerUtils {
     customDateContainer.appendChild(customDateInput);
 
     const pastCompletionButtons = document.createElement('div');
-    pastCompletionButtons.style.cssText = `
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      margin-top: 12px;
-    `;
+    pastCompletionButtons.className = 'tt-flex-end tt-gap-12 tt-mt-12';
 
     const cancelPastButton = TaskTrackerUtils.createStyledButton('Cancel');
-    cancelPastButton.style.fontSize = '0.9em';
-    cancelPastButton.style.padding = '6px 12px';
-    cancelPastButton.style.background = 'var(--secondary-background-color)';
-    cancelPastButton.style.color = 'var(--primary-text-color)';
-    cancelPastButton.style.border = '1px solid var(--divider-color)';
+    cancelPastButton.classList.add('tt-btn');
 
     const confirmPastButton = TaskTrackerUtils.createStyledButton('Mark as Completed');
-    confirmPastButton.style.fontSize = '0.9em';
-    confirmPastButton.style.padding = '6px 12px';
+    confirmPastButton.classList.add('tt-btn');
 
     pastCompletionButtons.appendChild(cancelPastButton);
     pastCompletionButtons.appendChild(confirmPastButton);
@@ -1689,103 +1377,41 @@ export class TaskTrackerUtils {
 
     // Snooze section (initially hidden)
     const snoozeSection = document.createElement('div');
-    snoozeSection.style.cssText = `
-      display: none;
-      margin-top: 16px;
-      padding: 16px;
-      background: var(--secondary-background-color);
-      border-radius: 8px;
-      border-left: 4px solid var(--warning-color);
-    `;
+    snoozeSection.className = 'tt-section tt-section--muted tt-section--warning tt-hidden';
 
     const snoozeTitle = document.createElement('h4');
     snoozeTitle.textContent = 'Snooze until when?';
-    snoozeTitle.style.cssText = `
-      margin: 0 0 12px 0;
-      color: var(--primary-text-color);
-      font-size: 1em;
-      font-weight: 500;
-    `;
+    snoozeTitle.className = 'tt-modal__title tt-title--sm';
 
     const snoozeQuickOptionsContainer = document.createElement('div');
-    snoozeQuickOptionsContainer.style.cssText = `
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    `;
+    snoozeQuickOptionsContainer.className = 'tt-flex-row tt-gap-12';
 
     const tomorrowButton = document.createElement('button');
     tomorrowButton.textContent = 'Tomorrow';
-    tomorrowButton.style.cssText = `
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid var(--divider-color);
-      border-radius: 4px;
-      background: transparent;
-      color: var(--primary-text-color);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.9em;
-      text-align: center;
-    `;
+    tomorrowButton.className = 'tt-btn tt-flex-1';
 
     const customSnoozeButton = document.createElement('button');
     customSnoozeButton.textContent = 'Choose Date/Time';
-    customSnoozeButton.style.cssText = `
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid var(--divider-color);
-      border-radius: 4px;
-      background: transparent;
-      color: var(--primary-text-color);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.9em;
-      text-align: center;
-    `;
+    customSnoozeButton.className = 'tt-btn tt-flex-1';
 
     // Add hover effects for snooze buttons
-    [tomorrowButton, customSnoozeButton].forEach(button => {
-      button.addEventListener('mouseenter', () => {
-        button.style.background = 'var(--divider-color)';
-      });
-      button.addEventListener('mouseleave', () => {
-        button.style.background = 'transparent';
-      });
-    });
+    // hover handled by CSS
 
     snoozeQuickOptionsContainer.appendChild(tomorrowButton);
     snoozeQuickOptionsContainer.appendChild(customSnoozeButton);
 
     // Custom snooze date/time input (initially hidden)
     const customSnoozeContainer = document.createElement('div');
-    customSnoozeContainer.style.cssText = `
-      display: none;
-      margin-top: 12px;
-    `;
+    customSnoozeContainer.className = 'tt-hidden';
+    customSnoozeContainer.classList.add('tt-mt-12');
 
     const customSnoozeLabel = document.createElement('label');
     customSnoozeLabel.textContent = 'Snooze Until Date & Time';
-    customSnoozeLabel.style.cssText = `
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
+    customSnoozeLabel.className = 'tt-label';
 
     const customSnoozeInput = document.createElement('input');
     customSnoozeInput.type = 'datetime-local';
-    customSnoozeInput.style.cssText = `
-      width: 100%;
-      padding: 8px;
-      border: 1px solid var(--divider-color);
-      border-radius: 4px;
-      background: var(--card-background-color);
-      color: var(--primary-text-color);
-      font-size: 14px;
-      box-sizing: border-box;
-    `;
+    customSnoozeInput.className = 'tt-input';
 
     // Set default to tomorrow at 9:00 AM
     const tomorrow = new Date();
@@ -1797,23 +1423,13 @@ export class TaskTrackerUtils {
     customSnoozeContainer.appendChild(customSnoozeInput);
 
     const snoozeButtons = document.createElement('div');
-    snoozeButtons.style.cssText = `
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      margin-top: 12px;
-    `;
+    snoozeButtons.className = 'tt-flex-end tt-gap-12 tt-mt-12';
 
     const cancelSnoozeButton = TaskTrackerUtils.createStyledButton('Cancel');
-    cancelSnoozeButton.style.fontSize = '0.9em';
-    cancelSnoozeButton.style.padding = '6px 12px';
-    cancelSnoozeButton.style.background = 'var(--secondary-background-color)';
-    cancelSnoozeButton.style.color = 'var(--primary-text-color)';
-    cancelSnoozeButton.style.border = '1px solid var(--divider-color)';
+    cancelSnoozeButton.classList.add('tt-btn');
 
     const confirmSnoozeButton = TaskTrackerUtils.createStyledButton('Snooze Task');
-    confirmSnoozeButton.style.fontSize = '0.9em';
-    confirmSnoozeButton.style.padding = '6px 12px';
+    confirmSnoozeButton.classList.add('tt-btn');
 
     snoozeButtons.appendChild(cancelSnoozeButton);
     snoozeButtons.appendChild(confirmSnoozeButton);
@@ -1824,12 +1440,7 @@ export class TaskTrackerUtils {
     snoozeSection.appendChild(snoozeButtons);
 
     const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = `
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      margin-top: 24px;
-    `;
+    buttonContainer.className = 'tt-flex-end tt-gap-12 tt-mt-24';
 
     const cancelButton = TaskTrackerUtils.createStyledButton('Cancel');
 
@@ -1846,20 +1457,13 @@ export class TaskTrackerUtils {
     }
 
     const completeButton = TaskTrackerUtils.createStyledButton('Complete');
-    completeButton.style.border = '1px solid var(--divider-color)';
 
     const completedAlreadyButton = TaskTrackerUtils.createStyledButton('Completed Already');
-    completedAlreadyButton.style.background = 'transparent';
-    completedAlreadyButton.style.color = 'var(--secondary-text-color)';
-    completedAlreadyButton.style.border = 'none';
 
     // Snooze button (only if onSnooze callback provided and task has a due date)
     let snoozeButton;
     if (onSnooze && (task.next_due || task.due_date)) {
       snoozeButton = TaskTrackerUtils.createStyledButton('Snooze');
-      snoozeButton.style.background = 'transparent';
-      snoozeButton.style.color = 'var(--secondary-text-color)';
-      snoozeButton.style.border = 'none';
     }
 
     // Append buttons in correct order: Cancel, Save (if exists), Edit (if exists), Snooze (if exists), Completed Already, Complete
@@ -1879,7 +1483,7 @@ export class TaskTrackerUtils {
     // Assemble modal content
     modalContent.appendChild(header);
     modalContent.appendChild(detailsGrid);
-    modalContent.appendChild(notesSection);
+    modalContent.appendChild(completionNotesSection);
     modalContent.appendChild(pastCompletionSection);
     modalContent.appendChild(snoozeSection);
     modalContent.appendChild(buttonContainer);
@@ -1888,12 +1492,8 @@ export class TaskTrackerUtils {
 
     const closeModal = () => {
       if (modal.parentNode) {
-        modal.style.opacity = '0';
-        setTimeout(() => {
-          if (modal.parentNode) {
-            modal.parentNode.removeChild(modal);
-          }
-        }, 200);
+        modal.classList.remove('tt-modal--visible');
+        setTimeout(() => modal.remove(), 200);
       }
     };
 
@@ -1979,8 +1579,11 @@ export class TaskTrackerUtils {
     // Edit button handler
     if (editButton && onEdit) {
       editButton.addEventListener('click', () => {
-        closeModal(); // Close the detail modal first
-        onEdit(task); // Open the comprehensive edit modal
+        // Close the detail modal first, then open edit after fade-out
+        closeModal();
+        setTimeout(() => {
+          onEdit(task);
+        }, 220);
       });
     }
 
@@ -1998,15 +1601,15 @@ export class TaskTrackerUtils {
 
     // Completed Already button handler
     completedAlreadyButton.addEventListener('click', () => {
-      pastCompletionSection.style.display = 'block';
-      buttonContainer.style.display = 'none';
+      pastCompletionSection.classList.remove('tt-hidden');
+      buttonContainer.classList.add('tt-hidden');
     });
 
     // Snooze button handler
     if (snoozeButton && onSnooze) {
       snoozeButton.addEventListener('click', () => {
-        snoozeSection.style.display = 'block';
-        buttonContainer.style.display = 'none';
+        snoozeSection.classList.remove('tt-hidden');
+        buttonContainer.classList.add('tt-hidden');
       });
     }
 
@@ -2026,17 +1629,17 @@ export class TaskTrackerUtils {
 
     // Choose Date/Time button handler
     customDateButton.addEventListener('click', () => {
-      customDateContainer.style.display = 'block';
-      quickOptionsContainer.style.display = 'none';
+      customDateContainer.classList.remove('tt-hidden');
+      quickOptionsContainer.classList.add('tt-hidden');
     });
 
     // Cancel past completion button handler
     cancelPastButton.addEventListener('click', () => {
-      pastCompletionSection.style.display = 'none';
-      buttonContainer.style.display = 'flex';
+      pastCompletionSection.classList.add('tt-hidden');
+      buttonContainer.classList.remove('tt-hidden');
       // Reset to quick options view
-      customDateContainer.style.display = 'none';
-      quickOptionsContainer.style.display = 'flex';
+      customDateContainer.classList.add('tt-hidden');
+      quickOptionsContainer.classList.remove('tt-hidden');
     });
 
     // Confirm past completion button handler
@@ -2080,17 +1683,17 @@ export class TaskTrackerUtils {
 
       // Choose custom snooze date/time button handler
       customSnoozeButton.addEventListener('click', () => {
-        customSnoozeContainer.style.display = 'block';
-        snoozeQuickOptionsContainer.style.display = 'none';
+        customSnoozeContainer.classList.remove('tt-hidden');
+        snoozeQuickOptionsContainer.classList.add('tt-hidden');
       });
 
       // Cancel snooze button handler
       cancelSnoozeButton.addEventListener('click', () => {
-        snoozeSection.style.display = 'none';
-        buttonContainer.style.display = 'flex';
+        snoozeSection.classList.add('tt-hidden');
+        buttonContainer.classList.remove('tt-hidden');
         // Reset to quick options view
-        customSnoozeContainer.style.display = 'none';
-        snoozeQuickOptionsContainer.style.display = 'flex';
+        customSnoozeContainer.classList.add('tt-hidden');
+        snoozeQuickOptionsContainer.classList.remove('tt-hidden');
       });
 
       // Confirm custom snooze button handler
@@ -2122,43 +1725,21 @@ export class TaskTrackerUtils {
     }
 
     // Apply fade-in animation
-    modal.style.opacity = '0';
     setTimeout(() => {
-      modal.style.transition = 'opacity 0.2s ease';
-      modal.style.opacity = '1';
-      // Focus the complete button for keyboard navigation
+      modal.classList.add('tt-modal--visible');
       completeButton.focus();
     }, 10);
 
     return modal;
   }
 
-  static createCompletionEditModal(completion, config, onDelete, onUpdate, availableUsers = [], enhancedUsers = null) {
+  static createCompletionEditModal(completion, config, onDelete, onUpdate, availableUsers = [], enhancedUsers = null, userContext = null) {
+    TaskTrackerStyles.ensureGlobal();
     const modal = document.createElement('div');
-    modal.className = 'completion-edit-modal';
-    modal.style.cssText = `
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    modal.className = 'tt-modal';
 
     const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-      background: var(--card-background-color);
-      border-radius: 8px;
-      padding: 24px;
-      width: 90%;
-      max-width: 450px;
-      max-height: 90%;
-      overflow-y: auto;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-      font-family: var(--primary-font-family);
-    `;
+    modalContent.className = 'tt-modal__content tt-modal__content--w-450';
 
     const taskName = completion.task_name || completion.name;
     const completedBy = completion.completed_by;
@@ -2167,90 +1748,42 @@ export class TaskTrackerUtils {
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 20px;
-    `;
+    header.className = 'tt-modal__header';
 
     const title = document.createElement('h3');
     title.textContent = `Edit Completion`;
-    title.style.cssText = `
-      margin: 0;
-      color: var(--primary-text-color);
-      font-size: 1.3em;
-      font-weight: 500;
-    `;
+    title.className = 'tt-modal__title';
 
     const closeButton = document.createElement('button');
     closeButton.innerHTML = '&times;';
-    closeButton.style.cssText = `
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: var(--secondary-text-color);
-      padding: 0;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    closeButton.className = 'tt-modal__close';
 
     header.appendChild(title);
     header.appendChild(closeButton);
 
     // Task name display
     const taskNameField = document.createElement('div');
-    taskNameField.style.cssText = 'margin-bottom: 16px;';
+    taskNameField.className = 'tt-section';
     const taskNameLabel = document.createElement('label');
     taskNameLabel.textContent = 'Task Name';
-    taskNameLabel.style.cssText = `
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
+    taskNameLabel.className = 'tt-label';
     const taskNameValue = document.createElement('div');
     taskNameValue.textContent = taskName;
-    taskNameValue.style.cssText = `
-      padding: 8px;
-      background: var(--secondary-background-color);
-      border-radius: 4px;
-      color: var(--primary-text-color);
-      font-size: 14px;
-    `;
+      taskNameValue.className = 'tt-box';
     taskNameField.appendChild(taskNameLabel);
     taskNameField.appendChild(taskNameValue);
 
     // Completed by field (editable if users are available)
     const completedByField = document.createElement('div');
-    completedByField.style.cssText = 'margin-bottom: 16px;';
+    completedByField.className = 'tt-section';
     const completedByLabel = document.createElement('label');
     completedByLabel.textContent = 'Completed By';
-    completedByLabel.style.cssText = `
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
+    completedByLabel.className = 'tt-label';
 
     let completedByControl;
     if (availableUsers && availableUsers.length > 0) {
       completedByControl = document.createElement('select');
-      completedByControl.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        background: var(--card-background-color);
-        color: var(--primary-text-color);
-        font-size: 14px;
-      `;
+      completedByControl.className = 'tt-select';
 
       availableUsers.forEach(username => {
         const optionElement = document.createElement('option');
@@ -2262,86 +1795,51 @@ export class TaskTrackerUtils {
     } else {
       completedByControl = document.createElement('div');
       completedByControl.textContent = TaskTrackerUtils.getUserDisplayName(completedBy, enhancedUsers);
-      completedByControl.style.cssText = `
-        padding: 8px;
-        background: var(--secondary-background-color);
-        border-radius: 4px;
-        color: var(--primary-text-color);
-        font-size: 14px;
-      `;
+      completedByControl.className = 'tt-box';
     }
 
     completedByField.appendChild(completedByLabel);
     completedByField.appendChild(completedByControl);
 
-    // Completion date display
+    // Completion date/time input (simple, always visible)
     const completedAtField = document.createElement('div');
-    completedAtField.style.cssText = 'margin-bottom: 16px;';
+    completedAtField.className = 'tt-section';
+
     const completedAtLabel = document.createElement('label');
     completedAtLabel.textContent = 'Completed At';
-    completedAtLabel.style.cssText = `
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
-    const completedAtValue = document.createElement('div');
-    completedAtValue.textContent = TaskTrackerUtils.formatDateTime(completedAt);
-    completedAtValue.style.cssText = `
-      padding: 8px;
-      background: var(--secondary-background-color);
-      border-radius: 4px;
-      color: var(--primary-text-color);
-      font-size: 14px;
-    `;
+    completedAtLabel.className = 'tt-label';
+
+    const completedAtInput = document.createElement('input');
+    completedAtInput.type = 'datetime-local';
+    completedAtInput.className = 'tt-input';
+    if (completedAt) {
+      completedAtInput.value = TaskTrackerUtils.formatDateTimeForInput(completedAt);
+    }
+
     completedAtField.appendChild(completedAtLabel);
-    completedAtField.appendChild(completedAtValue);
+    completedAtField.appendChild(completedAtInput);
 
     // Notes field (editable)
     const notesField = document.createElement('div');
-    notesField.style.cssText = 'margin-bottom: 20px;';
+    notesField.className = 'tt-section';
     const notesLabel = document.createElement('label');
     notesLabel.textContent = 'Notes';
-    notesLabel.style.cssText = `
-      display: block;
-      margin-bottom: 4px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color);
-      font-weight: 500;
-    `;
+    notesLabel.className = 'tt-label';
     const notesTextarea = document.createElement('textarea');
     notesTextarea.value = notes;
     notesTextarea.placeholder = 'Add notes about this completion...';
-    notesTextarea.style.cssText = `
-      width: 100%;
-      min-height: 80px;
-      padding: 8px;
-      border: 1px solid var(--divider-color);
-      border-radius: 4px;
-      background: var(--card-background-color);
-      color: var(--primary-text-color);
-      font-size: 14px;
-      font-family: inherit;
-      resize: vertical;
-      box-sizing: border-box;
-    `;
+    notesTextarea.className = 'tt-textarea';
     notesField.appendChild(notesLabel);
     notesField.appendChild(notesTextarea);
 
     // Buttons
     const buttonContainer = document.createElement('div');
-    buttonContainer.style.cssText = `
-      display: flex;
-      gap: 8px;
-      justify-content: space-between;
-      margin-top: 24px;
-    `;
+    buttonContainer.className = 'tt-justify-between tt-mt-24';
 
     const undoButton = TaskTrackerUtils.createStyledButton('Undo Completion', 'error');
 
     const rightButtons = document.createElement('div');
-    rightButtons.style.cssText = 'display: flex; gap: 8px;';
+    rightButtons.className = 'tt-flex-row tt-gap-8';
 
     const cancelButton = TaskTrackerUtils.createStyledButton('Cancel');
     const updateButton = TaskTrackerUtils.createStyledButton('Update');
@@ -2363,7 +1861,7 @@ export class TaskTrackerUtils {
 
     const closeModal = () => {
       if (modal.parentNode) {
-        modal.style.opacity = '0';
+        modal.classList.remove('tt-modal--visible');
         setTimeout(() => {
           if (modal.parentNode) {
             modal.parentNode.removeChild(modal);
@@ -2416,6 +1914,14 @@ export class TaskTrackerUtils {
         updates.notes = notesTextarea.value;
       }
 
+      // Check for completed_at changes from the input
+      if (completedAtInput && completedAtInput.value) {
+        const newCompletedAtIso = new Date(completedAtInput.value).toISOString();
+        if (newCompletedAtIso !== completedAt) {
+          updates.completed_at = newCompletedAtIso;
+        }
+      }
+
       if (Object.keys(updates).length > 0) {
         try {
           await onUpdate(updates);
@@ -2430,11 +1936,7 @@ export class TaskTrackerUtils {
     });
 
     // Apply fade-in animation
-    modal.style.opacity = '0';
-    setTimeout(() => {
-      modal.style.transition = 'opacity 0.2s ease';
-      modal.style.opacity = '1';
-    }, 10);
+    setTimeout(() => { modal.classList.add('tt-modal--visible'); }, 10);
 
     return modal;
   }
@@ -2442,7 +1944,9 @@ export class TaskTrackerUtils {
   static showModal(modal) {
     document.body.appendChild(modal);
     requestAnimationFrame(() => {
-      modal.style.opacity = '1';
+      if (modal.classList && modal.classList.contains('tt-modal')) {
+        modal.classList.add('tt-modal--visible');
+      }
     });
   }
 
@@ -2511,184 +2015,9 @@ export class TaskTrackerUtils {
     return string.charAt(0).toUpperCase() + string.slice(1);
   }
 
-  // Common styles for cards
+  // Common styles for cards (delegated to centralized styles file)
   static getCommonCardStyles() {
-    return `
-      :host {
-        display: block;
-      }
-
-      .card {
-        padding: 16px;
-        font-family: var(--primary-font-family);
-        background: var(--ha-card-background, var(--card-background-color, #fff));
-        border-radius: var(--ha-card-border-radius, 12px);
-        border: 1px solid var(--divider-color);
-      }
-
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid var(--divider-color);
-        position: relative;
-      }
-
-      .title {
-        font-size: 1.1em;
-        font-weight: 500;
-        color: var(--primary-text-color);
-        margin: 0;
-      }
-
-      .refresh-btn {
-        background: none;
-        border: 1px solid var(--divider-color);
-        border-radius: 4px;
-        padding: 2px;
-        cursor: pointer;
-        color: var(--secondary-text-color);
-      }
-
-      .refresh-btn:hover {
-        background: var(--secondary-background-color);
-      }
-
-      .loading, .error, .no-tasks {
-        text-align: center;
-        padding: 24px 0;
-        color: var(--secondary-text-color);
-        font-size: 0.9em;
-      }
-
-      .error {
-        color: var(--error-color);
-        text-align: center;
-        font-style: italic;
-        padding: 16px;
-      }
-
-      .no-tasks {
-        color: var(--secondary-text-color);
-      }
-
-      .no-user-warning {
-        color: var(--primary-text-color);
-        background: var(--secondary-background-color);
-        padding: 12px;
-        border-radius: 4px;
-        border: 1px solid var(--divider-color);
-        text-align: center;
-        margin-bottom: 16px;
-      }
-
-      .refreshing-indicator {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 2px;
-        height: 100%;
-        background: var(--primary-color);
-        opacity: 0.6;
-        animation: pulse 1s infinite;
-      }
-
-      .task-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 8px 12px;
-          margin-bottom: 4px;
-          background: var(--secondary-background-color);
-          border-radius: 4px;
-          border-left: 2px solid var(--secondary-text-color);
-          cursor: pointer;
-        }
-
-        .task-item.needs-completion {
-          border-left: 2px solid var(--primary-color);
-        }
-
-        .task-item.completed {
-          border-left: 2px solid var(--success-color);
-        }
-
-        .task-item:hover {
-          background: var(--divider-color);
-        }
-
-        .task-item:last-child {
-          margin-bottom: 0;
-        }
-
-        .task-content {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .task-name {
-          font-weight: 500;
-          color: var(--primary-text-color);
-          font-size: 0.95em;
-          margin-bottom: 2px;
-          word-wrap: break-word;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .completion-indicator {
-          width: 6px;
-          height: 6px;
-          background: var(--primary-color);
-          border-radius: 50%;
-          flex-shrink: 0;
-        }
-
-        .task-metadata {
-          font-size: 0.8em;
-          color: var(--secondary-text-color);
-        }
-
-      @keyframes pulse {
-        0%, 100% { opacity: 0.3; }
-        50% { opacity: 0.8; }
-      }
-
-      .complete-btn,
-      .dispose-btn {
-        background: transparent;
-        border: none;
-        color: var(--secondary-text-color);
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.8em;
-        transition: background-color 0.2s ease;
-      }
-
-      .complete-btn:hover,
-      .dispose-btn:hover {
-        background: var(--divider-color);
-        color: var(--primary-text-color);
-      }
-
-      .complete-btn:active,
-      .dispose-btn:active {
-        transform: scale(0.95);
-      }
-
-      .category {
-        margin-bottom: 16px;
-      }
-
-      .category-title {
-        font-size: 1.1em;
-        margin-bottom: 8px;
-      }
-    `;
+    return TaskTrackerStyles.getCommonCardStyles();
   }
 
   // Common styles for config editors
@@ -3038,78 +2367,38 @@ export class TaskTrackerUtils {
   }
 
   static createDailyStateModal(hass, username, config = {}, onSave = null) {
+    TaskTrackerStyles.ensureGlobal();
     const modal = document.createElement('div');
-    modal.className = 'daily-state-modal';
-    modal.style.cssText = `
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    modal.className = 'tt-modal';
 
     const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-      background: var(--card-background-color);
-      border-radius: 8px;
-      padding: 24px;
-      width: 90%;
-      max-width: 600px;
-      max-height: 90%;
-      overflow-y: auto;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-      font-family: var(--primary-font-family);
-    `;
+    modalContent.className = 'tt-modal__content';
 
-    // State management
+    // Local state
     let currentState = TaskTrackerUtils.getDefaultDailyState();
     let showAdvanced = false;
     let loading = true;
     let saving = false;
+    let uiController = null;
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    `;
+    header.className = 'tt-modal__header';
 
     const title = document.createElement('h3');
     title.textContent = 'Set Your Daily State';
-    title.style.cssText = `
-      margin: 0;
-      color: var(--primary-text-color);
-      font-size: 1.5em;
-      font-weight: 500;
-    `;
+    title.className = 'tt-modal__title';
 
     const closeButton = document.createElement('button');
     closeButton.innerHTML = '&times;';
-    closeButton.style.cssText = `
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: var(--secondary-text-color);
-      padding: 0;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    closeButton.className = 'tt-modal__close';
 
     header.appendChild(title);
     header.appendChild(closeButton);
 
-    // Content container
+    // Content container (mount point for shared UI)
     const contentContainer = document.createElement('div');
-    contentContainer.style.cssText = 'min-height: 300px;';
+    contentContainer.innerHTML = '<div class="tt-text-center tt-p-40 tt-text-muted">Loading...</div>';
 
     modalContent.appendChild(header);
     modalContent.appendChild(contentContainer);
@@ -3117,7 +2406,7 @@ export class TaskTrackerUtils {
 
     const closeModal = () => {
       if (modal.parentNode) {
-        modal.style.opacity = '0';
+        modal.classList.remove('tt-modal--visible');
         setTimeout(() => {
           if (modal.parentNode) {
             modal.parentNode.removeChild(modal);
@@ -3127,256 +2416,38 @@ export class TaskTrackerUtils {
     };
 
     const showToast = (message, type = 'success') => {
-      const toast = document.createElement('div');
-      toast.textContent = message;
-      toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? 'var(--success-color, #4caf50)' : 'var(--error-color, #f44336)'};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 4px;
-        z-index: 10001;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-      `;
-
-      document.body.appendChild(toast);
-
-      requestAnimationFrame(() => {
-        toast.style.transform = 'translateX(0)';
-      });
-
-      setTimeout(() => {
-        toast.style.transform = 'translateX(100%)';
-        setTimeout(() => {
-          if (toast.parentNode) {
-            toast.parentNode.removeChild(toast);
-          }
-        }, 300);
-      }, 2000);
+      if (type === 'success') TaskTrackerUtils.showSuccess(message); else TaskTrackerUtils.showError(message);
     };
 
-    const renderContent = () => {
-      if (loading) {
-        contentContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--secondary-text-color);">Loading...</div>';
-        return;
-      }
-
-      const useEmoji = config.use_emoji_labels !== false;
+    const mountUI = () => {
+      const presets = TaskTrackerUtils.getPresetDailyStates();
       const currentPreset = TaskTrackerUtils.findMatchingDailyStatePreset(currentState);
+      const useEmoji = config.use_emoji_labels !== false;
 
-      contentContainer.innerHTML = `
-        <style>
-          .quick-flow {
-            margin-bottom: 16px;
-          }
-          .quick-prompt {
-            font-size: 16px;
-            margin-bottom: 16px;
-            color: var(--primary-text-color);
-            text-align: center;
-          }
-          .preset-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-bottom: 16px;
-          }
-          .preset-btn {
-            background: var(--card-background-color);
-            border: 2px solid var(--divider-color);
-            border-radius: 8px;
-            padding: 16px 12px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--primary-text-color);
-            transition: all 0.2s ease;
-            text-align: center;
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .preset-btn:hover {
-            border-color: var(--primary-color);
-            background: var(--primary-color);
-            color: var(--primary-text-color);
-          }
-          .preset-btn.selected {
-            border-color: var(--primary-color);
-            background: var(--primary-color);
-            color: var(--primary-text-color);
-          }
-          .preset-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-          @media (min-width: 500px) {
-            .preset-grid {
-              grid-template-columns: repeat(4, 1fr);
-            }
-          }
-          .advanced-section {
-            margin-top: 16px;
-            border-top: 1px solid var(--divider-color);
-            padding-top: 16px;
-          }
-          .slider-row {
-            display: grid;
-            grid-template-columns: 100px 1fr 60px;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-          }
-          .slider-label {
-            font-weight: 500;
-            color: var(--primary-text-color);
-          }
-          .slider-container {
-            position: relative;
-          }
-          input[type="range"] {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: var(--disabled-text-color);
-            outline: none;
-            -webkit-appearance: none;
-          }
-          input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            cursor: pointer;
-          }
-          input[type="range"]::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            cursor: pointer;
-            border: none;
-          }
-          .slider-value {
-            text-align: center;
-            font-weight: 500;
-            min-width: 80px;
-            color: var(--primary-text-color);
-          }
-          .button-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 20px;
-          }
-          .btn {
-            background: var(--primary-color);
-            color: var(--primary-text-color);
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            transition: opacity 0.2s;
-          }
-          .btn:hover {
-            opacity: 0.9;
-          }
-          .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-          .btn-secondary {
-            background: var(--secondary-background-color);
-            color: var(--primary-text-color);
-            border: 1px solid var(--divider-color);
-          }
-          .back-to-simple {
-            background: none;
-            border: none;
-            color: var(--secondary-text-color);
-            cursor: pointer;
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            margin-bottom: 12px;
-          }
-          .back-to-simple:hover {
-            background: var(--secondary-background-color);
-            color: var(--primary-text-color);
-          }
-        </style>
+      // Clear loading
+      contentContainer.innerHTML = '';
 
-        ${!showAdvanced ? `
-          <div class="quick-flow">
-            <div class="quick-prompt">How are you feeling today?</div>
-            <div class="preset-grid">
-              ${Object.keys(TaskTrackerUtils.getPresetDailyStates()).map(key => {
-                const preset = TaskTrackerUtils.getPresetDailyStates()[key];
-                const isSelected = currentPreset === key;
-                return `
-                  <button class="preset-btn ${isSelected ? 'selected' : ''}"
-                          data-preset="${key}"
-                          ${saving ? 'disabled' : ''}>
-                    ${preset.label}
-                  </button>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-        ${showAdvanced ? `
-          <div class="advanced-section">
-            <button class="back-to-simple">← Back to Simple</button>
-            ${TaskTrackerUtils.createSliderRow('energy', 'Energy', currentState.energy, 1, 5, 'Higher energy enables more demanding tasks')}
-            ${TaskTrackerUtils.createSliderRow('motivation', 'Motivation', currentState.motivation, 1, 5, 'Higher motivation suggests more challenging tasks')}
-            ${TaskTrackerUtils.createSliderRow('focus', 'Focus', currentState.focus, 1, 5, 'Higher focus enables detail-oriented work')}
-            ${TaskTrackerUtils.createSliderRow('pain', 'Pain', currentState.pain, 1, 5, 'Higher pain reduces strenuous task suggestions')}
-            ${TaskTrackerUtils.createSliderRow('mood', 'Mood', currentState.mood, -2, 2, 'Mood affects task type and difficulty recommendations', true, useEmoji)}
-            ${TaskTrackerUtils.createSliderRow('free_time', 'Free Time', currentState.free_time, 1, 5, 'More free time allows longer task suggestions', false, false, true)}
-          </div>
-        ` : ''}
-
-        <div class="button-row">
-          <div></div>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-secondary">Cancel</button>
-            <button class="btn save-btn" ${saving ? 'disabled' : ''}>
-              ${saving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </div>
-      `;
-
-      // Add event listeners
-      const presetButtons = contentContainer.querySelectorAll('.preset-btn');
-      presetButtons.forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const presetKey = btn.dataset.preset;
-          const presets = TaskTrackerUtils.getPresetDailyStates();
-          const preset = presets[presetKey];
-
+      uiController = TaskTrackerDailyStateUI.render(contentContainer, {
+        mode: 'modal',
+        state: currentState,
+        hasExistingState: !!currentState,
+        currentPreset,
+        showAdvanced,
+        useEmojiLabels: useEmoji,
+        saving,
+        presets,
+        getMoodLabel: (v) => TaskTrackerUtils.getMoodLabel(v, useEmoji),
+        getFreeTimeLabel: (v) => TaskTrackerUtils.getFreeTimeLabel(v),
+        onSelectPreset: async (presetKey) => {
           if (presetKey === 'complicated') {
             showAdvanced = true;
-            renderContent();
+            uiController.update({ showAdvanced });
             return;
           }
-
+          const preset = presets[presetKey];
           if (preset && preset.values) {
             saving = true;
-            renderContent();
-
+            uiController.update({ saving });
             const success = await TaskTrackerUtils.saveDailyState(hass, username, preset.values);
             if (success) {
               showToast('Daily state saved successfully!');
@@ -3384,50 +2455,13 @@ export class TaskTrackerUtils {
               closeModal();
             } else {
               saving = false;
-              renderContent();
+              uiController.update({ saving });
             }
           }
-        });
-      });
-
-      const sliders = contentContainer.querySelectorAll('input[type="range"]');
-      sliders.forEach(slider => {
-        slider.addEventListener('input', (e) => {
-          const axis = e.target.dataset.axis;
-          const val = parseInt(e.target.value);
-          currentState[axis] = val;
-
-          // Update display value
-          const valueDisplay = e.target.parentElement.parentElement.querySelector('.slider-value');
-          if (axis === 'mood') {
-            valueDisplay.textContent = TaskTrackerUtils.getMoodLabel(val, useEmoji);
-          } else if (axis === 'free_time') {
-            valueDisplay.textContent = TaskTrackerUtils.getFreeTimeLabel(val);
-          } else {
-            valueDisplay.textContent = val;
-          }
-        });
-      });
-
-      const backToSimpleBtn = contentContainer.querySelector('.back-to-simple');
-      if (backToSimpleBtn) {
-        backToSimpleBtn.addEventListener('click', () => {
-          showAdvanced = false;
-          renderContent();
-        });
-      }
-
-      const cancelBtn = contentContainer.querySelector('.btn-secondary');
-      if (cancelBtn) {
-        cancelBtn.addEventListener('click', closeModal);
-      }
-
-      const saveBtn = contentContainer.querySelector('.save-btn');
-      if (saveBtn) {
-        saveBtn.addEventListener('click', async () => {
+        },
+        onSave: async () => {
           saving = true;
-          renderContent();
-
+          uiController.update({ saving });
           const success = await TaskTrackerUtils.saveDailyState(hass, username, currentState);
           if (success) {
             showToast('Daily state saved successfully!');
@@ -3435,94 +2469,46 @@ export class TaskTrackerUtils {
             closeModal();
           } else {
             saving = false;
-            renderContent();
+            uiController.update({ saving });
           }
-        });
-      }
+        },
+        onCancel: closeModal,
+        onToggleBackToSimple: () => {
+          showAdvanced = false;
+          uiController.update({ showAdvanced });
+        },
+        onSliderChange: (axis, value) => {
+          currentState = { ...currentState, [axis]: value };
+        }
+      });
     };
 
     // Load existing state
     const loadState = async () => {
       loading = true;
-      renderContent();
-
       const existingState = await TaskTrackerUtils.fetchDailyState(hass, username);
       if (existingState) {
         currentState = existingState;
         const matchingPreset = TaskTrackerUtils.findMatchingDailyStatePreset(currentState);
         showAdvanced = matchingPreset === 'complicated';
       }
-
       loading = false;
-      renderContent();
+      mountUI();
     };
 
     // Event handlers
     closeButton.addEventListener('click', closeModal);
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        closeModal();
-      }
-    });
-
-    // Escape key handler
-    const escapeHandler = (e) => {
-      if (e.key === 'Escape') {
-        closeModal();
-        document.removeEventListener('keydown', escapeHandler);
-      }
-    };
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    const escapeHandler = (e) => { if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', escapeHandler); } };
     document.addEventListener('keydown', escapeHandler);
 
     // Initialize
     loadState();
-
-    // Apply fade-in animation
-    modal.style.opacity = '0';
-    setTimeout(() => {
-      modal.style.transition = 'opacity 0.2s ease';
-      modal.style.opacity = '1';
-    }, 10);
-
+    setTimeout(() => { modal.classList.add('tt-modal--visible'); }, 10);
     return modal;
   }
 
-  static createSliderRow(key, label, value, min, max, tooltip, isMood = false, useEmoji = true, isFreeTime = false) {
-    let displayValue = value;
-    if (isMood) {
-      displayValue = TaskTrackerUtils.getMoodLabel(value, useEmoji);
-    } else if (isFreeTime) {
-      displayValue = TaskTrackerUtils.getFreeTimeLabel(value);
-    }
-
-    return `
-      <div class="slider-row">
-        <div class="slider-label">${label}</div>
-        <div class="slider-container">
-          <input type="range" min="${min}" max="${max}" step="1" value="${value}" data-axis="${key}">
-          <div class="tooltip" style="
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--card-background-color);
-            border: 1px solid var(--divider-color);
-            border-radius: 4px;
-            padding: 8px;
-            font-size: 12px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s;
-            z-index: 100;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          ">${tooltip}</div>
-        </div>
-        <div class="slider-value">${displayValue}</div>
-      </div>
-    `;
-  }
+  // Removed: slider row templating handled by TaskTrackerDailyStateUI
 
   // ===========================================
   // Testing and Debugging Utilities
@@ -3542,7 +2528,7 @@ export class TaskTrackerUtils {
    * @returns {Object} - { borderStyle, cssClasses: { isOverdue, isDue, needsCompletion, overdue, dueToday } }
    */
   static getTaskBorderStyle(task, taskType = 'task', daysOverdue = 0) {
-    let isOverdue, isDue, borderStyle;
+    let isOverdue, isDue, borderStyle, borderClass = '';
     const overdueSeverity = task.overdue_severity || 1;
 
     // Check if task has API-provided overdue info (both self-care and regular tasks can have this)
@@ -3561,16 +2547,20 @@ export class TaskTrackerUtils {
     // Calculate border style
     if (isOverdue) {
       const overdueColor = TaskTrackerUtils.getOverdueColor(daysOverdue, overdueSeverity);
-      borderStyle = overdueColor ? `border-left: 2px solid ${overdueColor} !important;` : '';
+      // Prefer class over inline style. We only inline if a custom RGB is required.
+      if (overdueColor) {
+        borderStyle = `border-left: 2px solid ${overdueColor} !important;`;
+        borderClass = 'tt-task-border--overdue-custom';
+      } else {
+        borderClass = 'tt-task-border--overdue';
+      }
     } else if (isDue) {
-      // Due but not overdue - use blue styling
-      borderStyle = 'border-left: 2px solid var(--primary-color) !important;';
-    } else {
-      borderStyle = '';
+      borderClass = 'tt-task-border--due';
     }
 
     return {
       borderStyle,
+      borderClass,
       cssClasses: {
         isOverdue,
         isDue,
