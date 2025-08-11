@@ -7,7 +7,7 @@ export class TaskTrackerDailyStateUI {
    *
    * options:
    * - mode: 'embedded' | 'modal' (controls presence of footer with Cancel/Save)
-   * - state: { energy, motivation, focus, pain, mood, free_time }
+    * - state: { energy, motivation, focus, pain, mood, free_time, is_sick }
    * - hasExistingState: boolean
    * - showAdvanced: boolean
    * - useEmojiLabels: boolean
@@ -161,7 +161,7 @@ export class TaskTrackerDailyStateUI {
     };
 
     const render = () => {
-      const s = opts.state || { energy: 3, motivation: 3, focus: 3, pain: 1, mood: 0, free_time: 3 };
+      const s = opts.state || { energy: 3, motivation: 3, focus: 3, pain: 1, mood: 0, free_time: 3, is_sick: false };
 
       container.innerHTML = `
         ${!opts.showAdvanced ? `
@@ -178,6 +178,11 @@ export class TaskTrackerDailyStateUI {
                 <div class="tt-ds-button-row tt-flex-end">
                     <button class="tt-btn tt-btn--link back-to-simple">← Back to Simple</button>
                 </div>
+            <div class="tt-form-row">
+              <label class="tt-label">
+                <input type="checkbox" class="tt-checkbox" data-axis="is_sick" ${s.is_sick ? 'checked' : ''} /> I'm sick today (take it easy)
+              </label>
+            </div>
             ${renderSliderRow('energy', 'Energy', s.energy, 1, 5, 'Higher energy enables more demanding tasks')}
             ${renderSliderRow('motivation', 'Motivation', s.motivation, 1, 5, 'Higher motivation suggests more challenging tasks')}
             ${renderSliderRow('focus', 'Focus', s.focus, 1, 5, 'Higher focus enables detail-oriented work')}
@@ -205,6 +210,13 @@ export class TaskTrackerDailyStateUI {
       `;
 
       attachListeners(container);
+      // Attach checkbox listener for is_sick
+      const sickToggle = container.querySelector('input[type="checkbox"][data-axis="is_sick"]');
+      if (sickToggle) {
+        sickToggle.addEventListener('change', (e) => {
+          if (opts.onSliderChange) opts.onSliderChange('is_sick', !!e.target.checked);
+        });
+      }
     };
 
     render();

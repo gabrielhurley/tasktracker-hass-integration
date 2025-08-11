@@ -119,7 +119,9 @@ ENDPOINT_UPDATE_COMPLETION: Final = "/api/completions/update_completion/"
 ENDPOINT_DAILY_PLAN: Final = "/api/daily-plan/"
 ENDPOINT_DAILY_PLAN_ENCOURAGEMENT: Final = "/api/daily-plan/encouragement/"
 ENDPOINT_DAILY_STATE: Final = "/api/daily-state/"
-ENDPOINT_CREATE_TASK_FROM_DESCRIPTION: Final = "/api/tasks/create-task-from-description/"
+ENDPOINT_CREATE_TASK_FROM_DESCRIPTION: Final = (
+    "/api/tasks/create-task-from-description/"
+)
 ENDPOINT_DELETE_TASK: Final = "/api/tasks/delete-task/"
 
 # Default values

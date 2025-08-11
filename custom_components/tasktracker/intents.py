@@ -491,11 +491,12 @@ class CreateTaskFromDescriptionIntentHandler(BaseTaskTrackerIntentHandler):
 
             message = result.get(
                 "spoken_response",
-                f"Task created successfully from description.",
+                "Task created successfully from description.",
             )
             response.async_set_speech(message)
 
         return response
+
 
 # Registry of all intent handlers
 INTENT_HANDLERS = [

@@ -6,18 +6,20 @@ export function getDefaultDailyState() {
     pain: 1,
     mood: 0,
     free_time: 3,
+    is_sick: false,
   };
 }
 
 export function getPresetDailyStates() {
   return {
+    normal: { label: 'Normal', values: { energy: 3, motivation: 3, focus: 3, pain: 1, mood: 0, free_time: 3 } },
     great: { label: 'Great', values: { energy: 5, motivation: 4, focus: 4, pain: 1, mood: 2, free_time: 4 } },
     motivated: { label: 'Motivated', values: { energy: 4, motivation: 5, focus: 3, pain: 1, mood: 1, free_time: 3 } },
-    normal: { label: 'Normal', values: { energy: 3, motivation: 3, focus: 3, pain: 1, mood: 0, free_time: 3 } },
+    lazy: { label: 'Lazy', values: { energy: 3, motivation: 1, focus: 2, pain: 1, mood: 0, free_time: 4 } },
     tired: { label: 'Tired', values: { energy: 2, motivation: 2, focus: 2, pain: 1, mood: -1, free_time: 3 } },
     stressed: { label: 'Stressed', values: { energy: 3, motivation: 2, focus: 1, pain: 2, mood: -1, free_time: 1 } },
     in_pain: { label: 'In Pain', values: { energy: 2, motivation: 2, focus: 2, pain: 5, mood: -1, free_time: 2 } },
-    lazy: { label: 'Lazy', values: { energy: 3, motivation: 1, focus: 2, pain: 1, mood: 0, free_time: 4 } },
+    sick: { label: 'Sick', values: { energy: 1, motivation: 2, focus: 1, pain: 3, mood: -1, free_time: 2, is_sick: true } },
     complicated: { label: 'Complicated', values: null },
   };
 }

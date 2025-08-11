@@ -21,7 +21,9 @@ from .const import (
     SERVICE_COMPLETE_TASK_BY_NAME,
     SERVICE_CREATE_ADHOC_TASK,
     SERVICE_CREATE_LEFTOVER,
+    SERVICE_CREATE_TASK_FROM_DESCRIPTION,
     SERVICE_DELETE_COMPLETION,
+    SERVICE_DELETE_TASK,
     SERVICE_GET_ALL_TASKS,
     SERVICE_GET_AVAILABLE_TASKS,
     SERVICE_GET_AVAILABLE_USERS,
@@ -35,8 +37,6 @@ from .const import (
     SERVICE_SET_DAILY_STATE,
     SERVICE_UPDATE_COMPLETION,
     SERVICE_UPDATE_TASK,
-    SERVICE_CREATE_TASK_FROM_DESCRIPTION,
-    SERVICE_DELETE_TASK,
 )
 from .utils import (
     get_available_tasktracker_usernames,
@@ -192,7 +192,9 @@ UPDATE_COMPLETION_SCHEMA = vol.Schema(
 # Create task from description schema
 CREATE_TASK_FROM_DESCRIPTION_SCHEMA = vol.Schema(
     {
-        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
+        vol.Required("task_type"): vol.In(
+            ["RecurringTask", "AdHocTask", "SelfCareTask"]
+        ),
         vol.Required("task_description"): cv.string,
         vol.Optional("assigned_to"): cv.string,
     }
@@ -228,6 +230,7 @@ SET_DAILY_STATE_SCHEMA = vol.Schema(
         vol.Optional("pain"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
         vol.Optional("mood"): vol.All(int, vol.Range(min=-2, max=2)),
         vol.Optional("free_time"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
+        vol.Optional("is_sick"): cv.boolean,
     }
 )
 
@@ -235,7 +238,9 @@ SET_DAILY_STATE_SCHEMA = vol.Schema(
 DELETE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.positive_int,
-        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
+        vol.Required("task_type"): vol.In(
+            ["RecurringTask", "AdHocTask", "SelfCareTask"]
+        ),
         vol.Optional("assigned_to"): cv.string,
     }
 )
@@ -843,6 +848,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 pain = call.data.get("pain")
                 mood = call.data.get("mood")
                 free_time = call.data.get("free_time")
+                is_sick = call.data.get("is_sick")
 
                 result = await api.set_daily_state(
                     username=username,
@@ -852,6 +858,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     pain=pain,
                     mood=mood,
                     free_time=free_time,
+                    is_sick=is_sick,
                 )
 
                 if result.get("success"):
@@ -874,7 +881,9 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Unexpected error in set_daily_state_service")
                 raise
 
-        async def create_task_from_description_service(call: ServiceCall) -> dict[str, Any]:
+        async def create_task_from_description_service(
+            call: ServiceCall,
+        ) -> dict[str, Any]:
             """Create a task using a natural-language description via server AI."""
             try:
                 assigned_to = call.data.get("assigned_to")
@@ -885,7 +894,7 @@ async def async_setup_services(  # noqa: C901, PLR0915
                         hass, user_id, current_config
                     )
                     if not assigned_to:
-                        msg = "No assigned_to provided and could not determine from user context"
+                        msg = "No assigned_to provided and could not determine from user context"  # noqa: E501
                         raise TaskTrackerAPIError(msg)  # noqa: TRY301
 
                 result = await api.create_task_from_description(
@@ -900,7 +909,8 @@ async def async_setup_services(  # noqa: C901, PLR0915
                     hass.bus.fire(
                         "tasktracker_task_created",
                         {
-                            "task_name": task.get("name") or call.data.get("task_description"),
+                            "task_name": task.get("name")
+                            or call.data.get("task_description"),
                             "assigned_to": assigned_to,
                             "creation_data": result.get("data"),
                         },
@@ -912,7 +922,9 @@ async def async_setup_services(  # noqa: C901, PLR0915
                 _LOGGER.exception("Failed to create task from description")
                 raise
             except Exception:
-                _LOGGER.exception("Unexpected error in create_task_from_description_service")
+                _LOGGER.exception(
+                    "Unexpected error in create_task_from_description_service"
+                )
                 raise
 
         async def delete_task_service(call: ServiceCall) -> dict[str, Any]:

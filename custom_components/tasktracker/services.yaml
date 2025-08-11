@@ -469,3 +469,8 @@ set_daily_state:
         number:
           min: 1
           max: 5
+    is_sick:
+      required: false
+      example: false
+      selector:
+        boolean:

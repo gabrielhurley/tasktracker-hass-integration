@@ -14,18 +14,18 @@ from .const import (
     ENDPOINT_COMPLETE_TASK_BY_NAME,
     ENDPOINT_CREATE_ADHOC_TASK,
     ENDPOINT_CREATE_LEFTOVER,
+    ENDPOINT_CREATE_TASK_FROM_DESCRIPTION,
     ENDPOINT_DAILY_PLAN,
     ENDPOINT_DAILY_PLAN_ENCOURAGEMENT,
     ENDPOINT_DAILY_STATE,
     ENDPOINT_DELETE_COMPLETION,
+    ENDPOINT_DELETE_TASK,
     ENDPOINT_LIST_LEFTOVERS,
     ENDPOINT_QUERY_TASK,
     ENDPOINT_RECENT_COMPLETIONS,
     ENDPOINT_RECOMMENDED_TASKS,
     ENDPOINT_UPDATE_COMPLETION,
     ENDPOINT_UPDATE_TASK,
-    ENDPOINT_CREATE_TASK_FROM_DESCRIPTION,
-    ENDPOINT_DELETE_TASK,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -191,7 +191,9 @@ class TaskTrackerAPI:
             "task_description": task_description,
             "assigned_to": assigned_to,
         }
-        return await self._request("POST", ENDPOINT_CREATE_TASK_FROM_DESCRIPTION, data=data)
+        return await self._request(
+            "POST", ENDPOINT_CREATE_TASK_FROM_DESCRIPTION, data=data
+        )
 
     async def delete_task(
         self,
@@ -354,6 +356,7 @@ class TaskTrackerAPI:
         pain: int | None = None,
         mood: int | None = None,
         free_time: int | None = None,
+        is_sick: bool | None = None,
     ) -> dict[str, Any]:
         """Set/update the daily state for a user."""
         data: dict[str, Any] = {"username": username}
@@ -370,5 +373,7 @@ class TaskTrackerAPI:
             data["mood"] = mood
         if free_time is not None:
             data["free_time"] = free_time
+        if is_sick is not None:
+            data["is_sick"] = is_sick
 
         return await self._request("POST", ENDPOINT_DAILY_STATE, data=data)

@@ -39,3 +39,4 @@ Modular utilities used by the TaskTracker Home Assistant cards. These replace fu
 
 - Prefer centralized `TaskTrackerDateTime` utilities for all date/time logic (logical day, overdue, formatting)
 - To open modals reliably, call `showModal(modal)` from `ui/components.js` to ensure only one modal is present and styles are applied
+ - Daily State presets include a "Sick" option that toggles `is_sick: true` and sets conservative axes for rest-oriented recommendations
