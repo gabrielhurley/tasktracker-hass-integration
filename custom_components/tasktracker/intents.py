@@ -425,6 +425,78 @@ class GetRecommendedTasksForPersonAndTimeIntentHandler(BaseTaskTrackerIntentHand
         return response
 
 
+class CreateTaskFromDescriptionIntentHandler(BaseTaskTrackerIntentHandler):
+    """Handler for CreateTaskFromDescription intent."""
+
+    intent_type = "CreateTaskFromDescription"
+
+    async def _handle_intent(
+        self, intent_obj: Any, api: TaskTrackerAPI
+    ) -> IntentResponse:
+        """Handle CreateTaskFromDescription intent."""
+        response = IntentResponse(language=intent_obj.language)
+
+        # Robust extraction similar to QueryTaskStatus handler
+        def _extract_slot_value(slot_obj: Any) -> str | None:
+            value = slot_obj
+            if isinstance(value, dict):
+                value = value.get("value")
+            if isinstance(value, dict) and "value" in value:
+                value = value["value"]
+            if value is None:
+                return None
+            return str(value)
+
+        task_type = _extract_slot_value(intent_obj.slots.get("task_type", {}))
+        task_details = _extract_slot_value(intent_obj.slots.get("task_details", {}))
+
+        if not task_type:
+            response.async_set_speech("Task type is required.")
+            return response
+
+        if not task_details:
+            response.async_set_speech("Please describe the task you want to create.")
+            return response
+
+        assigned_to = get_user_context(self.hass, intent_obj.context.user_id)
+        if not assigned_to:
+            response.async_set_speech(
+                "Task assignee is required. Try rephrasing your request."
+            )
+            return response
+
+        result = await api.create_task_from_description(
+            task_type=task_type,
+            task_description=task_details,
+            assigned_to=assigned_to,
+        )
+
+        if not result.get("success"):
+            error_msg = result.get("message", "Unknown error")
+            response.async_set_speech(
+                f"There was an error creating the task: {error_msg}"
+            )
+        else:
+            data = result.get("data", {}) or {}
+            task = data.get("task") or {}
+            # Fire custom event for frontend cards
+            self.hass.bus.fire(
+                "tasktracker_task_created",
+                {
+                    "task_name": task.get("name") or task_details,
+                    "assigned_to": assigned_to,
+                    "creation_data": result.get("data"),
+                },
+            )
+
+            message = result.get(
+                "spoken_response",
+                f"Task created successfully from description.",
+            )
+            response.async_set_speech(message)
+
+        return response
+
 # Registry of all intent handlers
 INTENT_HANDLERS = [
     AddLeftoverIntentHandler,
@@ -434,6 +506,7 @@ INTENT_HANDLERS = [
     GetTaskDetailsIntentHandler,
     GetRecommendedTasksForPersonIntentHandler,
     GetRecommendedTasksForPersonAndTimeIntentHandler,
+    CreateTaskFromDescriptionIntentHandler,
 ]
 
 

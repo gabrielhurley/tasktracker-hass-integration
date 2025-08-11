@@ -2,14 +2,21 @@
 description: Any time tests need to be run for the Home Assistant python or javascript code in the tasktracker-hass-integration directory.
 alwaysApply: false
 ---
+
 # Testing Rules for TaskTracker Home Assistant Integration
 
-## Always check your directory and vitrualenv
+These rules standardize how to execute *all* automated tests so you never need to figure out the commands again.
 
-**CRITICAL:** Always ensure you are in the `tasktracker-hass-integration` directory
-**CRITICAL:** Always ensure you have activate the tasktracker-hass-integration virtualenv with the `source .venv/bin/activate` command.
+## 1. Activate the Virtual Environment
 
-## Always Use the run_tests.py Helper Script
+1. Ensure you are in the `tasktracker-hass-integration` directory.
+
+2. In the `tasktracker-hass-integration` directory run `source .venv/bin/activate` to activate the virtualenv.
+   (Re-activating is harmless if you are already inside the venv.)
+
+## 2. Run Tests
+
+### 2.1. Python Tests
 
 **CRITICAL:** Always use the `run_tests.py` helper script to run tests instead of running pytest directly. This script:
 - Checks for required test dependencies
@@ -17,39 +24,45 @@ alwaysApply: false
 - Provides clear error messages for missing dependencies
 - Generates HTML coverage reports
 
-## Running Tests
+#### Running Python Tests
 
-### Basic Test Execution
 ```bash
 python run_tests.py
 ```
 
-### Installing Test Dependencies
-If tests fail due to missing dependencies, install them first:
-```bash
-pip install -r requirements-test.txt
-```
-
-### Handling Version Compatibility Issues
-If you encounter version compatibility issues with `pytest-homeassistant-custom-component` (especially requiring Python 3.13+), try:
-1. Use a compatible version: `pip install pytest-homeassistant-custom-component==0.13.205`
-2. Or install without the specific version constraintand
-
-### Test Structure
-- Tests are located in the `tests/` directory
+#### Test Structure
+- Tests are located in the `tasktracker-hass-integration/tests/` directory
 - Use `pytest` fixtures and patterns consistent with Home Assistant testing
-- Mock external API calls using `aioresponses`
+- Use `jest` patterns for javascript testing.
+- Mock external API calls from Python code using `aioresponses`
 - Test both success and error scenarios for all service calls
 
-## DO NOT:
+#### DO NOT:
 - Run `pytest` directly without using `run_tests.py`
 - Install test dependencies globally if using a virtual environment
-- Skip testing after making changes to service functions
-- Ignore test dependency version conflicts
+- Skip testing after making changes to service functions or utility code
 
-## Coverage Reports
-The test runner automatically generates:
+#### Coverage Reports
+The python test runner automatically generates:
 - Terminal coverage report
 - HTML coverage report in `htmlcov/index.html`
-
 Always check coverage reports to ensure new code is properly tested.
+
+### 2.2. Javascript Tests
+
+#### Running Javascript Tests
+
+```bash
+npm test
+```
+
+#### Test Structure
+- Tests are located in the `tasktracker-hass-integration/tests/` directory
+- Use `jest` patterns for javascript testing.
+
+## 3. Before & After Changes
+- ALWAYS run tests before editing code to establish a baseline.
+- Run the suite again after modifications; *all tests must pass* before committing.
+
+## 4. Troubleshooting
+- Import errors? Ensure the virtualenv is active **and** you are inside `tasktracker-hass-integration`.

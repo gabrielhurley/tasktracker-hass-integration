@@ -1,0 +1,20 @@
+language: en
+intent:
+  CreateTaskFromDescription:
+    action:
+      - service: tasktracker.create_task_from_description
+        data:
+          task_type: "{{ task_type }}"
+          task_description: "{{ task_details }}"
+        response_variable: result
+      - stop: "Return value to intent script"
+        response_variable: result
+    speech:
+      text: >
+        {% if action_response is defined and 'content' in action_response and 'spoken_response' in action_response['content'] %}
+          {{ action_response['content']['spoken_response'] }}
+        {% elif action_response is defined and 'speech' in action_response %}
+          {{ action_response['speech'] }}
+        {% else %}
+          I attempted to create the task, but couldn't format the response properly.
+        {% endif %}

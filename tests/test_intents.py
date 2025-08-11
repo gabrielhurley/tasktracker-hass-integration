@@ -11,6 +11,7 @@ from custom_components.tasktracker.intents import (
     AddAdHocTaskIntentHandler,
     AddLeftoverIntentHandler,
     CompleteTaskIntentHandler,
+    CreateTaskFromDescriptionIntentHandler,
     GetRecommendedTasksForPersonAndTimeIntentHandler,
     GetRecommendedTasksForPersonIntentHandler,
     GetTaskDetailsIntentHandler,
@@ -369,7 +370,7 @@ class TestIntentRegistration:
 
     def test_intent_handlers_registry(self) -> None:
         """Test that all intent handlers are in the registry."""
-        assert len(INTENT_HANDLERS) == 7
+        assert len(INTENT_HANDLERS) == 8
 
         # Check that all handlers have unique intent types
         intent_types = [handler.intent_type for handler in INTENT_HANDLERS]
@@ -384,6 +385,7 @@ class TestIntentRegistration:
             "GetTaskDetails",
             "GetRecommendedTasksForPerson",
             "GetRecommendedTasksForPersonAndTime",
+            "CreateTaskFromDescription",
         }
         assert set(intent_types) == expected_types
 
@@ -394,5 +396,65 @@ class TestIntentRegistration:
         ) as mock_register:
             await async_register_intents(mock_hass)
 
-            # Should register all 7 intent handlers
-            assert mock_register.call_count == 7
+            # Should register all 8 intent handlers
+            assert mock_register.call_count == 8
+
+    async def test_create_task_from_description_success(
+        self, mock_hass: MagicMock, mock_intent_obj: MagicMock
+    ) -> None:
+        """Test CreateTaskFromDescription intent with successful creation."""
+        handler = CreateTaskFromDescriptionIntentHandler(mock_hass)
+        mock_intent_obj.slots = {
+            "task_type": {"value": "RecurringTask"},
+            "task_details": {"value": "to deep clean the cat boxes once a month. This task takes 30 minutes and is high effort."},
+        }
+
+        # Mock user context
+        with patch("custom_components.tasktracker.intents.get_user_context", return_value="alice"):
+            # Mock successful API response
+            api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+            api_mock.create_task_from_description.return_value = {
+                "success": True,
+                "spoken_response": "Recurring task created successfully.",
+                "data": {"task": {"name": "Deep clean cat boxes"}},
+            }
+
+            response = await handler.async_handle(mock_intent_obj)
+
+            api_mock.create_task_from_description.assert_called_once_with(
+                task_type="RecurringTask",
+                task_description="to deep clean the cat boxes once a month. This task takes 30 minutes and is high effort.",
+                assigned_to="alice",
+            )
+
+            speech_text = get_speech_text(response)
+            assert "Recurring task created successfully." in speech_text
+
+    async def test_create_task_from_description_nested_slot_shapes(
+        self, mock_hass: MagicMock, mock_intent_obj: MagicMock
+    ) -> None:
+        """Ensure handler extracts nested slot 'value' structures correctly."""
+        handler = CreateTaskFromDescriptionIntentHandler(mock_hass)
+        mock_intent_obj.slots = {
+            "task_type": {"value": {"value": "SelfCareTask"}},
+            "task_details": {"value": {"value": "to stretch and hydrate every morning"}},
+        }
+
+        with patch("custom_components.tasktracker.intents.get_user_context", return_value="bob"):
+            api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+            api_mock.create_task_from_description.return_value = {
+                "success": True,
+                "spoken_response": "Self care task created successfully.",
+                "data": {"task": {"name": "Stretch and hydrate"}},
+            }
+
+            response = await handler.async_handle(mock_intent_obj)
+
+            api_mock.create_task_from_description.assert_called_once_with(
+                task_type="SelfCareTask",
+                task_description="to stretch and hydrate every morning",
+                assigned_to="bob",
+            )
+
+            speech_text = get_speech_text(response)
+            assert "Self care task created successfully." in speech_text

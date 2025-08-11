@@ -156,6 +156,30 @@ intents:
           question_type:
             value: "general"
 
+  CreateTaskFromDescription:
+    data:
+      - sentences:
+          - "(create|add|make) [a|the] [new] recurring task {task_details}"
+        slots:
+          task_type:
+            value: "RecurringTask"
+          task_details:
+            required: true
+      - sentences:
+          - "(create|add|make) [a|the] [new] (self care|self-care) task {task_details}"
+        slots:
+          task_type:
+            value: "SelfCareTask"
+          task_details:
+            required: true
+      - sentences:
+          - "(create|add|make) [a|the] [new] (ad hoc|adhoc|ad-hoc) task {task_details}"
+        slots:
+          task_type:
+            value: "AdHocTask"
+          task_details:
+            required: true
+
 lists:
   task_name:
     wildcard: true
@@ -183,3 +207,5 @@ lists:
         out: 2
       - in: (low | minimum | lowest)
         out: 3
+  task_details:
+    wildcard: true
