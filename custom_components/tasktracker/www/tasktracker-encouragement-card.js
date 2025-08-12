@@ -143,8 +143,8 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     });
 
     // Listen for daily state events to refresh encouragement
-    const dailyStateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_daily_state_set', (event) => {
-      const evUsername = event?.data?.username;
+    const dailyStateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'daily_state_set', (eventData) => {
+      const evUsername = eventData?.username;
       const username = this._getUsername();
       if (!username || username === evUsername) {
         setTimeout(() => {

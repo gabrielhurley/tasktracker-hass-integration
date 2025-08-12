@@ -184,11 +184,11 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     }
 
     // Listen for daily plan events to refresh
-    const dailyPlanCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_daily_plan', (event) => {
-      const evUsername = event?.data?.username;
+    const dailyPlanCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'daily_plan', (eventData) => {
+      const evUsername = eventData?.username;
       const username = this._getUsername();
       if (!username || username === evUsername) {
-        this._plan = event.data.plan;
+        this._plan = eventData.plan;
         this._render();
       }
     });
@@ -222,14 +222,14 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     });
 
     // Listen for daily state events to refresh the plan
-    const dailyStateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_daily_state_set', (event) => {
-      const evUsername = event?.data?.username;
+    const dailyStateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'daily_state_set', (eventData) => {
+      const evUsername = eventData?.username;
       const username = this._getUsername();
       if (!username || username === evUsername) {
         // Update the daily state and re-render
         this._dailyState = {
           success: true,
-          data: event.data.state
+          data: eventData.state
         };
         this._render();
       }
