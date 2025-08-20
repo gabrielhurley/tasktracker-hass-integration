@@ -425,8 +425,28 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
     if (this._config.show_age) metadataParts.push(`${age} old`);
     metadataParts.push(expirationStatus);
 
+    // Calculate border styling using the consistent pattern from other cards
+    const dueDate = leftover.due_date || leftover.expiration_date;
+    const daysOverdue = dueDate && this._userContext
+      ? TaskTrackerDateTime.calculateDaysOverdue(dueDate, this._userContext)
+      : 0;
+
+    // Use the same border styling logic as other cards
+    const borderInfo = TaskTrackerUtils.getTaskBorderStyle(leftover, 'task', daysOverdue);
+
+    const taskClasses = [
+      'task-item',
+      'leftover-item',
+      borderInfo.cssClasses.needsCompletion ? 'needs-completion' : '',
+      borderInfo.cssClasses.overdue ? 'overdue' : '',
+      borderInfo.cssClasses.dueToday ? 'due-today' : ''
+    ].filter(Boolean).join(' ');
+
+    const borderClass = borderInfo.borderClass || '';
+    const borderStyle = borderInfo.borderStyle || '';
+
     return `
-      <div class="task-item leftover-item ${isExpired ? 'status-error' : 'status-success'}">
+      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" ${borderStyle ? `style="${borderStyle}"` : ''}>
         <div class="task-content leftover-content">
           <div class="task-name leftover-name">${leftover.name}</div>
           <div class="task-metadata leftover-metadata">${metadataParts.join(' | ')}</div>
