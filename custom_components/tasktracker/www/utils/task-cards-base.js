@@ -37,19 +37,25 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
   }
 
   _getCurrentUsername() {
-    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
+    return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers, this._enhancedUsers);
   }
 
   async _completeTask(task, notes, completed_at = null) {
-    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
+    // Fetch users if not available
+    if (!this._enhancedUsers || this._enhancedUsers.length === 0) {
+      await this._fetchAvailableUsers();
+    }
 
-    if (username === null && this._config.user_filter_mode !== 'current' && this._config.user_filter_mode !== 'all') {
-      TaskTrackerUtils.showError('No user configured for task completion');
+    // Validate current user configuration before making API calls
+    const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
+
+    if (!userValidation.canMakeRequests) {
+      TaskTrackerUtils.showError(userValidation.error);
       return;
     }
 
     try {
-      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, username, notes, completed_at);
+      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, userValidation.username, notes, completed_at);
       if (response && response.success) {
         TaskTrackerUtils.showSuccess(response.spoken_response || `Task "${task.name}" completed successfully`);
       } else {
@@ -67,8 +73,20 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
   }
 
   async _snoozeTask(task, snoozeUntil) {
-    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
-    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, username, () => {
+    // Fetch users if not available
+    if (!this._enhancedUsers || this._enhancedUsers.length === 0) {
+      await this._fetchAvailableUsers();
+    }
+
+    // Validate current user configuration before making API calls
+    const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
+
+    if (!userValidation.canMakeRequests) {
+      TaskTrackerUtils.showError(userValidation.error);
+      return;
+    }
+
+    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, userValidation.username, () => {
       if (typeof this.onAfterSnooze === 'function') this.onAfterSnooze();
     });
   }
@@ -93,10 +111,22 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
 
   async _deleteTask(task) {
     try {
-      const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
+      // Fetch users if not available
+      if (!this._enhancedUsers || this._enhancedUsers.length === 0) {
+        await this._fetchAvailableUsers();
+      }
+
+      // Validate current user configuration before making API calls
+      const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
+
+      if (!userValidation.canMakeRequests) {
+        TaskTrackerUtils.showError(userValidation.error);
+        return;
+      }
+
       const taskId = task.id || task.task_id;
       const taskType = task.task_type;
-      await TaskTrackerUtils.deleteTask(this._hass, taskId, taskType, username || null);
+      await TaskTrackerUtils.deleteTask(this._hass, taskId, taskType, userValidation.username || null);
       if (typeof this.onAfterUpdate === 'function') {
         setTimeout(() => this.onAfterUpdate(), 100);
       }

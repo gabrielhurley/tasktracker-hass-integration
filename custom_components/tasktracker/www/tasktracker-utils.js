@@ -27,6 +27,9 @@ export class TaskTrackerUtils {
   static getCurrentUsername = U.getCurrentUsername;
   static hasValidUserConfig = U.hasValidUserConfig;
   static getUsernameForAction = U.getUsernameForAction;
+  static isCurrentUserMapped = U.isCurrentUserMapped;
+  static getCurrentUserMappedUsername = U.getCurrentUserMappedUsername;
+  static validateCurrentUser = U.validateCurrentUser;
 
   // Toasts (delegated to utils/toast.js)
   static showSuccess(message) { return toastShowSuccess(message); }

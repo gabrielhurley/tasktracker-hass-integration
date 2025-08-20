@@ -131,10 +131,11 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
   async _fetchTimeSpentData() {
     await this._fetchAvailableUsers();
 
-    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
+    // Validate current user configuration before making API calls
+    const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
 
-    if (!hasValidUserConfig) {
-      this._error = "No user configured. Please set user in card configuration.";
+    if (!userValidation.canMakeRequests) {
+      this._error = userValidation.error;
       this._completions = [];
       this._totalMinutes = 0;
       this._loading = false;
@@ -162,9 +163,8 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
         limit: this._config.limit
       };
 
-      const username = this._getCurrentUsername();
-      if (username) {
-        params.assigned_to = username;
+      if (userValidation.username) {
+        params.assigned_to = userValidation.username;
       }
 
       const response = await this._hass.callService('tasktracker', 'get_recent_completions', params, {}, true, true);

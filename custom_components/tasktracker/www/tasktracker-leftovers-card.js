@@ -103,16 +103,32 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
   async _fetchAvailableUsers() {
     try {
       this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
+      this._enhancedUsers = await TaskTrackerUtils.getEnhancedUsers(this._hass);
     } catch (error) {
       console.warn('Failed to fetch available users:', error);
       this._availableUsers = [];
+      this._enhancedUsers = [];
     }
   }
 
   async _fetchLeftovers() {
-    // Fetch available users if not already loaded and we're in current user mode
-    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
+    // Fetch available users if not already loaded
+    if (!this._availableUsers || this._availableUsers.length === 0 ||
+        !this._enhancedUsers || this._enhancedUsers.length === 0) {
       await this._fetchAvailableUsers();
+    }
+
+    // Validate current user configuration before making API calls
+    const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
+
+    if (!userValidation.canMakeRequests) {
+      this._error = userValidation.error;
+      this._leftovers = [];
+      this._loading = false;
+      this._refreshing = false;
+      this._initialLoad = false;
+      this._render();
+      return;
     }
 
     // Only show full loading on initial load, use refreshing for subsequent calls
@@ -130,9 +146,8 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
     try {
       const params = {};
 
-      const username = this._getCurrentUsername();
-      if (username) {
-        params.assigned_to = username;
+      if (userValidation.username) {
+        params.assigned_to = userValidation.username;
       }
 
       const response = await this._hass.callService('tasktracker', 'list_leftovers', params, {}, true, true);
@@ -224,22 +239,22 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
   }
 
   async _disposeLeftover(leftover, notes) {
-    // Fetch available users if not already loaded and we're in current user mode
-    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
+    // Fetch available users if not already loaded
+    if (!this._availableUsers || this._availableUsers.length === 0 ||
+        !this._enhancedUsers || this._enhancedUsers.length === 0) {
       await this._fetchAvailableUsers();
     }
 
-    const username = TaskTrackerUtils.getUsernameForAction(this._config, this._hass, this._availableUsers);
+    // Validate current user configuration before making API calls
+    const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
 
-    // For 'current' user mode, username will be null and that's expected
-    // The backend will handle user mapping via call context
-    if (username === null && this._config.user_filter_mode !== 'current' && this._config.user_filter_mode !== 'all') {
-      TaskTrackerUtils.showError('No user configured for leftover disposal');
+    if (!userValidation.canMakeRequests) {
+      TaskTrackerUtils.showError(userValidation.error);
       return;
     }
 
     try {
-      const response = await TaskTrackerUtils.disposeLeftover(this._hass, leftover.name, username, notes);
+      const response = await TaskTrackerUtils.disposeLeftover(this._hass, leftover.name, userValidation.username, notes);
 
       if (response && response.success) {
         TaskTrackerUtils.showSuccess(response.spoken_response || `Leftover "${leftover.name}" disposed successfully`);

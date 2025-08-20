@@ -124,11 +124,21 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     this._render();
 
     await this._fetchAvailableUsers();
-    const username = this._getUsername();
+
+    // Validate current user configuration before making API calls
+    const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
+
+    if (!userValidation.canMakeRequests) {
+      this._error = userValidation.error;
+      this._plan = null;
+      this._loading = false;
+      this._render();
+      return;
+    }
 
     const serviceData = {};
-    if (username) {
-      serviceData.username = username;
+    if (userValidation.username) {
+      serviceData.username = userValidation.username;
     }
     // Add the select_recommended parameter based on toggle state
     serviceData.select_recommended = this._showRecommendedOnly;
@@ -161,14 +171,16 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
   }
 
   async _fetchDailyState() {
-    const username = this._getUsername();
-    if (!username) {
+    // Validate current user configuration before making API calls
+    const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
+
+    if (!userValidation.canMakeRequests || !userValidation.username) {
       this._dailyState = null;
       return;
     }
 
     try {
-      const serviceData = { username };
+      const serviceData = { username: userValidation.username };
       const response = await this._hass.callService('tasktracker', 'get_daily_state', serviceData, {}, true, true);
       if (response && response.response) {
         this._dailyState = response.response;

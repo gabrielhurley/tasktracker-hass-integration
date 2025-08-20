@@ -106,16 +106,32 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
   async _fetchAvailableUsers() {
     try {
       this._availableUsers = await TaskTrackerUtils.getAvailableUsers(this._hass);
+      this._enhancedUsers = await TaskTrackerUtils.getEnhancedUsers(this._hass);
     } catch (error) {
       console.warn('Failed to fetch available users:', error);
       this._availableUsers = []; // fallback to empty array
+      this._enhancedUsers = [];
     }
   }
 
   async _fetchRecentCompletions() {
-    // Fetch available users if not already loaded and we're in current user mode
-    if (this._config.user_filter_mode === 'current' && this._availableUsers.length === 0) {
+    // Fetch available users if not already loaded
+    if (!this._availableUsers || this._availableUsers.length === 0 ||
+        !this._enhancedUsers || this._enhancedUsers.length === 0) {
       await this._fetchAvailableUsers();
+    }
+
+    // Validate current user configuration before making API calls
+    const userValidation = TaskTrackerUtils.validateCurrentUser(this._config, this._hass, this._enhancedUsers);
+
+    if (!userValidation.canMakeRequests) {
+      this._error = userValidation.error;
+      this._completions = [];
+      this._loading = false;
+      this._refreshing = false;
+      this._initialLoad = false;
+      this._render();
+      return;
     }
 
     // Only show full loading on initial load, use refreshing for subsequent calls
@@ -136,9 +152,8 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
         limit: this._config.limit
       };
 
-      const username = this._getCurrentUsername();
-      if (username) {
-        params.assigned_to = username;
+      if (userValidation.username) {
+        params.assigned_to = userValidation.username;
       }
 
       const response = await this._hass.callService('tasktracker', 'get_recent_completions', params, {}, true, true);
