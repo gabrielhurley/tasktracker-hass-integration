@@ -370,6 +370,7 @@ export class TaskTrackerStyles {
         background: var(--ha-card-background, var(--card-background-color, #fff));
         border-radius: var(--ha-card-border-radius, 12px);
         border: 1px solid var(--divider-color);
+        position: relative;
       }
 
       .header {
