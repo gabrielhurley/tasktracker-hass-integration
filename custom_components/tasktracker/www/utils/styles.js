@@ -57,6 +57,8 @@ export class TaskTrackerStyles {
         align-items: center;
         justify-content: center;
       }
+      .tt-ds-label { margin-bottom: 16px; font-weight: 500; }
+      .tt-ds-label > .tt-checkbox { vertical-align: middle; }
       .tt-ds-preset-btn:hover, .tt-ds-preset-btn.tt-selected { border-color: var(--primary-color); background: var(--primary-color); color: var(--primary-text-color); }
       .tt-ds-preset-btn:disabled { opacity: 0.6; cursor: not-allowed; }
       .tt-ds-advanced { margin-top: 16px; border-top: 1px solid var(--divider-color); padding-top: 16px; }

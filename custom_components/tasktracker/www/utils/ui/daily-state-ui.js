@@ -178,17 +178,17 @@ export class TaskTrackerDailyStateUI {
                 <div class="tt-ds-button-row tt-flex-end">
                     <button class="tt-btn tt-btn--link back-to-simple">← Back to Simple</button>
                 </div>
-            <div class="tt-form-row">
-              <label class="tt-label">
-                <input type="checkbox" class="tt-checkbox" data-axis="is_sick" ${s.is_sick ? 'checked' : ''} /> I'm sick today (take it easy)
-              </label>
-            </div>
-            ${renderSliderRow('energy', 'Energy', s.energy, 1, 5, 'Higher energy enables more demanding tasks')}
-            ${renderSliderRow('motivation', 'Motivation', s.motivation, 1, 5, 'Higher motivation suggests more challenging tasks')}
-            ${renderSliderRow('focus', 'Focus', s.focus, 1, 5, 'Higher focus enables detail-oriented work')}
-            ${renderSliderRow('pain', 'Pain', s.pain, 1, 5, 'Higher pain reduces strenuous task suggestions')}
-            ${renderSliderRow('mood', 'Mood', s.mood, -2, 2, 'Mood affects task type and difficulty recommendations', true)}
-            ${renderSliderRow('free_time', 'Free Time', s.free_time, 1, 5, 'More free time allows longer task suggestions', false, true)}
+                ${renderSliderRow('energy', 'Energy', s.energy, 1, 5, 'Higher energy enables more demanding tasks')}
+                ${renderSliderRow('motivation', 'Motivation', s.motivation, 1, 5, 'Higher motivation suggests more challenging tasks')}
+                ${renderSliderRow('focus', 'Focus', s.focus, 1, 5, 'Higher focus enables detail-oriented work')}
+                ${renderSliderRow('pain', 'Pain', s.pain, 1, 5, 'Higher pain reduces strenuous task suggestions')}
+                ${renderSliderRow('mood', 'Mood', s.mood, -2, 2, 'Mood affects task type and difficulty recommendations', true)}
+                ${renderSliderRow('free_time', 'Free Time', s.free_time, 1, 5, 'More free time allows longer task suggestions', false, true)}
+                <div class="tt-form-row">
+                  <label class="tt-ds-label">
+                    <input type="checkbox" class="tt-checkbox" data-axis="is_sick" ${s.is_sick ? 'checked' : ''} /> I'm sick today
+                  </label>
+                </div>
 
             ${opts.mode === 'embedded' ? `
               <button class="complete-btn advanced-save-btn" ${opts.saving ? 'disabled' : ''}>
