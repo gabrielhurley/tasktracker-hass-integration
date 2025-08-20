@@ -2,6 +2,7 @@ import { TaskTrackerBaseCard } from './base-card.js';
 import { TaskTrackerUtils } from '../tasktracker-utils.js';
 import { TaskTrackerDateTime } from './datetime-utils.js';
 import { TaskTrackerStyles } from './styles.js';
+import { TaskDataManager } from './task-data-manager.js';
 
 /**
  * TaskTrackerTasksBaseCard
@@ -21,6 +22,7 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     this._initialLoad = true;
     this._refreshing = false;
     this._error = null;
+    this._taskDataManager = new TaskDataManager();
   }
 
   async _fetchAvailableUsers() {
@@ -136,11 +138,12 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     return { borderInfo, taskClasses, borderClass };
   }
 
-  renderSimpleTaskRow(task, { showActions = false } = {}) {
+  renderSimpleTaskRow(task, { showActions = false, taskType = 'task' } = {}) {
     const metadataParts = this.buildTaskMetadata(task);
-    const { taskClasses, borderClass } = this.getTaskCssAndBorder(task, 'task');
+    const { taskClasses, borderClass } = this.getTaskCssAndBorder(task, taskType);
+    const taskKey = this._taskDataManager.storeTaskData(task, taskType);
     return `
-      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" data-task-data='${JSON.stringify(task)}'>
+      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" data-task-key="${taskKey}">
         <div class="task-content">
           <div class="task-name">
             ${task.name}
@@ -150,13 +153,63 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
         </div>
         ${showActions ? `
           <div class="task-actions">
-            <button class="complete-btn" data-task-data='${JSON.stringify(task)}'>
+            <button class="complete-btn" data-task-key="${taskKey}">
               Complete
             </button>
           </div>
         ` : ''}
       </div>
     `;
+  }
+
+  /**
+   * Clear the task data manager (called when data is refreshed)
+   */
+  clearTaskData() {
+    this._taskDataManager.clear();
+  }
+
+  /**
+   * Get task data by key
+   * @param {string} taskKey - The task key from data-task-key attribute
+   * @returns {Object|null} - Object with {task, taskType} or null if not found
+   */
+  getTaskData(taskKey) {
+    return this._taskDataManager.getTaskData(taskKey);
+  }
+
+  /**
+   * Setup standard task item click handlers
+   * @param {Function} onTaskClick - Callback for task item clicks (task, taskType) => void
+   * @param {Function} onCompleteClick - Optional callback for complete button clicks (task, taskType) => void
+   */
+  setupTaskClickHandlers(onTaskClick, onCompleteClick = null) {
+    // Task item click handlers
+    const taskItems = this.shadowRoot.querySelectorAll('.task-item');
+    taskItems.forEach((item) => {
+      item.addEventListener('click', () => {
+        const taskKey = item.dataset.taskKey;
+        const taskData = this.getTaskData(taskKey);
+        if (taskData && onTaskClick) {
+          onTaskClick(taskData.task, taskData.taskType);
+        }
+      });
+    });
+
+    // Complete button click handlers (if provided)
+    if (onCompleteClick) {
+      const completeButtons = this.shadowRoot.querySelectorAll('.complete-btn');
+      completeButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent event bubbling to parent task item
+          const taskKey = button.dataset.taskKey;
+          const taskData = this.getTaskData(taskKey);
+          if (taskData) {
+            onCompleteClick(taskData.task, taskData.taskType);
+          }
+        });
+      });
+    }
   }
 }
 

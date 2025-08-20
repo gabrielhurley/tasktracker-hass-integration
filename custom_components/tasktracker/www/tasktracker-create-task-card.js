@@ -89,6 +89,8 @@ class TaskTrackerCreateTaskCard extends TaskTrackerTasksBaseCard {
 
   _renderCreatedTask() {
     if (!this._createdTask) return '';
+    // Clear task data before rendering to avoid stale data
+    this.clearTaskData();
     return `
       <div class="tt-mt-24">
         <div class="tt-label tt-mb-8">Created Task</div>
@@ -136,33 +138,30 @@ class TaskTrackerCreateTaskCard extends TaskTrackerTasksBaseCard {
     const descEl = this.shadowRoot.querySelector('#tt-create-desc');
     if (descEl) descEl.addEventListener('input', (e) => { this._pendingDescription = e.target.value; });
 
-    // Task row click → modal
-    const taskItem = this.shadowRoot.querySelector('.task-item');
-    if (taskItem) {
-      taskItem.addEventListener('click', () => {
-        const taskData = JSON.parse(taskItem.dataset.taskData);
-        if (taskData) {
-          const modal = TaskTrackerUtils.createTaskModal(
-            taskData,
-            { ...(this._config || {}), userContext: this._userContext, user_context: this._userContext },
-            async (notes, completed_at = null) => { await this._completeTask(taskData, notes, completed_at); },
-            null,
-            this._availableUsers,
-            this._enhancedUsers,
-            (taskToEdit) => {
-              TaskTrackerTaskEditor.openEditModal(taskToEdit, { ...(this._config || {}), userContext: this._userContext, user_context: this._userContext }, async (taskToUpdate, updates) => { await this._saveTask(taskToUpdate, updates); });
-            },
-            null,
-            async () => {
-              await this._deleteTask(taskData);
-              this._createdTask = null;
-              this._render();
-            }
-          );
-          TaskTrackerUtils.showModal(modal);
-        }
-      });
-    }
+    // Setup task click handlers using the base class helper
+    this.setupTaskClickHandlers(
+      (task, taskType) => {
+        // Task click handler - show modal
+        const modal = TaskTrackerUtils.createTaskModal(
+          task,
+          { ...(this._config || {}), userContext: this._userContext, user_context: this._userContext },
+          async (notes, completed_at = null) => { await this._completeTask(task, notes, completed_at); },
+          null,
+          this._availableUsers,
+          this._enhancedUsers,
+          (taskToEdit) => {
+            TaskTrackerTaskEditor.openEditModal(taskToEdit, { ...(this._config || {}), userContext: this._userContext, user_context: this._userContext }, async (taskToUpdate, updates) => { await this._saveTask(taskToUpdate, updates); });
+          },
+          null,
+          async () => {
+            await this._deleteTask(task);
+            this._createdTask = null;
+            this._render();
+          }
+        );
+        TaskTrackerUtils.showModal(modal);
+      }
+    );
   }
 }
 

@@ -25,6 +25,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     this._refreshInterval = null;
     this._eventCleanup = null;
     this._showRecommendedOnly = true; // Default to showing recommended tasks only
+    this._taskDataMap = new Map(); // Store task data in memory instead of DOM
   }
 
   static getConfigElement() {
@@ -142,14 +143,17 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       if (planResponse && planResponse.response) {
         this._plan = planResponse.response;
         this._userContext = planResponse.response.user_context;
+        this._populateTaskDataMap();
       } else {
         this._plan = null;
         this._userContext = null;
+        this._taskDataMap.clear();
       }
     } catch (err) {
       console.error('Failed to fetch daily plan:', err);
       this._error = err.message;
       this._plan = null;
+      this._taskDataMap.clear();
     }
 
     this._loading = false;
@@ -175,6 +179,30 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       console.error('Failed to fetch daily state:', err);
       this._dailyState = null;
     }
+  }
+
+  _populateTaskDataMap() {
+    this._taskDataMap.clear();
+
+    if (!this._plan || !this._plan.data) {
+      return;
+    }
+
+    // Store self-care tasks
+    const selfCare = this._plan.data.self_care || [];
+    selfCare.forEach(task => {
+      this._taskDataMap.set(`self_care_${task.id}`, { task, taskType: 'self_care' });
+    });
+
+    // Store regular tasks
+    const tasks = this._plan.data.tasks || [];
+    tasks.forEach(task => {
+      this._taskDataMap.set(`task_${task.id}`, { task, taskType: 'task' });
+    });
+  }
+
+  _getTaskData(taskKey) {
+    return this._taskDataMap.get(taskKey);
   }
 
   _setupEventListeners() {
@@ -398,10 +426,10 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       const taskItems = this.shadowRoot.querySelectorAll('.task-item');
       taskItems.forEach((item) => {
         item.addEventListener('click', () => {
-          const taskData = JSON.parse(item.dataset.taskData);
-          const taskType = item.dataset.taskType;
+          const taskKey = item.dataset.taskKey;
+          const taskData = this._getTaskData(taskKey);
           if (taskData) {
-            this._showTaskModal(taskData, taskType);
+            this._showTaskModal(taskData.task, taskData.taskType);
           }
         });
       });
@@ -411,10 +439,11 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       completeButtons.forEach(button => {
         button.addEventListener('click', (e) => {
           e.stopPropagation(); // Prevent event bubbling to parent task item
-          const taskData = JSON.parse(button.dataset.taskData);
+          const taskKey = button.dataset.taskKey;
+          const taskData = this._getTaskData(taskKey);
           if (taskData) {
             // Generic completion - backend will determine window assignment based on current time
-            this._completeTask(taskData, '');
+            this._completeTask(taskData.task, '');
           }
         });
       });
@@ -427,32 +456,33 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
 
           // Find the parent task item to get task data
           const taskItem = windowItem.closest('.task-item');
-          if (taskItem && taskItem.dataset.taskData) {
-            const taskData = JSON.parse(taskItem.dataset.taskData);
-            if (taskData && taskData.windows) {
+          if (taskItem && taskItem.dataset.taskKey) {
+            const taskKey = taskItem.dataset.taskKey;
+            const taskData = this._getTaskData(taskKey);
+            if (taskData && taskData.task.windows) {
               // Extract window index from the element ID (format: window-taskId-index)
               const windowId = windowItem.id;
               const windowIndexMatch = windowId.match(/window-\d+-(\d+)$/);
 
               if (windowIndexMatch) {
                 const windowIndex = parseInt(windowIndexMatch[1], 10);
-                const window = taskData.windows[windowIndex];
+                const window = taskData.task.windows[windowIndex];
 
-                                if (window) {
+                if (window) {
                   // Calculate the appropriate completion timestamp based on the window
                   const completionTimestamp = TaskTrackerDateTime.getCompletionTimestamp(window, this._userContext);
 
                   // Complete the task with the calculated timestamp
-                  this._completeTask(taskData, '', completionTimestamp);
+                  this._completeTask(taskData.task, '', completionTimestamp);
                 } else {
                   console.warn('Window not found at index:', windowIndex);
                   // Fallback to generic completion
-                  this._completeTask(taskData, '');
+                  this._completeTask(taskData.task, '');
                 }
               } else {
                 console.warn('Could not parse window index from ID:', windowId);
                 // Fallback to generic completion
-                this._completeTask(taskData, '');
+                this._completeTask(taskData.task, '');
               }
             }
           }
@@ -645,10 +675,10 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     ].filter(Boolean).join(' ');
 
     const borderClass = borderInfo.borderClass || '';
+    const taskKey = `${taskType}_${task.id}`;
     return `
       <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}"
-           data-task-data='${JSON.stringify(task)}'
-           data-task-type="${taskType}"
+           data-task-key="${taskKey}"
            >
         <div class="task-content">
           <div class="task-name">
@@ -661,7 +691,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         </div>
         ${this._config.show_completion_actions ? `
           <div class="task-actions">
-            <button class="complete-btn" data-task-data='${JSON.stringify(task)}'>
+            <button class="complete-btn" data-task-key="${taskKey}">
               Complete
             </button>
           </div>
@@ -793,10 +823,10 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     ].filter(Boolean).join(' ');
 
     const borderClass2 = borderInfo.borderClass || '';
+    const taskKey = `self_care_${task.id}`;
     return `
       <div class="${[statusClasses, borderClass2].filter(Boolean).join(' ')}"
-           data-task-data='${JSON.stringify(task)}'
-           data-task-type="self_care"
+           data-task-key="${taskKey}"
            >
         <div class="task-content">
           <div class="task-name">
@@ -812,7 +842,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         </div>
         ${this._config.show_completion_actions && !allOccurrencesComplete ? `
           <div class="task-actions">
-            <button class="complete-btn" data-task-data='${JSON.stringify(task)}'>
+            <button class="complete-btn" data-task-key="${taskKey}">
               Complete
             </button>
           </div>

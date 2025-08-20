@@ -164,6 +164,7 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
       // Always update tasks and re-render on initial load, only compare for subsequent refreshes
       if (this._initialLoad || !this._tasksEqual(this._tasks, newTasks)) {
         this._tasks = newTasks;
+        this.clearTaskData(); // Clear task data when refreshing
         this._loading = false;
         this._refreshing = false;
         this._initialLoad = false;
@@ -306,16 +307,12 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
         });
       }
 
-      // Task item click handlers
-      const taskItems = this.shadowRoot.querySelectorAll('.task-item');
-      taskItems.forEach((item) => {
-        item.addEventListener('click', () => {
-          const taskData = JSON.parse(item.dataset.taskData);
-          if (taskData) {
-            this._showTaskModal(taskData);
-          }
-        });
-      });
+      // Setup task click handlers using the base class helper
+      this.setupTaskClickHandlers(
+        (task, taskType) => {
+          this._showTaskModal(task);
+        }
+      );
     }
   }
 

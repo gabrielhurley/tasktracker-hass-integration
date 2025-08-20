@@ -19,3 +19,4 @@ export * from './ui/daily-state-modal.js';
 export * from './base-card.js';
 export * from './task-cards-base.js';
 export * from './base-config-editor.js';
+export * from './task-data-manager.js';

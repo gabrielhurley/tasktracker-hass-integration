@@ -159,7 +159,7 @@ intents:
   CreateTaskFromDescription:
     data:
       - sentences:
-          - "(create|add|make) [a|the] [new] recurring task {task_details}"
+          - "(create|add|make) [a|the] [new] (recurring|recuring) task {task_details}"
         slots:
           task_type:
             value: "RecurringTask"
