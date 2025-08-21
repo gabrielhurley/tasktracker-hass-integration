@@ -307,40 +307,8 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
   _formatExpirationStatus(leftover) {
     if (!leftover.due_date) return 'No expiration';
 
-    if (this._userContext) {
-      // Use timezone-aware calculation when user context is available
-      return TaskTrackerUtils.formatDueDate(leftover.due_date, this._userContext, leftover);
-    }
-
-    // Fallback to browser timezone calculation
-    try {
-      const dueDate = new Date(leftover.due_date);
-      const now = new Date();
-      const diffMs = dueDate - now;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-      if (diffMs < 0) {
-        // Expired
-        const expiredDays = Math.abs(diffDays);
-        if (expiredDays === 0) {
-          return 'Expired today';
-        } else if (expiredDays === 1) {
-          return '1 day expired';
-        } else {
-          return `${expiredDays} days expired`;
-        }
-      } else if (diffDays === 0) {
-        // Expires today
-        return diffHours > 0 ? `${diffHours}h left` : 'Expires now';
-      } else if (diffDays === 1) {
-        return 'Expires tomorrow';
-      } else {
-        return `${diffDays} days left`;
-      }
-    } catch {
-      return 'Unknown status';
-    }
+    // Use the centralized formatDueDate utility for consistency with other cards
+    return TaskTrackerUtils.formatDueDate(leftover.due_date, this._userContext, leftover);
   }
 
 
@@ -440,14 +408,21 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
     if (this._config.show_age) metadataParts.push(`${age} old`);
     metadataParts.push(expirationStatus);
 
-    // Calculate border styling using the consistent pattern from other cards
-    const dueDate = leftover.due_date || leftover.expiration_date;
-    const daysOverdue = dueDate && this._userContext
-      ? TaskTrackerDateTime.calculateDaysOverdue(dueDate, this._userContext)
-      : 0;
-
-    // Use the same border styling logic as other cards
-    const borderInfo = TaskTrackerUtils.getTaskBorderStyle(leftover, 'task', daysOverdue);
+    // Use the same border styling logic as other cards - prioritize API data
+    // If API provides is_overdue and days_overdue, use those directly
+    // Otherwise fall back to frontend calculation
+    let borderInfo;
+    if (leftover.is_overdue !== undefined || leftover.days_overdue !== undefined) {
+      // API-provided data - use it directly with getTaskBorderStyle
+      borderInfo = TaskTrackerUtils.getTaskBorderStyle(leftover, 'task', leftover.days_overdue || 0);
+    } else {
+      // Fallback to frontend calculation for border styling
+      const dueDate = leftover.due_date || leftover.expiration_date;
+      const daysOverdue = dueDate && this._userContext
+        ? TaskTrackerDateTime.calculateDaysOverdue(dueDate, this._userContext)
+        : 0;
+      borderInfo = TaskTrackerUtils.getTaskBorderStyle(leftover, 'task', daysOverdue);
+    }
 
     const taskClasses = [
       'task-item',
