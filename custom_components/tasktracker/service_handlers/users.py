@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Awaitable
+from typing import TYPE_CHECKING
 
-from homeassistant.core import HomeAssistant, ServiceCall
+from tasktracker.const import CONF_HA_USER_ID, CONF_TASKTRACKER_USERNAME, CONF_USERS
+from tasktracker.utils import get_available_tasktracker_usernames
 
-from ..const import CONF_HA_USER_ID, CONF_TASKTRACKER_USERNAME, CONF_USERS
-from ..utils import get_available_tasktracker_usernames
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+    from typing import Any
+
+    from homeassistant.core import HomeAssistant, ServiceCall
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,7 +22,46 @@ def get_available_users_handler_factory(
     hass: HomeAssistant,
     get_current_config: Callable[[], dict[str, Any]],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
-    async def get_available_users_service(call: ServiceCall) -> dict[str, Any]:  # noqa: ARG001
+    """
+    Create a service handler for getting available users.
+
+    Args:
+        hass: The Home Assistant instance.
+        get_current_config: Function to get the current configuration.
+
+    Returns:
+        A service handler function that gets available users.
+
+    The returned handler expects no service data parameters.
+
+    The handler will:
+        - Get available TaskTracker usernames from configuration
+        - Enhance user data with Home Assistant user information
+        - Create a spoken response listing available users
+        - Log the operation result
+        - Return enhanced user data including:
+            - usernames: List of available TaskTracker usernames
+            - enhanced_users: List of user objects with display names and HA user IDs
+
+    """
+
+    async def get_available_users_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        Get available users with enhanced information.
+
+        Args:
+            call: The Home Assistant service call (unused).
+
+        Returns:
+            A dictionary containing:
+                - success (bool): Always True
+                - spoken_response (str): Human-readable list of available users
+                - data (dict): Contains 'users' and 'enhanced_users' lists
+
+        Raises:
+            Exception: For any unexpected errors during user lookup.
+
+        """
         try:
             current_config = get_current_config()
             usernames = get_available_tasktracker_usernames(current_config)
@@ -26,7 +70,9 @@ def get_available_users_handler_factory(
             enhanced_users = []
 
             ha_users = await hass.auth.async_get_users()
-            ha_user_map = {user.id: user.name for user in ha_users if user.is_active and user.name}
+            ha_user_map = {
+                user.id: user.name for user in ha_users if user.is_active and user.name
+            }
 
             for username in usernames:
                 display_name = username

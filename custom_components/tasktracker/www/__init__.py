@@ -59,7 +59,7 @@ class JSModuleRegistration:
     async def _async_wait_for_lovelace_resources(self) -> None:
         """Wait for lovelace resources to have loaded."""
 
-        async def _check_lovelace_resources_loaded(now: datetime.datetime) -> None:  # noqa: ARG001
+        async def _check_lovelace_resources_loaded(now: datetime.datetime) -> None:
             if self.lovelace.resources.loaded:
                 await self._async_register_modules()
             else:
@@ -153,7 +153,7 @@ class JSModuleRegistration:
                 # Extract just the version part after v=
                 # Handle cases where there might be other parameters after
                 version_part = query_params.split("v=", 1)[1]
-                # Get just the version value, split on both & and ? to handle malformed URLs  # noqa: E501
+                # Get just the version value, split on both & and ? to handle malformed URLs
                 version = version_part.split("&")[0].split("?")[0]
                 return version  # noqa: RET504
         return "0"

@@ -22,8 +22,7 @@ from .utils import get_user_context
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-
-    from .api import TaskTrackerAPI
+    from tasktracker.api import TaskTrackerAPI
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -419,7 +418,7 @@ class GetRecommendedTasksForPersonAndTimeIntentHandler(BaseTaskTrackerIntentHand
                 )
             else:
                 response.async_set_speech(
-                    f"No recommended tasks found for {person} with {available_time} minutes available."  # noqa: E501
+                    f"No recommended tasks found for {person} with {available_time} minutes available."
                 )
 
         return response

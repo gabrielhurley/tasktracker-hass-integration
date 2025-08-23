@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Awaitable
+from typing import TYPE_CHECKING
 
-from homeassistant.core import ServiceCall
+from tasktracker.api import TaskTrackerAPI, TaskTrackerAPIError
 
-from ..api import TaskTrackerAPI, TaskTrackerAPIError
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+    from typing import Any
+
+    from homeassistant.core import ServiceCall
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,7 +19,41 @@ _LOGGER = logging.getLogger(__name__)
 def delete_completion_handler_factory(
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:  # type: ignore[name-defined]
+    """
+    Create a service handler for deleting completion records.
+
+    Args:
+        api: The TaskTracker API client instance.
+
+    Returns:
+        A service handler function that deletes completion records.
+
+    The returned handler expects the following service data:
+        - completion_id (str): The ID of the completion record to delete.
+
+    The handler will:
+        - Delete the completion record via the API
+        - Fire a 'tasktracker_completion_deleted' event on success
+        - Log the operation result
+        - Return the API response
+
+    """
+
     async def delete_completion_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        Delete a completion record.
+
+        Args:
+            call: The Home Assistant service call containing the completion_id.
+
+        Returns:
+            The API response from the delete operation.
+
+        Raises:
+            TaskTrackerAPIError: If the API call fails.
+            Exception: For any other unexpected errors.
+
+        """
         try:
             result = await api.delete_completion(
                 completion_id=call.data["completion_id"],
@@ -44,7 +82,44 @@ def delete_completion_handler_factory(
 def update_completion_handler_factory(
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:  # type: ignore[name-defined]
+    """
+    Create a service handler for updating completion records.
+
+    Args:
+        api: The TaskTracker API client instance.
+
+    Returns:
+        A service handler function that updates completion records.
+
+    The returned handler expects the following service data:
+        - completion_id (str): The ID of the completion record to update.
+        - completed_by (str, optional): The username who completed the task.
+        - notes (str, optional): Notes about the completion.
+        - completed_at (str, optional): ISO timestamp of when the task was completed.
+
+    The handler will:
+        - Update the completion record via the API
+        - Fire a 'tasktracker_completion_updated' event on success
+        - Log the operation result
+        - Return the API response
+
+    """
+
     async def update_completion_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        Update a completion record.
+
+        Args:
+            call: The Home Assistant service call containing update data.
+
+        Returns:
+            The API response from the update operation.
+
+        Raises:
+            TaskTrackerAPIError: If the API call fails.
+            Exception: For any other unexpected errors.
+
+        """
         try:
             result = await api.update_completion(
                 completion_id=call.data["completion_id"],

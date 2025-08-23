@@ -6,8 +6,7 @@ import logging
 from typing import Any
 
 import aiohttp
-
-from .const import (
+from tasktracker.const import (
     ENDPOINT_ALL_TASKS,
     ENDPOINT_AVAILABLE_TASKS,
     ENDPOINT_COMPLETE_TASK,

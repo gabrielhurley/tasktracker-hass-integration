@@ -5,7 +5,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .const import CONF_HA_USER_ID, CONF_TASKTRACKER_USERNAME, CONF_USERS, DOMAIN
+from tasktracker.const import (
+    CONF_HA_USER_ID,
+    CONF_TASKTRACKER_USERNAME,
+    CONF_USERS,
+    DOMAIN,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -116,7 +121,7 @@ def validate_api_response(response: dict[str, Any] | None) -> bool:
 
 
 def get_tasktracker_username_for_ha_user(
-    hass: HomeAssistant,  # noqa: ARG001
+    hass: HomeAssistant,
     ha_user_id: str | None,
     config: dict[str, Any],
 ) -> str | None:
@@ -179,7 +184,7 @@ def get_tasktracker_username_for_ha_user(
 
 
 def get_ha_user_for_tasktracker_username(
-    hass: HomeAssistant,  # noqa: ARG001
+    hass: HomeAssistant,
     tasktracker_username: str,
     config: dict[str, Any],
 ) -> str | None:
@@ -214,8 +219,8 @@ def get_ha_user_for_tasktracker_username(
 
 
 def get_current_user_context(
-    hass: HomeAssistant,  # noqa: ARG001
-    config: dict[str, Any],  # noqa: ARG001
+    hass: HomeAssistant,
+    config: dict[str, Any],
 ) -> dict[str, str | None]:
     """
     Get the current user context from Home Assistant.
@@ -353,7 +358,7 @@ async def validate_user_configuration(
         if ha_user_id not in ha_user_ids:
             if ha_user_id.lower() in ha_user_names:
                 issues.append(
-                    f"User mapping {i + 1}: '{ha_user_id}' appears to be a display name "  # noqa: E501
+                    f"User mapping {i + 1}: '{ha_user_id}' appears to be a display name "
                     f"instead of a user ID. Please reconfigure this mapping using the "
                     f"integration options."
                 )

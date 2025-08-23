@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Awaitable
+from typing import TYPE_CHECKING
 
-from homeassistant.core import HomeAssistant, ServiceCall
+from tasktracker.api import TaskTrackerAPI, TaskTrackerAPIError
 
-from ..api import TaskTrackerAPI, TaskTrackerAPIError
-from ..const import EVENT_DAILY_PLAN, EVENT_DAILY_STATE_SET
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+    from typing import Any
+
+    from homeassistant.core import HomeAssistant, ServiceCall
+
+from tasktracker.const import EVENT_DAILY_PLAN, EVENT_DAILY_STATE_SET
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,7 +24,47 @@ def get_daily_plan_handler_factory(
     get_current_config: Callable[[], dict[str, Any]],
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
+    """
+    Create a service handler for retrieving daily plans.
+
+    Args:
+        hass: The Home Assistant instance.
+        api: The TaskTracker API client instance.
+        get_current_config: Function to get the current configuration.
+        user_lookup_fn: Function to look up usernames from Home Assistant user IDs.
+
+    Returns:
+        A service handler function that retrieves daily plans.
+
+    The returned handler expects the following service data:
+        - username (str, optional): The username to get the plan for. If not provided,
+          will be inferred from the service call context.
+        - fair_weather (bool, optional): Whether to include fair weather tasks.
+        - select_recommended (bool, optional): Whether to select recommended tasks.
+
+    The handler will:
+        - Retrieve the daily plan via the API
+        - Fire a 'tasktracker_daily_plan' event on success
+        - Log the operation result
+        - Return the API response
+
+    """
+
     async def get_daily_plan_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        Get a daily plan for a user.
+
+        Args:
+            call: The Home Assistant service call containing plan parameters.
+
+        Returns:
+            The API response containing the daily plan.
+
+        Raises:
+            TaskTrackerAPIError: If the API call fails.
+            Exception: For any other unexpected errors.
+
+        """
         try:
             username = call.data.get("username")
             if not username:
@@ -58,7 +103,44 @@ def get_daily_plan_encouragement_handler_factory(
     get_current_config: Callable[[], dict[str, Any]],
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
+    """
+    Create a service handler for retrieving daily plan encouragement messages.
+
+    Args:
+        hass: The Home Assistant instance.
+        api: The TaskTracker API client instance.
+        get_current_config: Function to get the current configuration.
+        user_lookup_fn: Function to look up usernames from Home Assistant user IDs.
+
+    Returns:
+        A service handler function that retrieves encouragement messages.
+
+    The returned handler expects the following service data:
+        - username (str, optional): The username to get encouragement for. If not provided,
+          will be inferred from the service call context.
+
+    The handler will:
+        - Retrieve encouragement messages via the API
+        - Log the operation result
+        - Return the API response
+
+    """
+
     async def get_daily_plan_encouragement_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        Get encouragement messages for a user's daily plan.
+
+        Args:
+            call: The Home Assistant service call containing user information.
+
+        Returns:
+            The API response containing encouragement messages.
+
+        Raises:
+            TaskTrackerAPIError: If the API call fails.
+            Exception: For any other unexpected errors.
+
+        """
         try:
             username = call.data.get("username")
             if not username:
@@ -72,7 +154,9 @@ def get_daily_plan_encouragement_handler_factory(
             _LOGGER.exception("Failed to get daily plan encouragement")
             raise
         except Exception:
-            _LOGGER.exception("Unexpected error in get_daily_plan_encouragement_service")
+            _LOGGER.exception(
+                "Unexpected error in get_daily_plan_encouragement_service"
+            )
             raise
 
     return get_daily_plan_encouragement_service
@@ -84,7 +168,47 @@ def get_daily_state_handler_factory(
     get_current_config: Callable[[], dict[str, Any]],
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
+    """
+    Create a service handler for retrieving daily state information.
+
+    Args:
+        hass: The Home Assistant instance.
+        api: The TaskTracker API client instance.
+        get_current_config: Function to get the current configuration.
+        user_lookup_fn: Function to look up usernames from Home Assistant user IDs.
+
+    Returns:
+        A service handler function that retrieves daily state.
+
+    The returned handler expects the following service data:
+        - username (str, optional): The username to get state for. If not provided,
+          will be inferred from the service call context.
+
+    The handler will:
+        - Retrieve daily state via the API
+        - Log the operation result
+        - Return the API response
+
+    Raises:
+        TaskTrackerAPIError: If no username can be determined from context.
+
+    """
+
     async def get_daily_state_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        Get daily state information for a user.
+
+        Args:
+            call: The Home Assistant service call containing user information.
+
+        Returns:
+            The API response containing daily state information.
+
+        Raises:
+            TaskTrackerAPIError: If the API call fails or no username can be determined.
+            Exception: For any other unexpected errors.
+
+        """
         try:
             username = call.data.get("username")
             if not username:
@@ -115,7 +239,55 @@ def set_daily_state_handler_factory(
     get_current_config: Callable[[], dict[str, Any]],
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
+    """
+    Create a service handler for setting daily state information.
+
+    Args:
+        hass: The Home Assistant instance.
+        api: The TaskTracker API client instance.
+        get_current_config: Function to get the current configuration.
+        user_lookup_fn: Function to look up usernames from Home Assistant user IDs.
+
+    Returns:
+        A service handler function that sets daily state.
+
+    The returned handler expects the following service data:
+        - username (str, optional): The username to set state for. If not provided,
+          will be inferred from the service call context.
+        - energy (int, optional): Energy level (1-10).
+        - motivation (int, optional): Motivation level (1-10).
+        - focus (int, optional): Focus level (1-10).
+        - pain (int, optional): Pain level (1-10).
+        - mood (int, optional): Mood level (1-10).
+        - free_time (int, optional): Available free time in minutes.
+        - is_sick (bool, optional): Whether the user is sick.
+
+    The handler will:
+        - Set daily state via the API
+        - Fire a 'tasktracker_daily_state_set' event on success
+        - Log the operation result
+        - Return the API response
+
+    Raises:
+        TaskTrackerAPIError: If no username can be determined from context.
+
+    """
+
     async def set_daily_state_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        Set daily state information for a user.
+
+        Args:
+            call: The Home Assistant service call containing state data.
+
+        Returns:
+            The API response from the state update operation.
+
+        Raises:
+            TaskTrackerAPIError: If the API call fails or no username can be determined.
+            Exception: For any other unexpected errors.
+
+        """
         try:
             username = call.data.get("username")
             if not username:

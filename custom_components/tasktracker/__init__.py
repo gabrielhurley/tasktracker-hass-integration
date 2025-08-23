@@ -95,7 +95,7 @@ async def _setup_voice_sentences(hass: HomeAssistant) -> bool:
             "Please restart Home Assistant to enable voice commands.",
             target_file,
         )
-        return True  # noqa: TRY300
+        return True
 
     except PermissionError:
         _LOGGER.exception(
@@ -108,7 +108,7 @@ async def _setup_voice_sentences(hass: HomeAssistant) -> bool:
         return False
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:  # noqa: ARG001
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the TaskTracker integration from configuration.yaml (if needed)."""
     return True
 
@@ -149,13 +149,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             voice_setup_success = await _setup_voice_sentences(hass)
             if not voice_setup_success:
                 _LOGGER.debug(
-                    "Automatic voice setup failed. See VOICE_SETUP.md for manual instructions."  # noqa: E501
+                    "Automatic voice setup failed. See VOICE_SETUP.md for manual instructions."
                 )
         except Exception as e:  # noqa: BLE001
             _LOGGER.debug("Voice setup skipped due to error: %s", e)
 
         # Set up platforms if we add any entities later
-        # await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS) # noqa: ERA001 E501
+        # await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS) # noqa: ERA001
 
         _LOGGER.info("TaskTracker integration setup completed successfully")
 
@@ -174,7 +174,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_unload_services(hass)
 
     # Unload platforms if we have any
-    # unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS) # noqa: ERA001 E501
+    # unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS) # noqa: ERA001
 
     # Remove from hass.data
     hass.data[DOMAIN].pop(entry.entry_id)

@@ -19,7 +19,7 @@ def run_tests() -> int:
         import pytest_homeassistant_custom_component  # noqa: F401
     except ImportError as e:
         print(  # noqa: T201
-            "Error: Missing test dependencies. Run: pip install -r requirements-test.txt"  # noqa: E501
+            "Error: Missing test dependencies. Run: pip install -r requirements-test.txt"
         )
         print(f"   Missing: {e.name}")  # noqa: T201
         sys.exit(1)

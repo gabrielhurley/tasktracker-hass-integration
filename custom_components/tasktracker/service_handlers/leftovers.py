@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Awaitable
+from typing import TYPE_CHECKING
 
-from homeassistant.core import HomeAssistant, ServiceCall
+from tasktracker.api import TaskTrackerAPI, TaskTrackerAPIError
 
-from ..api import TaskTrackerAPI, TaskTrackerAPIError
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+    from typing import Any
+
+    from homeassistant.core import HomeAssistant, ServiceCall
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +23,48 @@ def create_leftover_handler_factory(
     get_current_config: Callable[[], dict[str, Any]],
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
+    """
+    Create a service handler for creating leftover items.
+
+    Args:
+        hass: The Home Assistant instance.
+        api: The TaskTracker API client instance.
+        get_current_config: Function to get the current configuration.
+        user_lookup_fn: Function to look up usernames from Home Assistant user IDs.
+
+    Returns:
+        A service handler function that creates leftover items.
+
+    The returned handler expects the following service data:
+        - name (str): The name of the leftover item.
+        - assigned_to (str, optional): The username assigned to the leftover. If not provided,
+          will be inferred from the service call context.
+        - shelf_life_days (int, optional): How many days the leftover is good for.
+        - days_ago (int, optional): How many days ago the leftover was created.
+
+    The handler will:
+        - Create the leftover item via the API
+        - Fire a 'tasktracker_leftover_created' event on success
+        - Log the operation result
+        - Return the API response
+
+    """
+
     async def create_leftover_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        Create a leftover item.
+
+        Args:
+            call: The Home Assistant service call containing leftover data.
+
+        Returns:
+            The API response from the leftover creation operation.
+
+        Raises:
+            TaskTrackerAPIError: If the API call fails.
+            Exception: For any other unexpected errors.
+
+        """
         try:
             result = await api.create_leftover(
                 name=call.data["name"],
@@ -52,7 +98,40 @@ def create_leftover_handler_factory(
 def list_leftovers_handler_factory(
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
+    """
+    Create a service handler for listing leftover items.
+
+    Args:
+        api: The TaskTracker API client instance.
+
+    Returns:
+        A service handler function that lists leftover items.
+
+    The returned handler expects the following service data:
+        - assigned_to (str, optional): Filter leftovers by assigned user.
+
+    The handler will:
+        - Retrieve leftover items via the API
+        - Log the operation result
+        - Return the API response
+
+    """
+
     async def list_leftovers_service(call: ServiceCall) -> dict[str, Any]:
+        """
+        List leftover items.
+
+        Args:
+            call: The Home Assistant service call containing filter parameters.
+
+        Returns:
+            The API response containing the list of leftover items.
+
+        Raises:
+            TaskTrackerAPIError: If the API call fails.
+            Exception: For any other unexpected errors.
+
+        """
         try:
             result = await api.list_leftovers(
                 assigned_to=call.data.get("assigned_to"),

@@ -11,9 +11,8 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_API_KEY, CONF_HOST
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-
-from .api import TaskTrackerAPI
-from .const import (
+from tasktracker.api import TaskTrackerAPI
+from tasktracker.const import (
     CONF_HA_USER_ID,
     CONF_TASKTRACKER_USERNAME,
     CONF_USERS,
@@ -145,7 +144,7 @@ class TaskTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "configured_users": "\n".join(
                     [
-                        f"- {user[CONF_TASKTRACKER_USERNAME]} (HA ID: {user[CONF_HA_USER_ID]})"  # noqa: E501
+                        f"- {user[CONF_TASKTRACKER_USERNAME]} (HA ID: {user[CONF_HA_USER_ID]})"
                         for user in self._users
                     ]
                 )

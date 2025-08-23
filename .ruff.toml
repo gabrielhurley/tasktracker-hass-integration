@@ -17,6 +17,11 @@ ignore = [
     "D212", # multi-line-summary-first-line (incompatible with formatter)
     "COM812", # incompatible with formatter
     "ISC001", # incompatible with formatter
+    # Custom ignores for this project
+    "E501", # Don't care about line length
+    "TRY300", # Not worth fighting about the code structure
+    "TRY301", # Not worth fighting about the code structure
+    "ARG001", # Matching method signatures for clarity isn't wrong
 ]
 
 [lint.flake8-pytest-style]

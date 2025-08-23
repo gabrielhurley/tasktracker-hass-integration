@@ -5,7 +5,6 @@ from __future__ import annotations
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
-
 # Service schemas
 COMPLETE_TASK_SCHEMA = vol.Schema(
     {
@@ -101,14 +100,18 @@ GET_ALL_TASKS_SCHEMA = vol.Schema(
 UPDATE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
-        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
+        vol.Required("task_type"): vol.In(
+            ["RecurringTask", "AdHocTask", "SelfCareTask"]
+        ),
         vol.Required("assigned_to"): cv.string,
         # BaseTask fields
         vol.Optional("name"): cv.string,
         vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
         vol.Optional("notes"): cv.string,
         vol.Optional("is_active"): cv.boolean,
-        vol.Optional("overdue_severity"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
+        vol.Optional("overdue_severity"): vol.All(
+            cv.positive_int, vol.Range(min=1, max=3)
+        ),
         # DurationMixin field
         vol.Optional("duration_minutes"): cv.positive_int,
         # FrequencyMixin fields (RecurringTask, SelfCareTask)
@@ -161,7 +164,9 @@ UPDATE_COMPLETION_SCHEMA = vol.Schema(
 
 CREATE_TASK_FROM_DESCRIPTION_SCHEMA = vol.Schema(
     {
-        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
+        vol.Required("task_type"): vol.In(
+            ["RecurringTask", "AdHocTask", "SelfCareTask"]
+        ),
         vol.Required("task_description"): cv.string,
         vol.Optional("assigned_to"): cv.string,
     }
@@ -208,7 +213,9 @@ SET_DAILY_STATE_SCHEMA = vol.Schema(
 DELETE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.positive_int,
-        vol.Required("task_type"): vol.In(["RecurringTask", "AdHocTask", "SelfCareTask"]),
+        vol.Required("task_type"): vol.In(
+            ["RecurringTask", "AdHocTask", "SelfCareTask"]
+        ),
         vol.Optional("assigned_to"): cv.string,
     }
 )

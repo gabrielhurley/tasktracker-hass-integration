@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from homeassistant.core import HomeAssistant, SupportsResponse
-
-from .api import TaskTrackerAPI
-from .const import (
+from homeassistant.core import SupportsResponse
+from tasktracker.const import (
     DOMAIN,
     SERVICE_COMPLETE_TASK,
     SERVICE_COMPLETE_TASK_BY_NAME,
@@ -31,69 +29,77 @@ from .const import (
     SERVICE_UPDATE_COMPLETION,
     SERVICE_UPDATE_TASK,
 )
-from .utils import (
-    get_tasktracker_username_for_ha_user,
-)
 
-# Import schemas and handler factories (refactored into modules)
-from .service_schemas import (
-    COMPLETE_TASK_SCHEMA,
-    COMPLETE_TASK_BY_NAME_SCHEMA,
-    CREATE_LEFTOVER_SCHEMA,
-    CREATE_ADHOC_TASK_SCHEMA,
-    QUERY_TASK_SCHEMA,
-    GET_RECOMMENDED_TASKS_SCHEMA,
-    GET_AVAILABLE_TASKS_SCHEMA,
-    GET_RECENT_COMPLETIONS_SCHEMA,
-    LIST_LEFTOVERS_SCHEMA,
-    GET_ALL_TASKS_SCHEMA,
-    UPDATE_TASK_SCHEMA,
-    DELETE_COMPLETION_SCHEMA,
-    UPDATE_COMPLETION_SCHEMA,
-    CREATE_TASK_FROM_DESCRIPTION_SCHEMA,
-    GET_DAILY_PLAN_SCHEMA,
-    GET_DAILY_PLAN_ENCOURAGEMENT_SCHEMA,
-    GET_DAILY_STATE_SCHEMA,
-    SET_DAILY_STATE_SCHEMA,
-    DELETE_TASK_SCHEMA,
-)
-from .service_handlers.tasks import (
-    complete_task_handler_factory,
-    complete_task_by_name_handler_factory,
-    create_adhoc_task_handler_factory,
-    query_task_handler_factory,
-    get_recommended_tasks_handler_factory,
-    get_available_tasks_handler_factory,
-    get_all_tasks_handler_factory,
-    get_recent_completions_handler_factory,
-    update_task_handler_factory,
-    create_task_from_description_handler_factory,
-    delete_task_handler_factory,
-)
-from .service_handlers.leftovers import (
-    create_leftover_handler_factory,
-    list_leftovers_handler_factory,
-)
 from .service_handlers.completions import (
     delete_completion_handler_factory,
     update_completion_handler_factory,
 )
 from .service_handlers.daily import (
-    get_daily_plan_handler_factory,
     get_daily_plan_encouragement_handler_factory,
+    get_daily_plan_handler_factory,
     get_daily_state_handler_factory,
     set_daily_state_handler_factory,
+)
+from .service_handlers.leftovers import (
+    create_leftover_handler_factory,
+    list_leftovers_handler_factory,
+)
+from .service_handlers.tasks import (
+    complete_task_by_name_handler_factory,
+    complete_task_handler_factory,
+    create_adhoc_task_handler_factory,
+    create_task_from_description_handler_factory,
+    delete_task_handler_factory,
+    get_all_tasks_handler_factory,
+    get_available_tasks_handler_factory,
+    get_recent_completions_handler_factory,
+    get_recommended_tasks_handler_factory,
+    query_task_handler_factory,
+    update_task_handler_factory,
 )
 from .service_handlers.users import (
     get_available_users_handler_factory,
 )
+
+# Import schemas and handler factories (refactored into modules)
+from .service_schemas import (
+    COMPLETE_TASK_BY_NAME_SCHEMA,
+    COMPLETE_TASK_SCHEMA,
+    CREATE_ADHOC_TASK_SCHEMA,
+    CREATE_LEFTOVER_SCHEMA,
+    CREATE_TASK_FROM_DESCRIPTION_SCHEMA,
+    DELETE_COMPLETION_SCHEMA,
+    DELETE_TASK_SCHEMA,
+    GET_ALL_TASKS_SCHEMA,
+    GET_AVAILABLE_TASKS_SCHEMA,
+    GET_DAILY_PLAN_ENCOURAGEMENT_SCHEMA,
+    GET_DAILY_PLAN_SCHEMA,
+    GET_DAILY_STATE_SCHEMA,
+    GET_RECENT_COMPLETIONS_SCHEMA,
+    GET_RECOMMENDED_TASKS_SCHEMA,
+    LIST_LEFTOVERS_SCHEMA,
+    QUERY_TASK_SCHEMA,
+    SET_DAILY_STATE_SCHEMA,
+    UPDATE_COMPLETION_SCHEMA,
+    UPDATE_TASK_SCHEMA,
+)
+from .utils import (
+    get_tasktracker_username_for_ha_user,
+)
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    from homeassistant.core import HomeAssistant
+    from tasktracker.api import TaskTrackerAPI
+
 
 _LOGGER = logging.getLogger(__name__)
 
 # Service schemas were moved to service_schemas.py
 
 
-async def async_setup_services(  # noqa: C901, PLR0915
+async def async_setup_services(  # noqa: PLR0915
     hass: HomeAssistant, api: TaskTrackerAPI, config: dict[str, Any]
 ) -> None:
     """Set up TaskTracker services."""
@@ -138,8 +144,10 @@ async def async_setup_services(  # noqa: C901, PLR0915
         get_daily_plan_service = get_daily_plan_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
         )
-        get_daily_plan_encouragement_service = get_daily_plan_encouragement_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        get_daily_plan_encouragement_service = (
+            get_daily_plan_encouragement_handler_factory(
+                hass, api, get_current_config, get_tasktracker_username_for_ha_user
+            )
         )
         get_daily_state_service = get_daily_state_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
@@ -147,8 +155,10 @@ async def async_setup_services(  # noqa: C901, PLR0915
         set_daily_state_service = set_daily_state_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
         )
-        create_task_from_description_service = create_task_from_description_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        create_task_from_description_service = (
+            create_task_from_description_handler_factory(
+                hass, api, get_current_config, get_tasktracker_username_for_ha_user
+            )
         )
         delete_task_service = delete_task_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
@@ -178,8 +188,10 @@ async def async_setup_services(  # noqa: C901, PLR0915
         get_daily_plan_service = get_daily_plan_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
         )
-        get_daily_plan_encouragement_service = get_daily_plan_encouragement_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        get_daily_plan_encouragement_service = (
+            get_daily_plan_encouragement_handler_factory(
+                hass, api, get_current_config, get_tasktracker_username_for_ha_user
+            )
         )
         get_daily_state_service = get_daily_state_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
@@ -187,8 +199,10 @@ async def async_setup_services(  # noqa: C901, PLR0915
         set_daily_state_service = set_daily_state_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
         )
-        create_task_from_description_service = create_task_from_description_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        create_task_from_description_service = (
+            create_task_from_description_handler_factory(
+                hass, api, get_current_config, get_tasktracker_username_for_ha_user
+            )
         )
         delete_task_service = delete_task_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
