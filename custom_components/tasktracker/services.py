@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import SupportsResponse
-from tasktracker.const import (
+from .const import (
     DOMAIN,
     SERVICE_COMPLETE_TASK,
     SERVICE_COMPLETE_TASK_BY_NAME,
