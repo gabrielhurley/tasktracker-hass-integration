@@ -223,17 +223,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       this._eventCleanup().catch(() => {});
     }
 
-    // Listen for daily plan events to refresh
-    const dailyPlanCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'daily_plan', (eventData) => {
-      const evUsername = eventData?.username;
-      const username = this._getUsername();
-      if (!username || username === evUsername) {
-        setTimeout(() => {
-          this._fetchPlan();
-        }, 500);
-      }
-    });
-
     // Listen for task completion events to refresh the plan
     const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
       const currentUsername = this._getUsername();
@@ -279,7 +268,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     // Combined cleanup function
     this._eventCleanup = async () => {
       await Promise.all([
-        dailyPlanCleanup().catch(() => {}),
         completionCleanup().catch(() => {}),
         moodUpdateCleanup().catch(() => {}),
         dailyStateCleanup().catch(() => {}),
