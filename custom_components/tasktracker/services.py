@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import SupportsResponse
+
 from .const import (
     DOMAIN,
     SERVICE_COMPLETE_TASK,
@@ -29,7 +30,6 @@ from .const import (
     SERVICE_UPDATE_COMPLETION,
     SERVICE_UPDATE_TASK,
 )
-
 from .service_handlers.completions import (
     delete_completion_handler_factory,
     update_completion_handler_factory,
