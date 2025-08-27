@@ -228,8 +228,9 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       const evUsername = eventData?.username;
       const username = this._getUsername();
       if (!username || username === evUsername) {
-        this._plan = eventData.plan;
-        this._render();
+        setTimeout(() => {
+          this._fetchPlan();
+        }, 500);
       }
     });
 
