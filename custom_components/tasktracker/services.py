@@ -91,7 +91,8 @@ if TYPE_CHECKING:
     from typing import Any
 
     from homeassistant.core import HomeAssistant
-    from tasktracker.api import TaskTrackerAPI
+
+    from .api import TaskTrackerAPI
 
 
 _LOGGER = logging.getLogger(__name__)

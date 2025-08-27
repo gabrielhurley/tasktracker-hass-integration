@@ -22,6 +22,7 @@ ignore = [
     "TRY300", # Not worth fighting about the code structure
     "TRY301", # Not worth fighting about the code structure
     "ARG001", # Matching method signatures for clarity isn't wrong
+    "TID252", # Not sure how absolute imports work in Home Assistant and don't wanna figure it out
 ]
 
 [lint.flake8-pytest-style]

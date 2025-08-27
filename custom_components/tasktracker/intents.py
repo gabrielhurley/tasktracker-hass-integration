@@ -22,7 +22,8 @@ from .utils import get_user_context
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-    from tasktracker.api import TaskTrackerAPI
+
+    from .api import TaskTrackerAPI
 
 _LOGGER = logging.getLogger(__name__)
 

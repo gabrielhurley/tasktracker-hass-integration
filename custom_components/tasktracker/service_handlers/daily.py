@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from tasktracker.api import TaskTrackerAPI, TaskTrackerAPIError
+from ..api import TaskTrackerAPI, TaskTrackerAPIError
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from homeassistant.core import HomeAssistant, ServiceCall
 
-from tasktracker.const import EVENT_DAILY_PLAN, EVENT_DAILY_STATE_SET
+from ..const import EVENT_DAILY_PLAN, EVENT_DAILY_STATE_SET
 
 _LOGGER = logging.getLogger(__name__)
 

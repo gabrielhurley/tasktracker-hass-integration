@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from tasktracker.api import TaskTrackerAPI, TaskTrackerAPIError
+from ..api import TaskTrackerAPI, TaskTrackerAPIError
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable

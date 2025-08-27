@@ -11,8 +11,9 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_API_KEY, CONF_HOST
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from tasktracker.api import TaskTrackerAPI
-from tasktracker.const import (
+
+from .api import TaskTrackerAPI
+from .const import (
     CONF_HA_USER_ID,
     CONF_TASKTRACKER_USERNAME,
     CONF_USERS,

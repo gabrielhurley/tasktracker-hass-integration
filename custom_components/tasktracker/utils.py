@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from tasktracker.const import (
+from .const import (
     CONF_HA_USER_ID,
     CONF_TASKTRACKER_USERNAME,
     CONF_USERS,

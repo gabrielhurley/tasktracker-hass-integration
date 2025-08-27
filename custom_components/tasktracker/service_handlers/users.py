@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from tasktracker.const import CONF_HA_USER_ID, CONF_TASKTRACKER_USERNAME, CONF_USERS
-from tasktracker.utils import get_available_tasktracker_usernames
+from ..const import CONF_HA_USER_ID, CONF_TASKTRACKER_USERNAME, CONF_USERS
+from ..utils import get_available_tasktracker_usernames
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
