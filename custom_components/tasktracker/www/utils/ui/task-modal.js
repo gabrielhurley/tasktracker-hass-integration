@@ -120,6 +120,7 @@ export function createTaskModal(
   } else {
     basicFields.appendChild(createFieldRow('Task Name', createDisplay(taskName)));
   }
+  basicFields.appendChild(createFieldRow('Task ID', createDisplay(task.id)));
   // Active
   const isActiveOriginal = task.is_active !== false;
   if (onSave) {

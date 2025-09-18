@@ -676,9 +676,11 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     ].filter(Boolean).join(' ');
 
     const borderClass = borderInfo.borderClass || '';
+    const borderStyle = borderInfo.borderStyle || '';
     const taskKey = `${taskType}_${task.id}`;
     return `
       <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}"
+           ${borderStyle ? `style="${borderStyle}"` : ''}
            data-task-key="${taskKey}"
            >
         <div class="task-content">
@@ -824,9 +826,11 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     ].filter(Boolean).join(' ');
 
     const borderClass2 = borderInfo.borderClass || '';
+    const borderStyle2 = borderInfo.borderStyle || '';
     const taskKey = `self_care_${task.id}`;
     return `
       <div class="${[statusClasses, borderClass2].filter(Boolean).join(' ')}"
+           ${borderStyle2 ? `style="${borderStyle2}"` : ''}
            data-task-key="${taskKey}"
            >
         <div class="task-content">

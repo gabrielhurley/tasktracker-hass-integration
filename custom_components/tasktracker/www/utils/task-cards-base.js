@@ -165,15 +165,16 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       borderInfo.cssClasses.dueToday ? 'due-today' : ''
     ].filter(Boolean).join(' ');
     const borderClass = borderInfo.borderClass || '';
-    return { borderInfo, taskClasses, borderClass };
+    const borderStyle = borderInfo.borderStyle || '';
+    return { borderInfo, taskClasses, borderClass, borderStyle };
   }
 
   renderSimpleTaskRow(task, { showActions = false, taskType = 'task' } = {}) {
     const metadataParts = this.buildTaskMetadata(task);
-    const { taskClasses, borderClass } = this.getTaskCssAndBorder(task, taskType);
+    const { taskClasses, borderClass, borderStyle } = this.getTaskCssAndBorder(task, taskType);
     const taskKey = this._taskDataManager.storeTaskData(task, taskType);
     return `
-      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" data-task-key="${taskKey}">
+      <div class="${[taskClasses, borderClass].filter(Boolean).join(' ')}" ${borderStyle ? `style="${borderStyle}"` : ''} data-task-key="${taskKey}">
         <div class="task-content">
           <div class="task-name">
             ${task.name}
