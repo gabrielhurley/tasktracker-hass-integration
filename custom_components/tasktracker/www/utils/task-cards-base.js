@@ -23,6 +23,10 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     this._refreshing = false;
     this._error = null;
     this._taskDataManager = new TaskDataManager();
+    this._lastRefreshTime = 0;
+    this._recentCompletions = [];
+    this._queuedRefresh = false;
+    this._previousData = null;
   }
 
   async _fetchAvailableUsers() {
@@ -41,6 +45,9 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
   }
 
   async _completeTask(task, notes, completed_at = null) {
+    // Track completion for rapid completion detection
+    this._trackCompletion();
+
     // Fetch users if not available
     if (!this._enhancedUsers || this._enhancedUsers.length === 0) {
       await this._fetchAvailableUsers();
@@ -241,6 +248,263 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
         });
       });
     }
+  }
+
+  /**
+   * Check if we're in rapid completion mode to prevent excessive refreshes
+   */
+  _isInRapidCompletionMode() {
+    const now = Date.now();
+    this._recentCompletions = this._recentCompletions.filter(time => now - time < 5000); // 5 second window
+    return this._recentCompletions.length >= 2;
+  }
+
+  /**
+   * Track a completion for rapid completion detection
+   */
+  _trackCompletion() {
+    this._recentCompletions.push(Date.now());
+  }
+
+  /**
+   * Check if two task arrays are equal for change detection
+   */
+  _taskArraysEqual(tasks1, tasks2) {
+    if (!tasks1 && !tasks2) return true;
+    if (!tasks1 || !tasks2) return false;
+    if (tasks1.length !== tasks2.length) return false;
+
+    const getTaskKey = (task) => `${task.id}_${task.completed || false}_${task.outstanding_occurrences || 0}`;
+
+    const keys1 = tasks1.map(getTaskKey).sort();
+    const keys2 = tasks2.map(getTaskKey).sort();
+
+    return keys1.every((key, index) => key === keys2[index]);
+  }
+
+  /**
+   * Check if user context has changed significantly
+   */
+  _userContextEqual(ctx1, ctx2) {
+    if (!ctx1 && !ctx2) return true;
+    if (!ctx1 || !ctx2) return false;
+
+    const relevantFields = ['timezone', 'daily_reset_time', 'current_logical_date'];
+    return relevantFields.every(field => ctx1[field] === ctx2[field]);
+  }
+
+  /**
+   * Detect if we can do a partial update vs full re-render
+   */
+  _canDoPartialUpdate(oldData, newData) {
+    // Can't do partial updates if either data is missing
+    if (!oldData || !newData) {
+      return false;
+    }
+
+    // Check for structural changes that require full re-render
+    const structuralChanges = [
+      // Mode change (normal plan ↔ reduced/defaults plan)
+      oldData.using_defaults !== newData.using_defaults,
+
+      // User context changes
+      !this._userContextEqual(oldData.user_context, newData.user_context),
+
+      // Section structure changes (presence of sections)
+      this._hasSectionStructureChanged(oldData, newData)
+    ];
+
+    if (structuralChanges.some(Boolean)) {
+      return false;
+    }
+
+    // Check for complex changes
+    const complexChanges = [
+      // Too many changes at once
+      this._hasTooManyChanges(oldData, newData)
+    ];
+
+    return !complexChanges.some(Boolean);
+  }
+
+  /**
+   * Check if section structure has changed
+   */
+  _hasSectionStructureChanged(oldData, newData) {
+    const oldHasSelfCare = (oldData.self_care || []).length > 0;
+    const newHasSelfCare = (newData.self_care || []).length > 0;
+    const oldHasTasks = (oldData.tasks || []).length > 0;
+    const newHasTasks = (newData.tasks || []).length > 0;
+
+    return oldHasSelfCare !== newHasSelfCare || oldHasTasks !== newHasTasks;
+  }
+
+  /**
+   * Check if there are too many changes for efficient partial update
+   */
+  _hasTooManyChanges(oldData, newData) {
+    const oldSelfCare = oldData.self_care || [];
+    const newSelfCare = newData.self_care || [];
+    const oldTasks = oldData.tasks || [];
+    const newTasks = newData.tasks || [];
+
+    // Count total changes
+    let changeCount = 0;
+
+    changeCount += Math.abs(oldSelfCare.length - newSelfCare.length);
+    changeCount += Math.abs(oldTasks.length - newTasks.length);
+
+    // Threshold for falling back to full re-render
+    return changeCount > 3;
+  }
+
+  /**
+   * Identify changes between old and new data for partial updates
+   */
+  _identifyChanges(oldData, newData) {
+    const changes = {
+      removedSelfCareTasks: [],
+      removedTasks: [],
+      addedSelfCareTasks: [],
+      addedTasks: [],
+      updatedSelfCareTasks: [],
+      updatedTasks: []
+    };
+
+    const oldSelfCare = oldData.self_care || [];
+    const newSelfCare = newData.self_care || [];
+    const oldTasks = oldData.tasks || [];
+    const newTasks = newData.tasks || [];
+
+    // Create ID sets for quick lookup
+    const oldSelfCareIds = new Set(oldSelfCare.map(t => t.id));
+    const newSelfCareIds = new Set(newSelfCare.map(t => t.id));
+    const oldTaskIds = new Set(oldTasks.map(t => t.id));
+    const newTaskIds = new Set(newTasks.map(t => t.id));
+
+    // Find removed tasks (most important for rapid completion)
+    changes.removedSelfCareTasks = oldSelfCare.filter(task => !newSelfCareIds.has(task.id));
+    changes.removedTasks = oldTasks.filter(task => !newTaskIds.has(task.id));
+
+    // Find added tasks
+    changes.addedSelfCareTasks = newSelfCare.filter(task => !oldSelfCareIds.has(task.id));
+    changes.addedTasks = newTasks.filter(task => !oldTaskIds.has(task.id));
+
+    // Find updated tasks (same ID but different content)
+    const oldSelfCareMap = new Map(oldSelfCare.map(t => [t.id, t]));
+    const oldTaskMap = new Map(oldTasks.map(t => [t.id, t]));
+
+    changes.updatedSelfCareTasks = newSelfCare.filter(newTask => {
+      const oldTask = oldSelfCareMap.get(newTask.id);
+      return oldTask && !this._tasksEqual(oldTask, newTask);
+    });
+
+    changes.updatedTasks = newTasks.filter(newTask => {
+      const oldTask = oldTaskMap.get(newTask.id);
+      return oldTask && !this._tasksEqual(oldTask, newTask);
+    });
+
+    return changes;
+  }
+
+  /**
+   * Compare two individual tasks for equality
+   */
+  _tasksEqual(task1, task2) {
+    if (!task1 || !task2) return false;
+
+    const relevantFields = [
+      'id', 'name', 'completed', 'outstanding_occurrences',
+      'required_occurrences', 'recommendation_score', 'windows'
+    ];
+
+    for (const field of relevantFields) {
+      if (field === 'windows') {
+        if (!this._windowsEqual(task1.windows, task2.windows)) return false;
+      } else if (task1[field] !== task2[field]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Compare window arrays for equality
+   */
+  _windowsEqual(windows1, windows2) {
+    if (!windows1 && !windows2) return true;
+    if (!windows1 || !windows2) return false;
+    if (windows1.length !== windows2.length) return false;
+
+    return windows1.every((w1, index) => {
+      const w2 = windows2[index];
+      return w1.completed === w2.completed && w1.label === w2.label;
+    });
+  }
+
+  /**
+   * Apply partial updates to the DOM
+   */
+  _applyPartialUpdates(changes) {
+    // Remove completed tasks (most important case)
+    this._removeTaskElements([...changes.removedSelfCareTasks, ...changes.removedTasks]);
+
+    // Update section counts and empty states
+    this._updateSectionStates();
+
+    // Add new tasks (less common during normal usage)
+    if (changes.addedSelfCareTasks.length > 0 || changes.addedTasks.length > 0) {
+      // For now, fall back to full re-render for additions
+      // This is less critical than handling removals efficiently
+      return false;
+    }
+
+    // Update existing tasks (handle window completions, score changes, etc.)
+    this._updateTaskElements([...changes.updatedSelfCareTasks, ...changes.updatedTasks]);
+
+    return true;
+  }
+
+  /**
+   * Remove task elements from DOM
+   */
+  _removeTaskElements(removedTasks) {
+    removedTasks.forEach(task => {
+      const taskType = task.task_type === 'SelfCareTask' ? 'self_care' : 'task';
+      const taskKey = `${taskType}_${task.id}`;
+      const element = this.shadowRoot.querySelector(`[data-task-key="${taskKey}"]`);
+
+      if (element) {
+        // Add fade-out animation
+        element.classList.add('fade-out');
+
+        // Remove after animation
+        setTimeout(() => {
+          if (element.parentNode) {
+            element.remove();
+          }
+          // Remove from data manager
+          this._taskDataManager.removeKey(taskKey);
+        }, 300);
+      }
+    });
+  }
+
+  /**
+   * Update section states (empty messages, counts)
+   */
+  _updateSectionStates() {
+    // This is a hook for subclasses to implement section-specific updates
+    // Each card type will have different section structure
+  }
+
+  /**
+   * Update existing task elements
+   */
+  _updateTaskElements(updatedTasks) {
+    // This is a hook for subclasses to implement task-specific updates
+    // Different task types may need different update logic
   }
 }
 

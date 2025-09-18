@@ -469,7 +469,8 @@ export class TaskTrackerStyles {
       .selfcare-windowed .task-actions { margin-top: 8px; margin-left: 12px; border-left: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12)); padding-left: 12px; }
       .task-item.low-recommendation { opacity: 0.6; transition: opacity 0.2s ease; }
       .task-item.low-recommendation:hover { opacity: 0.8; }
-      .task-item { display: flex; align-items: stretch; }
+      .task-item { display: flex; align-items: stretch; transition: opacity 0.3s ease, transform 0.3s ease; }
+      .task-item.fade-out { opacity: 0; transform: scale(0.95); pointer-events: none; }
       .task-content { flex: 1; }
       .task-actions { display: flex; align-items: stretch; border-left: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12)); padding-left: 12px; margin-left: 12px; }
       .complete-btn { display: flex; align-items: center; justify-content: center; flex: 1; }

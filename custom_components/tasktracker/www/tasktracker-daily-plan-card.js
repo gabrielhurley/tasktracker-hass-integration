@@ -118,10 +118,20 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     }
   }
 
-  async _fetchPlan() {
-    this._loading = true;
-    this._error = null;
-    this._render();
+  async _fetchPlan(options = {}) {
+    // Skip refresh if we're in rapid completion mode and not forcing
+    if (this._isInRapidCompletionMode() && !options.forceRefresh) {
+      this._queuedRefresh = true;
+      return;
+    }
+
+    // Only show loading state if we don't have previous data (initial load)
+    const isInitialLoad = !this._previousData;
+    if (isInitialLoad) {
+      this._loading = true;
+      this._error = null;
+      this._render();
+    }
 
     await this._fetchAvailableUsers();
 
@@ -150,24 +160,61 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         this._fetchDailyState()
       ]);
 
+      let newPlan = null;
       if (planResponse && planResponse.response) {
-        this._plan = planResponse.response;
+        newPlan = planResponse.response;
         this._userContext = planResponse.response.user_context;
+      }
+
+      this._loading = false;
+
+      // Try partial update if we have previous data
+      if (this._previousData && newPlan) {
+        if (this._canDoPartialUpdate(this._previousData, newPlan.data)) {
+          const changes = this._identifyChanges(this._previousData, newPlan.data);
+
+          // Apply partial updates and check if successful
+          if (this._applyPartialUpdates(changes)) {
+            // Update internal state without full re-render
+            this._plan = newPlan;
+            this._previousData = newPlan.data;
+            this._populateTaskDataMap();
+
+            // Process any queued refresh
+            if (this._queuedRefresh) {
+              this._queuedRefresh = false;
+              setTimeout(() => this._fetchPlan({ forceRefresh: true }), 1000);
+            }
+            return;
+          }
+        }
+      }
+
+      // Fall back to full update (initial load, complex changes, or partial update failed)
+      this._plan = newPlan;
+      this._previousData = newPlan?.data || null;
+      if (newPlan) {
         this._populateTaskDataMap();
       } else {
-        this._plan = null;
         this._userContext = null;
         this._taskDataMap.clear();
       }
+      this._render();
     } catch (err) {
       console.error('Failed to fetch daily plan:', err);
       this._error = err.message;
       this._plan = null;
+      this._previousData = null;
       this._taskDataMap.clear();
+      this._loading = false;
+      this._render();
     }
 
-    this._loading = false;
-    this._render();
+    // Process any queued refresh
+    if (this._queuedRefresh) {
+      this._queuedRefresh = false;
+      setTimeout(() => this._fetchPlan({ forceRefresh: true }), 1000);
+    }
   }
 
   async _fetchDailyState() {
@@ -227,9 +274,10 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
       const currentUsername = this._getUsername();
       if (!currentUsername || currentUsername === eventData.username) {
+        // Use the normal fetch flow which includes partial update logic
         setTimeout(() => {
           this._fetchPlan();
-        }, 500);
+        }, 100); // Shorter delay since we know data has changed
       }
     });
 
@@ -238,17 +286,27 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       const evUsername = event?.username;
       const username = this._getUsername();
       if (!username || username === evUsername) {
+        // Mood updates should trigger refresh even in rapid mode
         setTimeout(() => {
-          this._fetchPlan();
+          this._fetchPlan({ forceRefresh: true });
         }, 500);
       }
     });
 
     // Listen for generic task updates (includes deletions via reused event)
     const taskUpdateCleanup = TaskTrackerUtils.setupTaskUpdateListener(this._hass, () => {
+      // Task updates (edits, deletions) should refresh even in rapid mode
+      setTimeout(() => {
+        this._fetchPlan({ forceRefresh: true });
+      }, 500);
+    });
+
+    // Listen for completion deletions (undo completion) to refresh the plan
+    const completionDeletionCleanup = TaskTrackerUtils.setupCompletionDeletionListener(this._hass, () => {
+      // Completion deletions should refresh to show the task reappearing
       setTimeout(() => {
         this._fetchPlan();
-      }, 500);
+      }, 100);
     });
 
     // Listen for daily state events to refresh the plan
@@ -271,7 +329,8 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         completionCleanup().catch(() => {}),
         moodUpdateCleanup().catch(() => {}),
         dailyStateCleanup().catch(() => {}),
-        taskUpdateCleanup().catch(() => {})
+        taskUpdateCleanup().catch(() => {}),
+        completionDeletionCleanup().catch(() => {})
       ]);
     };
   }
@@ -401,6 +460,11 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         ${this._renderContent()}
       </div>
     `;
+
+    // Update previous data after full render
+    if (this._plan?.data) {
+      this._previousData = this._plan.data;
+    }
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
@@ -857,6 +921,131 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
   }
 
 
+
+  /**
+   * Update section states after partial changes (override base method)
+   */
+  _updateSectionStates() {
+    // Update self-care section
+    const selfCareSection = this.shadowRoot.querySelector('.section-title');
+    const selfCareTaskList = this.shadowRoot.querySelector('.task-list');
+
+    if (selfCareSection && selfCareTaskList) {
+      const remainingSelfCareTasks = selfCareTaskList.querySelectorAll('.task-item[data-task-key^="self_care_"]');
+      if (remainingSelfCareTasks.length === 0) {
+        // Show empty state
+        selfCareSection.innerHTML = 'Self-Care <span class="all-done-text">(No tasks)</span>';
+        if (selfCareTaskList.parentNode) {
+          selfCareTaskList.parentNode.removeChild(selfCareTaskList);
+        }
+      }
+    }
+
+    // Update tasks section
+    const tasksSections = this.shadowRoot.querySelectorAll('.section-title');
+    if (tasksSections.length > 1) {
+      const tasksSection = tasksSections[1]; // Second section is tasks
+      const tasksTaskList = tasksSection.nextElementSibling;
+
+      if (tasksTaskList && tasksTaskList.classList.contains('task-list')) {
+        const remainingTasks = tasksTaskList.querySelectorAll('.task-item[data-task-key^="task_"]');
+        if (remainingTasks.length === 0) {
+          // Show empty state
+          tasksSection.innerHTML = 'Tasks <span class="all-done-text">(No tasks)</span>';
+          if (tasksTaskList.parentNode) {
+            tasksTaskList.parentNode.removeChild(tasksTaskList);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Update existing task elements for partial updates (override base method)
+   */
+  _updateTaskElements(updatedTasks) {
+    updatedTasks.forEach(task => {
+      const taskType = task.task_type === 'SelfCareTask' ? 'self_care' : 'task';
+      const taskKey = `${taskType}_${task.id}`;
+      const element = this.shadowRoot.querySelector(`[data-task-key="${taskKey}"]`);
+
+      if (element) {
+        // For now, we'll update by replacing the entire element
+        // This could be optimized further for specific field updates
+        const updatedHtml = this._renderTaskItem(task, taskType);
+        const tempContainer = document.createElement('div');
+        tempContainer.innerHTML = updatedHtml;
+        const newElement = tempContainer.firstElementChild;
+
+        if (newElement) {
+          // Copy the data-task-key to ensure it matches
+          newElement.dataset.taskKey = taskKey;
+
+          // Replace the element
+          element.parentNode.replaceChild(newElement, element);
+
+          // Re-attach event listeners for the new element
+          this._attachElementEventListeners(newElement);
+        }
+      }
+    });
+  }
+
+  /**
+   * Attach event listeners to a specific task element
+   */
+  _attachElementEventListeners(element) {
+    const taskKey = element.dataset.taskKey;
+    const taskData = this._getTaskData(taskKey);
+
+    if (!taskData) return;
+
+    // Task click handler
+    element.addEventListener('click', () => {
+      this._showTaskModal(taskData.task, taskData.taskType);
+    });
+
+    // Complete button handler
+    const completeBtn = element.querySelector('.complete-btn');
+    if (completeBtn) {
+      completeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._completeTask(taskData.task, '');
+      });
+    }
+
+    // Window click handlers for self-care tasks
+    const incompleteWindows = element.querySelectorAll('.window-item.incomplete');
+    incompleteWindows.forEach(windowItem => {
+      windowItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        if (taskData.task.windows) {
+          const windowId = windowItem.id;
+          const windowIndexMatch = windowId.match(/window-\d+-(\d+)$/);
+
+          if (windowIndexMatch) {
+            const windowIndex = parseInt(windowIndexMatch[1], 10);
+            const window = taskData.task.windows[windowIndex];
+
+            if (window) {
+              const completionTimestamp = TaskTrackerDateTime.getCompletionTimestamp(window, this._userContext);
+              this._completeTask(taskData.task, '', completionTimestamp);
+            }
+          }
+        }
+      });
+
+      // Keyboard support
+      windowItem.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          windowItem.click();
+        }
+      });
+    });
+  }
 
   getCardSize() {
     return 3;
