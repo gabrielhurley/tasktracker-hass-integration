@@ -169,8 +169,18 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       this._loading = false;
 
       // Try partial update if we have previous data
-      if (this._previousData && newPlan) {
-        if (this._canDoPartialUpdate(this._previousData, newPlan.data)) {
+      if (this._previousData && newPlan && this._plan) {
+        // Create data objects with user context included for proper comparison
+        const oldDataWithContext = {
+          ...this._previousData,
+          user_context: this._plan.user_context
+        };
+        const newDataWithContext = {
+          ...newPlan.data,
+          user_context: newPlan.user_context
+        };
+
+        if (this._canDoPartialUpdate(oldDataWithContext, newDataWithContext)) {
           const changes = this._identifyChanges(this._previousData, newPlan.data);
 
           // Apply partial updates and check if successful
@@ -289,7 +299,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         // Mood updates should trigger refresh even in rapid mode
         setTimeout(() => {
           this._fetchPlan({ forceRefresh: true });
-        }, 500);
+        }, 100);
       }
     });
 
@@ -298,7 +308,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       // Task updates (edits, deletions) should refresh even in rapid mode
       setTimeout(() => {
         this._fetchPlan({ forceRefresh: true });
-      }, 500);
+      }, 100);
     });
 
     // Listen for completion deletions (undo completion) to refresh the plan
@@ -314,12 +324,16 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       const evUsername = eventData?.username;
       const username = this._getUsername();
       if (!username || username === evUsername) {
-        // Update the daily state and re-render
+        // Update the daily state
         this._dailyState = {
           success: true,
           data: eventData.state
         };
-        this._render();
+        // Force a full refresh to sync all data and avoid partial update race conditions
+        // This ensures using_defaults changes are properly detected
+        setTimeout(() => {
+          this._fetchPlan({ forceRefresh: true });
+        }, 100);
       }
     });
 

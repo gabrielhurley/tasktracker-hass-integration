@@ -238,6 +238,25 @@ export class TaskTrackerStyles {
 
       /* Misc */
       .loading, .error, .no-tasks { text-align: center; padding: 24px 0; color: var(--secondary-text-color); font-size: 0.9em; }
+      .loading-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+        position: relative;
+      }
+      .content-container:not([style*="height"]) .loading-container {
+        min-height: 70px;
+      }
+      .loading-text {
+        text-align: center;
+        color: var(--secondary-text-color);
+        font-size: 0.9em;
+        margin: 0;
+        padding: 0;
+        line-height: 1.4;
+      }
       .error { color: var(--error-color); text-align: center; font-style: italic; padding: 16px; }
       .no-tasks { color: var(--secondary-text-color); }
       .no-user-warning { color: var(--primary-text-color); background: var(--secondary-background-color); padding: 12px; border-radius: 4px; border: 1px solid var(--divider-color); text-align: center; margin-bottom: 16px; }

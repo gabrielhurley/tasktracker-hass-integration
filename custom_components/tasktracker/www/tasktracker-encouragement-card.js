@@ -18,6 +18,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     this._availableUsers = [];
     this._refreshInterval = null;
     this._eventCleanup = null;
+    this._initialRenderComplete = false;
   }
 
   static getConfigElement() {
@@ -41,7 +42,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
       refresh_interval: config.refresh_interval || 600,
       ...config,
     };
-    this._render();
+    this._initialRender();
   }
 
   set hass(hass) {
@@ -49,6 +50,9 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     this._hass = hass;
 
     if (firstRun) {
+      // Set loading state before initial render to show loading message
+      this._loading = true;
+      this._initialRender();
       this._fetchEncouragement();
       this._setupAutoRefresh();
       this._setupEventListeners();
@@ -56,7 +60,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
   }
 
   connectedCallback() {
-    this._render();
+    this._initialRender();
   }
 
   disconnectedCallback() {
@@ -86,9 +90,25 @@ class TaskTrackerEncouragementCard extends HTMLElement {
   }
 
   async _fetchEncouragement() {
+    // Capture current content height before starting to load
+    const contentContainer = this.shadowRoot?.querySelector('.content-container');
+    let fixedHeight = null;
+    if (contentContainer && !this._loading) {
+      const currentHeight = contentContainer.offsetHeight;
+      if (currentHeight > 0) {
+        fixedHeight = currentHeight;
+      }
+    }
+
     this._loading = true;
     this._error = null;
-    this._render();
+    this._updateContent();
+
+    // Apply fixed height to content container during loading
+    if (fixedHeight && contentContainer) {
+      contentContainer.style.height = `${fixedHeight}px`;
+      contentContainer.style.minHeight = `${fixedHeight}px`;
+    }
 
     await this._fetchAvailableUsers();
     const username = this._getUsername();
@@ -113,7 +133,14 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     }
 
     this._loading = false;
-    this._render();
+    this._updateContent();
+
+    // Remove fixed height after loading completes
+    const finalContentContainer = this.shadowRoot?.querySelector('.content-container');
+    if (finalContentContainer) {
+      finalContentContainer.style.height = '';
+      finalContentContainer.style.minHeight = '';
+    }
   }
 
   _setupEventListeners() {
@@ -163,11 +190,10 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     };
   }
 
-  _render() {
-    if (!this.shadowRoot) return;
+  _initialRender() {
+    if (!this.shadowRoot || this._initialRenderComplete) return;
 
     const username = this._getUsername();
-    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -184,7 +210,9 @@ class TaskTrackerEncouragementCard extends HTMLElement {
           </div>
         ` : ''}
 
-        ${this._renderContent()}
+        <div class="content-container">
+          ${this._renderContent()}
+        </div>
       </div>
     `;
 
@@ -193,11 +221,27 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this._fetchEncouragement());
     }
+
+    this._initialRenderComplete = true;
+  }
+
+  _updateContent() {
+    if (!this.shadowRoot) return;
+
+    if (!this._initialRenderComplete) {
+      this._initialRender();
+      return;
+    }
+
+    const contentContainer = this.shadowRoot.querySelector('.content-container');
+    if (contentContainer) {
+      contentContainer.innerHTML = this._renderContent();
+    }
   }
 
   _renderContent() {
     if (this._loading) {
-      return '<div class="loading">Loading encouragement...</div>';
+      return '<div class="loading-container"><div class="loading-text">Loading encouragement...</div></div>';
     }
 
     if (this._error) {
