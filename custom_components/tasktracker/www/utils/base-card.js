@@ -20,6 +20,7 @@ export class TaskTrackerBaseCard extends HTMLElement {
     this._error = null;
     this._refreshInterval = null;
     this._eventCleanup = null;
+    this._structureRendered = false; // Track if structure has been rendered to prevent double-rendering
   }
 
   // Subclasses should override to provide defaults
@@ -33,8 +34,15 @@ export class TaskTrackerBaseCard extends HTMLElement {
   }
 
   setConfig(config) {
+    const oldConfig = this._config;
     this._config = { ...this.getDefaultConfig(), ...config };
-    this._render();
+
+    // Check if config changes affect the header structure
+    if (this._shouldResetStructure && this._shouldResetStructure(oldConfig, this._config)) {
+      this._structureRendered = false;
+    }
+
+    this._renderStructure();
   }
 
   set hass(hass) {
@@ -54,7 +62,7 @@ export class TaskTrackerBaseCard extends HTMLElement {
   }
 
   connectedCallback() {
-    this._render();
+    this._renderStructure();
   }
 
   disconnectedCallback() {
@@ -100,22 +108,96 @@ export class TaskTrackerBaseCard extends HTMLElement {
 
   _renderContent() { return ''; }
 
-  _render() {
+  /**
+   * Render the card structure (header, shell) - called once on initialization
+   * Subclasses can override this method to implement split rendering
+   */
+  _renderStructure() {
     if (!this.shadowRoot) return;
-    this.shadowRoot.innerHTML = `
-      <style>
-        ${TaskTrackerStyles.getCommonCardStyles()}
-      </style>
-      <div class="card">
-        ${this._renderHeader()}
-        ${this._renderContent()}
-      </div>
-    `;
 
+    // Only render structure if it hasn't been rendered yet
+    if (!this._structureRendered) {
+      this.shadowRoot.innerHTML = `
+        <style>
+          ${TaskTrackerStyles.getCommonCardStyles()}
+          ${this.getCardStyles ? this.getCardStyles() : ''}
+        </style>
+        <div class="card">
+          ${this._renderHeader()}
+          <div class="content-container">
+            ${this._renderContent()}
+          </div>
+        </div>
+      `;
+
+      // Attach header event listeners once - they will persist
+      this._attachHeaderEventListeners();
+      this._structureRendered = true;
+    }
+  }
+
+  /**
+   * Attach event listeners to header elements (called once during structure render)
+   * Subclasses can override to add additional header event listeners
+   */
+  _attachHeaderEventListeners() {
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) refreshBtn.addEventListener('click', () => this.onRefresh());
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.onRefresh());
+    }
+  }
 
-    if (typeof this._afterRender === 'function') this._afterRender();
+  /**
+   * Legacy _render method for backward compatibility
+   * Cards using split rendering should override _renderStructure and _renderContent instead
+   */
+  _render() {
+    this._renderStructure();
+  }
+
+  /**
+   * Update a specific header button's appearance without re-rendering the entire header
+   * @param {string} buttonSelector - CSS selector for the button (e.g., '.filter-toggle-btn')
+   * @param {Object} updates - Object with properties to update: { classes: [], attributes: {}, icon: '', title: '' }
+   */
+  _updateHeaderButton(buttonSelector, updates) {
+    const button = this.shadowRoot?.querySelector(buttonSelector);
+    if (!button) return;
+
+    // Update classes
+    if (updates.classes) {
+      updates.classes.forEach(({ className, add }) => {
+        if (add) {
+          button.classList.add(className);
+        } else {
+          button.classList.remove(className);
+        }
+      });
+    }
+
+    // Update attributes
+    if (updates.attributes) {
+      Object.entries(updates.attributes).forEach(([attr, value]) => {
+        if (value !== null && value !== undefined) {
+          button.setAttribute(attr, value);
+        } else {
+          button.removeAttribute(attr);
+        }
+      });
+    }
+
+    // Update icon
+    if (updates.icon) {
+      const icon = button.querySelector('ha-icon');
+      if (icon) {
+        icon.setAttribute('icon', updates.icon);
+      }
+    }
+
+    // Update title
+    if (updates.title) {
+      button.title = updates.title;
+    }
   }
 
   // Aggregate and manage event listener cleanup functions

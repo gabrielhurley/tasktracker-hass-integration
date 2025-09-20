@@ -27,6 +27,7 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     this._recentCompletions = [];
     this._queuedRefresh = false;
     this._previousData = null;
+    this._taskDataMap = new Map(); // Store task data in memory instead of DOM
   }
 
   async _fetchAvailableUsers() {
@@ -257,6 +258,74 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     const now = Date.now();
     this._recentCompletions = this._recentCompletions.filter(time => now - time < 5000); // 5 second window
     return this._recentCompletions.length >= 2;
+  }
+
+  /**
+   * Enhanced data fetching with partial update support
+   * @param {Object} options - Fetch options
+   * @param {boolean} options.forceFullRender - Skip partial updates and force full render
+   * @param {boolean} options.forceRefresh - Force refresh even in rapid completion mode
+   * @param {Function} fetchCallback - Function that returns the API response
+   * @param {Function} updateCallback - Function to handle the response data
+   */
+  async _fetchWithPartialUpdateSupport(options = {}, fetchCallback, updateCallback) {
+    // Skip refresh if we're in rapid completion mode and not forcing
+    if (this._isInRapidCompletionMode() && !options.forceRefresh) {
+      this._queuedRefresh = true;
+      return;
+    }
+
+    // Only show loading state if we don't have previous data (initial load)
+    const isInitialLoad = !this._previousData;
+    if (isInitialLoad) {
+      this._loading = true;
+      this._error = null;
+      if (this._renderContent) this._renderContent();
+    }
+
+    try {
+      const newData = await fetchCallback();
+      this._loading = false;
+
+      // Try partial update if we have previous data and not forcing full render
+      if (this._previousData && newData && !options.forceFullRender) {
+        if (this._canDoPartialUpdate && this._canDoPartialUpdate(this._previousData, newData)) {
+          const changes = this._identifyChanges ? this._identifyChanges(this._previousData, newData) : null;
+
+          // Apply partial updates and check if successful
+          if (changes && this._applyPartialUpdates && this._applyPartialUpdates(changes)) {
+            // Update internal state without full re-render
+            this._previousData = newData;
+            if (this._populateTaskDataMap) this._populateTaskDataMap();
+
+            // Process any queued refresh
+            if (this._queuedRefresh) {
+              this._queuedRefresh = false;
+              setTimeout(() => this._fetchWithPartialUpdateSupport({ forceRefresh: true }, fetchCallback, updateCallback), 1000);
+            }
+            return;
+          }
+        }
+      }
+
+      // Fall back to full update
+      this._previousData = newData;
+      if (updateCallback) updateCallback(newData);
+      if (this._populateTaskDataMap) this._populateTaskDataMap();
+      if (this._renderContent) this._renderContent();
+
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+      this._error = err.message;
+      this._loading = false;
+      if (this._renderContent) this._renderContent();
+    }
+
+    // Process any queued refresh
+    if (this._queuedRefresh) {
+      this._queuedRefresh = false;
+      setTimeout(() => this._fetchWithPartialUpdateSupport({ forceRefresh: true }, fetchCallback, updateCallback), 1000);
+    }
   }
 
   /**

@@ -25,7 +25,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     this._refreshInterval = null;
     this._eventCleanup = null;
     this._showRecommendedOnly = true; // Default to showing recommended tasks only
-    this._taskDataMap = new Map(); // Store task data in memory instead of DOM
   }
 
   static getConfigElement() {
@@ -70,21 +69,32 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     };
     // Set initial toggle state from config
     this._showRecommendedOnly = this._config.default_filter_recommended;
-    this._render();
+
+    // Use base class setConfig which handles structure re-rendering
+    super.setConfig(this._config);
+  }
+
+  /**
+   * Determines if structure should be re-rendered based on config changes
+   */
+  _shouldResetStructure(oldConfig, newConfig) {
+    return oldConfig && (
+      oldConfig.show_header !== newConfig.show_header ||
+      oldConfig.explicit_user !== newConfig.explicit_user ||
+      oldConfig.user_filter_mode !== newConfig.user_filter_mode
+    );
   }
 
   set hass(hass) {
     super.hass = hass;
   }
+
   // Base first-run hook
   onHassFirstRun() {
     this._fetchPlan();
     this._setupEventListeners();
   }
 
-  connectedCallback() {
-    this._render();
-  }
 
   disconnectedCallback() {
     if (this._refreshInterval) {
@@ -130,7 +140,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     if (isInitialLoad) {
       this._loading = true;
       this._error = null;
-      this._render();
+      this._renderContent();
     }
 
     await this._fetchAvailableUsers();
@@ -142,7 +152,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       this._error = userValidation.error;
       this._plan = null;
       this._loading = false;
-      this._render();
+      this._renderContent();
       return;
     }
 
@@ -168,8 +178,8 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
 
       this._loading = false;
 
-      // Try partial update if we have previous data
-      if (this._previousData && newPlan && this._plan) {
+      // Try partial update if we have previous data and not forcing full render
+      if (this._previousData && newPlan && this._plan && !options.forceFullRender) {
         // Create data objects with user context included for proper comparison
         const oldDataWithContext = {
           ...this._previousData,
@@ -190,6 +200,9 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
             this._previousData = newPlan.data;
             this._populateTaskDataMap();
 
+            // Header event listeners should persist since header DOM is not modified during partial updates
+            // No need to reattach unless there's evidence they're being lost
+
             // Process any queued refresh
             if (this._queuedRefresh) {
               this._queuedRefresh = false;
@@ -209,7 +222,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         this._userContext = null;
         this._taskDataMap.clear();
       }
-      this._render();
+      this._renderContent();
     } catch (err) {
       console.error('Failed to fetch daily plan:', err);
       this._error = err.message;
@@ -217,7 +230,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       this._previousData = null;
       this._taskDataMap.clear();
       this._loading = false;
-      this._render();
+      this._renderContent();
     }
 
     // Process any queued refresh
@@ -427,8 +440,25 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
 
   _toggleRecommendationFilter() {
     this._showRecommendedOnly = !this._showRecommendedOnly;
-    this._fetchPlan(); // Fetch new plan with updated filter
+    this._updateFilterButtonAppearance();
+    this._fetchPlan({ forceFullRender: true }); // Force full render when filter changes
   }
+
+  /**
+   * Update the filter button's visual appearance without re-rendering the entire header
+   */
+  _updateFilterButtonAppearance() {
+    this._updateHeaderButton('.filter-toggle-btn', {
+      classes: [
+        { className: 'filtered', add: this._showRecommendedOnly }
+      ],
+      icon: this._showRecommendedOnly ? 'mdi:filter-check' : 'mdi:filter-off',
+      title: this._showRecommendedOnly
+        ? 'Showing recommended tasks only - click to show all tasks'
+        : 'Showing all tasks - click to show recommended only'
+    });
+  }
+
 
   _handleSetDailyState() {
     const username = this._getUsername();
@@ -456,37 +486,25 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
 
   async _completeTask(task, notes, completed_at = null) { await super._completeTask(task, notes, completed_at); }
 
-  _render() {
-    if (!this.shadowRoot) return;
+  /**
+   * Get card-specific styles
+   */
+  getCardStyles() {
+    return TaskTrackerStyles.getDailyPlanCardStyles();
+  }
 
-    const username = this._getUsername();
-    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
-
-    this.shadowRoot.innerHTML = `
-      <style>
-        ${TaskTrackerStyles.getCommonCardStyles()}
-        ${TaskTrackerStyles.getDailyPlanCardStyles()}
-      </style>
-
-      <div class="card">
-        ${this._renderHeader()}
-
-        ${this._renderContent()}
-      </div>
-    `;
-
-    // Update previous data after full render
-    if (this._plan?.data) {
-      this._previousData = this._plan.data;
-    }
-
-    // Add event listeners
-    const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchPlan());
+  /**
+   * Attach event listeners to header elements (called once during structure render)
+   */
+  _attachHeaderEventListeners() {
+    // Call base class method to attach refresh button
+    super._attachHeaderEventListeners();
 
     // Filter toggle button handler
     const filterToggleBtn = this.shadowRoot.querySelector('.filter-toggle-btn');
-    if (filterToggleBtn) filterToggleBtn.addEventListener('click', () => this._toggleRecommendationFilter());
+    if (filterToggleBtn) {
+      filterToggleBtn.addEventListener('click', () => this._toggleRecommendationFilter());
+    }
 
     // Daily state button handler
     const dailyStateButton = this.shadowRoot.querySelector('.daily-state-button');
@@ -499,6 +517,59 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     if (dailyStateEditButton) {
       dailyStateEditButton.addEventListener('click', () => this._handleSetDailyState());
     }
+  }
+
+  /**
+   * Update only the content area (tasks, loading states) - called on data changes
+   */
+  _renderContent() {
+    const contentContainer = this.shadowRoot?.querySelector('.content-container');
+    if (!contentContainer) return;
+
+    const username = this._getUsername();
+    const hasValidUserConfig = TaskTrackerUtils.hasValidUserConfig(this._config);
+
+    contentContainer.innerHTML = this._renderContentHTML(hasValidUserConfig);
+
+    // Update previous data after content render
+    if (this._plan?.data) {
+      this._previousData = this._plan.data;
+    }
+
+    this._attachContentEventListeners(hasValidUserConfig);
+  }
+
+  /**
+   * Generate the content HTML (extracted from original _renderContent)
+   */
+  _renderContentHTML(hasValidUserConfig) {
+    if (!hasValidUserConfig) {
+      return `
+        <div class="no-user-warning">
+          No user configured. Please set user in card configuration.
+        </div>
+      `;
+    }
+
+    if (this._loading) {
+      return '<div class="loading">Loading daily plan…</div>';
+    }
+
+    if (this._error) {
+      return `<div class="error">${this._error}</div>`;
+    }
+
+    if (!this._plan) {
+      return '<div class="loading">No plan data</div>';
+    }
+
+    return this._renderPlanContent();
+  }
+
+  /**
+   * Attach event listeners to content elements (called after content updates)
+   */
+  _attachContentEventListeners(hasValidUserConfig) {
 
     if (hasValidUserConfig) {
       // Task item click handlers
@@ -584,6 +655,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     const username = this._getUsername();
     return `Daily Plan ${username ? `- ${TaskTrackerUtils.capitalize(username)}` : ''}`;
   }
+
   getHeaderActions() {
     return `
       <button class="filter-toggle-btn ${this._showRecommendedOnly ? 'filtered' : ''}"
@@ -592,22 +664,11 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       </button>
     `;
   }
+
   onAutoRefresh() { this._fetchPlan(); }
   onRefresh() { this._fetchPlan(); }
 
-  _renderContent() {
-    if (this._loading) {
-      return '<div class="loading">Loading daily plan...</div>';
-    }
-
-    if (this._error) {
-      return `<div class="error">${this._error}</div>`;
-    }
-
-    if (!TaskTrackerUtils.hasValidUserConfig(this._config)) {
-      return '<div class="no-user-warning">No user configured. Please set user in card configuration.</div>';
-    }
-
+  _renderPlanContent() {
     if (!this._plan) {
       return '<div class="no-tasks">No plan available.</div>';
     }
@@ -1176,8 +1237,12 @@ class TaskTrackerDailyPlanCardEditor extends TaskTrackerBaseEditor {
 
   _updateConfig(configKey, value) {
     super._updateConfig(configKey, value);
-    if (configKey === 'user_filter_mode') {
-      this._render();
+
+    // Check if this config change affects the header
+    const headerConfigKeys = ['user_filter_mode', 'explicit_user', 'show_header'];
+    if (headerConfigKeys.includes(configKey)) {
+      this._structureRendered = false; // Force re-render of structure
+      this._renderStructure();
     }
   }
 }
