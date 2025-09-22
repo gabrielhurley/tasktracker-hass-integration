@@ -146,10 +146,10 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
         available_minutes: this._availableMinutes
       };
 
-      // Only include assigned_to if username is provided
+      // Only include username if provided
       // If null, let backend handle user mapping via call context
       if (username) {
-        serviceData.assigned_to = username;
+        serviceData.username = username;
       }
 
       const response = await this._hass.callService('tasktracker', 'get_recommended_tasks', serviceData, {}, true, true);
@@ -367,7 +367,7 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
     cleanups.push(
       TaskTrackerUtils.setupTaskCreationListener(this._hass, (eventData) => {
         const currentUsername = this._getCurrentUsername();
-        if (currentUsername && eventData.assigned_to === currentUsername) {
+        if (currentUsername && eventData.assigned_users && eventData.assigned_users.includes(currentUsername)) {
           setTimeout(() => this._fetchRecommendedTasks(), 500);
         }
       })

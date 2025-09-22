@@ -153,7 +153,7 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
       };
 
       if (userValidation.username) {
-        params.assigned_to = userValidation.username;
+        params.username = userValidation.username;
       }
 
       const response = await this._hass.callService('tasktracker', 'get_recent_completions', params, {}, true, true);

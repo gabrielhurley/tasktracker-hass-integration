@@ -147,7 +147,7 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
       const params = {};
 
       if (userValidation.username) {
-        params.assigned_to = userValidation.username;
+        params.username = userValidation.username;
       }
 
       const response = await this._hass.callService('tasktracker', 'list_leftovers', params, {}, true, true);

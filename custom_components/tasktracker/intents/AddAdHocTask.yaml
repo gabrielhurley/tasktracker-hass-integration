@@ -18,7 +18,7 @@ intent:
       - service: tasktracker.create_adhoc_task
         data:
           name: "{{ task_name }}"
-          assigned_to: "{{ task_assigned_to|default('') }}"
+          assigned_users: ["{{ task_assigned_to|default('') }}"]
           duration_minutes: "{{ task_duration|default('') }}"
           priority: "{{ task_priority|default('') }}"
         response_variable: result

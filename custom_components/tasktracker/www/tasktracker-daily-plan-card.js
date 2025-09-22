@@ -506,17 +506,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       filterToggleBtn.addEventListener('click', () => this._toggleRecommendationFilter());
     }
 
-    // Daily state button handler
-    const dailyStateButton = this.shadowRoot.querySelector('.daily-state-button');
-    if (dailyStateButton) {
-      dailyStateButton.addEventListener('click', () => this._handleSetDailyState());
-    }
-
-    // Daily state edit button handler
-    const dailyStateEditButton = this.shadowRoot.querySelector('.daily-state-edit-btn');
-    if (dailyStateEditButton) {
-      dailyStateEditButton.addEventListener('click', () => this._handleSetDailyState());
-    }
   }
 
   /**
@@ -647,6 +636,18 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
           }
         });
       });
+
+      // Daily state button handler (rendered in content area)
+      const dailyStateButton = this.shadowRoot.querySelector('.daily-state-button');
+      if (dailyStateButton) {
+        dailyStateButton.addEventListener('click', () => this._handleSetDailyState());
+      }
+
+      // Daily state edit button handler (rendered in content area)
+      const dailyStateEditButton = this.shadowRoot.querySelector('.daily-state-edit-btn');
+      if (dailyStateEditButton) {
+        dailyStateEditButton.addEventListener('click', () => this._handleSetDailyState());
+      }
     }
   }
 

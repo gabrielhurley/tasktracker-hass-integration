@@ -226,7 +226,7 @@ def create_adhoc_task_handler_factory(
 
     The returned handler expects the following service data:
         - name (str): The name of the ad-hoc task.
-        - assigned_to (str, optional): The username assigned to the task. If not provided,
+        - assigned_users (list[str], optional): The usernames assigned to the task. If not provided,
           will be inferred from the service call context.
         - duration_minutes (int, optional): Estimated duration in minutes.
         - priority (str, optional): Task priority level.
@@ -238,7 +238,7 @@ def create_adhoc_task_handler_factory(
         - Return the API response
 
     Raises:
-        TaskTrackerAPIError: If no assigned_to can be determined from context.
+        TaskTrackerAPIError: If no assigned_users can be determined from context.
 
     """
 
@@ -258,17 +258,18 @@ def create_adhoc_task_handler_factory(
 
         """
         try:
-            assigned_to = call.data.get("assigned_to")
-            if not assigned_to:
+            assigned_users = call.data.get("assigned_users", [])
+            if not assigned_users:
                 user_id = call.context.user_id if call.context else None
                 current_config = get_current_config()
                 assigned_to = user_lookup_fn(hass, user_id, current_config)
                 if not assigned_to:
-                    msg = "No assigned_to provided and could not determine from user context"
+                    msg = "No assigned_users provided and could not determine from user context"
                     raise TaskTrackerAPIError(msg)
+                assigned_users = [assigned_to]
             result = await api.create_adhoc_task(
                 name=call.data["name"],
-                assigned_to=assigned_to,
+                assigned_users=assigned_users,
                 duration_minutes=call.data.get("duration_minutes"),
                 priority=call.data.get("priority"),
             )
@@ -277,7 +278,7 @@ def create_adhoc_task_handler_factory(
                     "tasktracker_task_created",
                     {
                         "task_name": call.data["name"],
-                        "assigned_to": assigned_to,
+                        "assigned_users": assigned_users,
                         "duration_minutes": call.data.get("duration_minutes"),
                         "priority": call.data.get("priority"),
                         "creation_data": result.get("data"),
@@ -369,7 +370,7 @@ def get_recommended_tasks_handler_factory(
         A service handler function that gets recommended tasks.
 
     The returned handler expects the following service data:
-        - assigned_to (str, optional): The username to get recommendations for. If not provided,
+        - username (str, optional): The username to get recommendations for. If not provided,
           will be inferred from the service call context.
         - available_minutes (int): The number of minutes available for tasks.
 
@@ -379,7 +380,7 @@ def get_recommended_tasks_handler_factory(
         - Return the API response
 
     Raises:
-        TaskTrackerAPIError: If no assigned_to can be determined from context or if
+        TaskTrackerAPIError: If no username can be determined from context or if
         available_minutes is not provided.
 
     """
@@ -395,26 +396,26 @@ def get_recommended_tasks_handler_factory(
             The API response containing recommended tasks.
 
         Raises:
-            TaskTrackerAPIError: If the API call fails, no assigned_to can be determined,
+            TaskTrackerAPIError: If the API call fails, no username can be determined,
             or available_minutes is not provided.
             Exception: For any other unexpected errors.
 
         """
         try:
-            assigned_to = call.data.get("assigned_to")
-            if not assigned_to:
+            username = call.data.get("username")
+            if not username:
                 user_id = call.context.user_id if call.context else None
                 current_config = get_current_config()
-                assigned_to = user_lookup_fn(hass, user_id, current_config)
-                if not assigned_to:
-                    msg = "No assigned_to provided and could not determine from user context"
+                username = user_lookup_fn(hass, user_id, current_config)
+                if not username:
+                    msg = "No username provided and could not determine from user context"
                     raise TaskTrackerAPIError(msg)
             available_minutes = call.data.get("available_minutes")
             if available_minutes is None:
                 msg = "available_minutes is required for get_recommended_tasks"
                 raise TaskTrackerAPIError(msg)
             result = await api.get_recommended_tasks(
-                assigned_to=assigned_to,
+                username=username,
                 available_minutes=available_minutes,
             )
             _LOGGER.debug("Recommended tasks retrieved: %s", result)
@@ -442,7 +443,7 @@ def get_available_tasks_handler_factory(
         A service handler function that gets available tasks.
 
     The returned handler expects the following service data:
-        - assigned_to (str, optional): Filter tasks by assigned user.
+        - username (str, optional): Filter tasks by assigned user.
         - available_minutes (int, optional): Filter tasks by available time.
         - upcoming_days (int, optional): Number of upcoming days to consider.
 
@@ -470,7 +471,7 @@ def get_available_tasks_handler_factory(
         """
         try:
             result = await api.get_available_tasks(
-                assigned_to=call.data.get("assigned_to"),
+                username=call.data.get("username"),
                 available_minutes=call.data.get("available_minutes"),
                 upcoming_days=call.data.get("upcoming_days"),
             )
@@ -500,7 +501,7 @@ def get_all_tasks_handler_factory(
 
     The returned handler expects the following service data:
         - thin (bool, optional): Whether to return thin task data. Defaults to False.
-        - assigned_to (str, optional): Filter tasks by assigned user.
+        - username (str, optional): Filter tasks by assigned user.
 
     The handler will:
         - Get all tasks via the API
@@ -527,7 +528,7 @@ def get_all_tasks_handler_factory(
         try:
             result = await api.get_all_tasks(
                 thin=call.data.get("thin", False),
-                assigned_to=call.data.get("assigned_to"),
+                username=call.data.get("username"),
             )
             _LOGGER.debug("All tasks retrieved: %s", result)
             return result
@@ -554,7 +555,7 @@ def get_recent_completions_handler_factory(
         A service handler function that gets recent completions.
 
     The returned handler expects the following service data:
-        - assigned_to (str, optional): Filter completions by assigned user.
+        - username (str, optional): Filter completions by assigned user.
         - days (int, optional): Number of days to look back.
         - limit (int, optional): Maximum number of completions to return.
 
@@ -582,7 +583,7 @@ def get_recent_completions_handler_factory(
         """
         try:
             result = await api.get_recent_completions(
-                assigned_to=call.data.get("assigned_to"),
+                username=call.data.get("username"),
                 days=call.data.get("days"),
                 limit=call.data.get("limit"),
             )
@@ -613,7 +614,7 @@ def update_task_handler_factory(
     The returned handler expects the following service data:
         - task_id (str): The ID of the task to update.
         - task_type (str): The type of task (e.g., "recurring", "adhoc", "selfcare").
-        - assigned_to (str, optional): New assigned user.
+        - assigned_users (list[str], optional): New assigned users.
         - name (str, optional): New task name.
         - priority (str, optional): New priority level.
         - notes (str, optional): New notes.
@@ -687,8 +688,8 @@ def update_task_handler_factory(
             for field in update_fields:
                 if field in call.data:
                     updates[field] = call.data[field]
-            if "assigned_to" in call.data:
-                updates["assigned_to"] = call.data["assigned_to"]
+            if "assigned_users" in call.data:
+                updates["assigned_users"] = call.data["assigned_users"]
             result = await api.update_task(
                 task_id=call.data["task_id"],
                 task_type=call.data["task_type"],
@@ -737,7 +738,7 @@ def create_task_from_description_handler_factory(
     The returned handler expects the following service data:
         - task_type (str): The type of task to create (e.g., "recurring", "adhoc", "selfcare").
         - task_description (str): Description of the task to create.
-        - assigned_to (str, optional): The username assigned to the task. If not provided,
+        - assigned_users (list[str], optional): The usernames assigned to the task. If not provided,
           will be inferred from the service call context.
 
     The handler will:
@@ -747,7 +748,7 @@ def create_task_from_description_handler_factory(
         - Return the API response
 
     Raises:
-        TaskTrackerAPIError: If no assigned_to can be determined from context.
+        TaskTrackerAPIError: If no assigned_users can be determined from context.
 
     """
 
@@ -767,18 +768,19 @@ def create_task_from_description_handler_factory(
 
         """
         try:
-            assigned_to = call.data.get("assigned_to")
-            if not assigned_to:
+            assigned_users = call.data.get("assigned_users", [])
+            if not assigned_users:
                 user_id = call.context.user_id if call.context else None
                 current_config = get_current_config()
                 assigned_to = user_lookup_fn(hass, user_id, current_config)
                 if not assigned_to:
-                    msg = "No assigned_to provided and could not determine from user context"
+                    msg = "No assigned_users provided and could not determine from user context"
                     raise TaskTrackerAPIError(msg)
+                assigned_users = [assigned_to]
             result = await api.create_task_from_description(
                 task_type=call.data["task_type"],
                 task_description=call.data["task_description"],
-                assigned_to=assigned_to,
+                assigned_users=assigned_users,
             )
             if result.get("success"):
                 data = result.get("data", {}) or {}
@@ -788,7 +790,7 @@ def create_task_from_description_handler_factory(
                     {
                         "task_name": task.get("name")
                         or call.data.get("task_description"),
-                        "assigned_to": assigned_to,
+                        "assigned_users": assigned_users,
                         "creation_data": result.get("data"),
                     },
                 )
@@ -827,7 +829,7 @@ def delete_task_handler_factory(
     The returned handler expects the following service data:
         - task_id (str): The ID of the task to delete.
         - task_type (str): The type of task to delete.
-        - assigned_to (str, optional): The username assigned to the task. If not provided,
+        - assigned_users (list[str], optional): The usernames assigned to the task. If not provided,
           will be inferred from the service call context.
 
     The handler will:

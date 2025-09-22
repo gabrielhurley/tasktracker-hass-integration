@@ -153,7 +153,7 @@ class TestSpecificIntentHandlers:
         assert isinstance(response, IntentResponse)
         api_mock.create_leftover.assert_called_once_with(
             name="spaghetti",
-            assigned_to="mike",
+            assigned_users=["mike"],
             shelf_life_days=None,
             days_ago=None,
         )
@@ -164,7 +164,7 @@ class TestSpecificIntentHandlers:
             "tasktracker_leftover_created",
             {
                 "leftover_name": "spaghetti",
-                "assigned_to": "mike",
+                "assigned_users": ["mike"],
                 "shelf_life_days": None,
                 "days_ago": None,
                 "creation_data": {},
@@ -234,7 +234,7 @@ class TestSpecificIntentHandlers:
         assert isinstance(response, IntentResponse)
         api_mock.create_adhoc_task.assert_called_once_with(
             name="Fix door",
-            assigned_to="tom",
+            assigned_users=["tom"],
             duration_minutes=45,
             priority=1,
         )
@@ -322,7 +322,7 @@ class TestSpecificIntentHandlers:
 
         assert isinstance(response, IntentResponse)
         api_mock.get_recommended_tasks.assert_called_once_with(
-            assigned_to="david",
+            username="david",
             available_minutes=60,
         )
         speech_text = get_speech_text(response)
@@ -353,7 +353,7 @@ class TestSpecificIntentHandlers:
 
         assert isinstance(response, IntentResponse)
         api_mock.get_recommended_tasks.assert_called_once_with(
-            assigned_to="emma",
+            username="emma",
             available_minutes=20,
         )
         speech_text = get_speech_text(response)

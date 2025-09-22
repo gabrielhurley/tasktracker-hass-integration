@@ -42,9 +42,13 @@ export async function updateCompletion(hass, completionId, updates) {
   }
 }
 
-export async function updateTask(hass, taskId, taskType, assignedTo, updates) {
+export async function updateTask(hass, taskId, taskType, assignedUsers, updates) {
   try {
-    const serviceData = { task_id: taskId, task_type: taskType, assigned_to: assignedTo, ...updates };
+    const serviceData = { task_id: taskId, task_type: taskType, ...updates };
+    // Only set assignedUsers if it's not already in updates (to avoid overwriting new assignments)
+    if (assignedUsers && !('assigned_users' in updates)) {
+      serviceData.assigned_users = assignedUsers;
+    }
     const response = await hass.callService('tasktracker', 'update_task', serviceData, {}, true, true);
     const data = ensureServiceSuccess(response);
     return data;
@@ -53,12 +57,12 @@ export async function updateTask(hass, taskId, taskType, assignedTo, updates) {
   }
 }
 
-export async function snoozeTask(hass, task, snoozeUntil, username, refreshCallback = null) {
+export async function snoozeTask(hass, task, snoozeUntil, assignedUsers, refreshCallback = null) {
   try {
     const response = await hass.callService('tasktracker', 'update_task', {
       task_id: task.id || task.task_id,
       task_type: task.task_type,
-      assigned_to: username,
+      assigned_users: assignedUsers,
       next_due: snoozeUntil,
     }, {}, true, true);
     const data = ensureServiceSuccess(response);
@@ -74,7 +78,7 @@ export async function snoozeTask(hass, task, snoozeUntil, username, refreshCallb
 export async function disposeLeftover(hass, leftoverName, username, notes) {
   try {
     const serviceData = { name: leftoverName, event_type: 'leftover_disposed' };
-    if (username) serviceData.assigned_to = username;
+    if (username) serviceData.username = username;
     if (notes) serviceData.notes = notes;
     const response = await hass.callService('tasktracker', 'complete_task_by_name', serviceData, {}, true, true);
     const data = ensureServiceSuccess(response);
@@ -84,10 +88,10 @@ export async function disposeLeftover(hass, leftoverName, username, notes) {
   }
 }
 
-export async function createTaskFromDescription(hass, taskType, taskDescription, assignedTo) {
+export async function createTaskFromDescription(hass, taskType, taskDescription, assignedUsers) {
   try {
     const params = { task_type: taskType, task_description: taskDescription };
-    if (assignedTo) params.assigned_to = assignedTo;
+    if (assignedUsers) params.assigned_users = assignedUsers;
     const response = await hass.callService('tasktracker', 'create_task_from_description', params, {}, true, true);
     const data = ensureServiceSuccess(response);
     showSuccess('Task created');
@@ -98,10 +102,9 @@ export async function createTaskFromDescription(hass, taskType, taskDescription,
   }
 }
 
-export async function deleteTask(hass, taskId, taskType, assignedTo = null) {
+export async function deleteTask(hass, taskId, taskType) {
   try {
     const params = { task_id: taskId, task_type: taskType };
-    if (assignedTo) params.assigned_to = assignedTo;
     const response = await hass.callService('tasktracker', 'delete_task', params, {}, true, true);
     const data = ensureServiceSuccess(response);
     showSuccess('Task deleted');

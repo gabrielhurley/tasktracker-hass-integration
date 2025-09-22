@@ -95,7 +95,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.create_leftover(
-            name="pizza", assigned_to="testuser", shelf_life_days=3
+            name="pizza", assigned_users=["testuser"], shelf_life_days=3
         )
 
         assert result["success"] is True
@@ -135,7 +135,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.create_adhoc_task(
-            name="adhoc task", assigned_to="testuser", duration_minutes=30
+            name="adhoc task", assigned_users=["testuser"], duration_minutes=30
         )
 
         assert result["success"] is True
@@ -157,7 +157,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.create_adhoc_task(
-            name="adhoc task", assigned_to="testuser"
+            name="adhoc task", assigned_users=["testuser"]
         )
 
         assert result["success"] is True
@@ -185,7 +185,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_recommended_tasks(
-            assigned_to="testuser", available_minutes=30
+            username="testuser", available_minutes=30
         )
 
         assert result["success"] is True
@@ -207,7 +207,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_recommended_tasks(
-            assigned_to="testuser", available_minutes=30
+            username="testuser", available_minutes=30
         )
 
         assert result["success"] is True
@@ -227,7 +227,7 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_available_tasks(assigned_to="testuser")
+        result = await api_client.get_available_tasks(username="testuser")
 
         assert result["success"] is True
         assert len(result["data"]["items"]) == 1
@@ -270,7 +270,7 @@ class TestTaskTrackerAPI:
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
         result = await api_client.get_recent_completions(
-            assigned_to="testuser", limit=10
+            username="testuser", limit=10
         )
 
         assert result["success"] is True
@@ -326,7 +326,7 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_all_tasks(assigned_to="testuser")
+        result = await api_client.get_all_tasks(username="testuser")
 
         assert result["success"] is True
 
@@ -362,7 +362,7 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_all_tasks(assigned_to="testuser")
+        result = await api_client.get_all_tasks(username="testuser")
 
         assert result["success"] is True
 
@@ -527,6 +527,6 @@ class TestTaskTrackerAPI:
 
         api_client.session.request.return_value.__aenter__.return_value = mock_response
 
-        result = await api_client.get_available_tasks(assigned_to="testuser")
+        result = await api_client.get_available_tasks(username="testuser")
 
         assert result["success"] is True

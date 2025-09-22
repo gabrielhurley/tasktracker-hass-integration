@@ -427,7 +427,7 @@ describe('TaskTrackerUtils.getTaskBorderStyle', () => {
         id: 9,
         task_type: "RecurringTask",
         name: "Mop Floor Upstairs",
-        assigned_to: "sara",
+        assigned_users: ["sara"],
         is_overdue: true,
         days_overdue: 7,
         overdue_severity: 2,

@@ -50,11 +50,13 @@ create_leftover:
       example: "Pizza leftovers"
       selector:
         text:
-    assigned_to:
+    assigned_users:
       required: false
-      example: "john_doe"
+      example: ["john_doe", "jane_doe"]
       selector:
-        text:
+        select:
+          multiple: true
+          custom_value: true
     shelf_life_days:
       required: false
       example: 3
@@ -77,11 +79,13 @@ create_adhoc_task:
       example: "Fix leaky faucet"
       selector:
         text:
-    assigned_to:
+    assigned_users:
       required: false
-      example: "john_doe"
+      example: ["john_doe", "jane_doe"]
       selector:
-        text:
+        select:
+          multiple: true
+          custom_value: true
     duration_minutes:
       required: false
       example: 30
@@ -123,7 +127,7 @@ query_task:
 
 get_recommended_tasks:
   fields:
-    assigned_to:
+    username:
       required: false
       example: "john_doe"
       selector:
@@ -139,7 +143,7 @@ get_recommended_tasks:
 
 get_available_tasks:
   fields:
-    assigned_to:
+    username:
       required: false
       example: "john_doe"
       selector:
@@ -163,7 +167,7 @@ get_available_tasks:
 
 get_recent_completions:
   fields:
-    assigned_to:
+    username:
       required: false
       example: "john_doe"
       selector:
@@ -193,7 +197,7 @@ get_all_tasks:
       example: false
       selector:
         boolean:
-    assigned_to:
+    username:
       required: false
       example: "john_doe"
       selector:
@@ -217,11 +221,13 @@ update_task:
             - "RecurringTask"
             - "AdHocTask"
             - "SelfCareTask"
-    assigned_to:
-      required: true
-      example: "john_doe"
+    assigned_users:
+      required: false
+      example: ["john_doe", "jane_doe"]
       selector:
-        text:
+        select:
+          multiple: true
+          custom_value: true
 
     # BaseTask fields
     name:

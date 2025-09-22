@@ -142,7 +142,7 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
 
       const username = this._getCurrentUsername();
       if (username) {
-        params.assigned_to = username;
+        params.username = username;
       }
 
       const response = await this._hass.callService('tasktracker', 'get_available_tasks', params, {}, true, true);
@@ -395,7 +395,7 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
     );
     cleanups.push(
       TaskTrackerUtils.setupTaskCreationListener(this._hass, (eventData) => {
-        const shouldRefresh = this._shouldRefreshForUser(eventData.assigned_to);
+        const shouldRefresh = this._shouldRefreshForUser(eventData.assigned_users);
         if (shouldRefresh) setTimeout(() => this._fetchAvailableTasks(), 500);
       })
     );
@@ -415,7 +415,7 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
     this.setEventCleanups(cleanups);
   }
 
-  _shouldRefreshForUser(completedByUsername) {
+  _shouldRefreshForUser(assignedUsersOrUsername) {
     const currentUsername = this._getCurrentUsername();
 
     // If we're showing all users, refresh for any completion
@@ -425,7 +425,12 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
 
     // If we're filtering by user, only refresh if it matches our filter
     if (currentUsername) {
-      return completedByUsername === currentUsername;
+      // Handle both single username and array of usernames
+      if (Array.isArray(assignedUsersOrUsername)) {
+        return assignedUsersOrUsername.includes(currentUsername);
+      } else {
+        return assignedUsersOrUsername === currentUsername;
+      }
     }
 
     // Default to refreshing

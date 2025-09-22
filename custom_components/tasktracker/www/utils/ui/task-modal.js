@@ -34,7 +34,7 @@ export function createTaskModal(
   const taskDuration = task.duration_minutes || task.task_duration_minutes || 0;
   const taskPriority = task.priority_value || task.priority || task.task_priority_value || 2;
   const isRecurringTask = ['RecurringTask', 'SelfCareTask'].includes(task.task_type);
-  const assignedTo = task.assigned_to;
+  const assignedUsers = task.assigned_users || [];
   const dueDate = task.next_due || task.due_date;
 
   let nameInput, isActiveInput;
@@ -337,19 +337,55 @@ export function createTaskModal(
   // Section: Assignment (only if users available)
   if (availableUsers && availableUsers.length > 1) {
     const { section: assignSection, fieldsContainer: assignFields } = createSection('Assignment');
+    const isSelfCare = task.task_type === 'SelfCareTask';
+
     if (onSave) {
-      assignmentControl = document.createElement('select');
-      assignmentControl.className = 'tt-select';
-      availableUsers.forEach(username => {
-        const optionElement = document.createElement('option');
-        optionElement.value = username;
-        optionElement.textContent = getUserDisplayName(username, enhancedUsers);
-        optionElement.selected = username === assignedTo;
-        assignmentControl.appendChild(optionElement);
-      });
-      assignFields.appendChild(createFieldRow('Assigned To', assignmentControl));
+      if (isSelfCare) {
+        // Self-care tasks: single user dropdown
+        assignmentControl = document.createElement('select');
+        assignmentControl.className = 'tt-select';
+        assignmentControl.name = 'assigned_users_single';
+        availableUsers.forEach(username => {
+          const optionElement = document.createElement('option');
+          optionElement.value = username;
+          optionElement.textContent = getUserDisplayName(username, enhancedUsers);
+          optionElement.selected = assignedUsers.includes(username);
+          assignmentControl.appendChild(optionElement);
+        });
+        assignFields.appendChild(createFieldRow('Assigned To', assignmentControl));
+      } else {
+        // Other tasks: multi-select checkboxes
+        const checkboxContainer = document.createElement('div');
+        checkboxContainer.className = 'tt-flex-col tt-gap-8';
+
+        availableUsers.forEach(username => {
+          const checkboxRow = document.createElement('div');
+          checkboxRow.className = 'tt-flex-row tt-gap-8';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.name = 'assigned_users';
+          checkbox.value = username;
+          checkbox.checked = assignedUsers.includes(username);
+          checkbox.className = 'tt-checkbox';
+
+          const label = document.createElement('label');
+          label.textContent = getUserDisplayName(username, enhancedUsers);
+          label.className = 'tt-label';
+
+          checkboxRow.appendChild(checkbox);
+          checkboxRow.appendChild(label);
+          checkboxContainer.appendChild(checkboxRow);
+        });
+
+        assignFields.appendChild(createFieldRow('Assigned To', checkboxContainer, true));
+      }
     } else {
-      assignFields.appendChild(createFieldRow('Assigned To', createDisplay(getUserDisplayName(assignedTo || '', enhancedUsers) || assignedTo || '—')));
+      // Read-only display
+      const displayText = assignedUsers.length > 0
+        ? assignedUsers.map(user => getUserDisplayName(user, enhancedUsers) || user).join(', ')
+        : '—';
+      assignFields.appendChild(createFieldRow('Assigned To', createDisplay(displayText)));
     }
     formContainer.appendChild(assignSection);
   }
@@ -635,7 +671,23 @@ export function createTaskModal(
       }
 
       // Assignment
-      if (assignmentControl && assignmentControl.value !== assignedTo) updates.assigned_to = assignmentControl.value;
+      const isSelfCare = task.task_type === 'SelfCareTask';
+      if (isSelfCare && assignmentControl && assignmentControl.value) {
+        const newAssignedUsers = [assignmentControl.value];
+        if (JSON.stringify(newAssignedUsers) !== JSON.stringify(assignedUsers)) {
+          updates.assigned_users = newAssignedUsers;
+        }
+      } else if (!isSelfCare) {
+        // Multi-user assignment for non-self-care tasks
+        const form = assignmentControl?.closest('form') || assignmentControl?.closest('.tt-modal__content');
+        if (form) {
+          const formData = new FormData(form);
+          const selectedUsers = formData.getAll('assigned_users');
+          if (JSON.stringify(selectedUsers.sort()) !== JSON.stringify(assignedUsers.sort())) {
+            updates.assigned_users = selectedUsers;
+          }
+        }
+      }
 
       // Tags and notes
       if (tagsInput) {

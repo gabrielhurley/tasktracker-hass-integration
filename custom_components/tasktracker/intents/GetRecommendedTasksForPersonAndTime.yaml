@@ -4,7 +4,7 @@ intent:
     action:
       - service: tasktracker.get_recommended_tasks
         data:
-          assigned_to: "{{ person }}"
+          username: "{{ person }}"
           available_minutes: "{{ time }}"
         response_variable: result
       - stop: "Return value to intent script"

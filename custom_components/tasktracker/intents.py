@@ -105,7 +105,7 @@ class AddLeftoverIntentHandler(BaseTaskTrackerIntentHandler):
 
         result = await api.create_leftover(
             name=leftover_name,
-            assigned_to=leftover_assigned_to,
+            assigned_users=[leftover_assigned_to] if leftover_assigned_to else None,
             shelf_life_days=int(shelf_life_days) if shelf_life_days else None,
             days_ago=int(days_ago) if days_ago else None,
         )
@@ -121,7 +121,7 @@ class AddLeftoverIntentHandler(BaseTaskTrackerIntentHandler):
                 "tasktracker_leftover_created",
                 {
                     "leftover_name": leftover_name,
-                    "assigned_to": leftover_assigned_to,
+                    "assigned_users": [leftover_assigned_to] if leftover_assigned_to else [],
                     "shelf_life_days": int(shelf_life_days)
                     if shelf_life_days
                     else None,
@@ -221,7 +221,7 @@ class AddAdHocTaskIntentHandler(BaseTaskTrackerIntentHandler):
 
         result = await api.create_adhoc_task(
             name=task_name.capitalize(),
-            assigned_to=task_assigned_to,
+            assigned_users=[task_assigned_to],
             duration_minutes=int(task_duration) if task_duration else None,
             priority=int(task_priority) if task_priority else None,
         )
@@ -237,7 +237,7 @@ class AddAdHocTaskIntentHandler(BaseTaskTrackerIntentHandler):
                 "tasktracker_task_created",
                 {
                     "task_name": task_name.capitalize(),
-                    "assigned_to": task_assigned_to,
+                    "assigned_users": [task_assigned_to] if task_assigned_to else [],
                     "duration_minutes": int(task_duration) if task_duration else None,
                     "priority": int(task_priority) if task_priority else None,
                     "creation_data": result.get("data"),
@@ -348,7 +348,7 @@ class GetRecommendedTasksForPersonIntentHandler(BaseTaskTrackerIntentHandler):
                 return response
 
         result = await api.get_recommended_tasks(
-            assigned_to=person, available_minutes=60
+            username=person, available_minutes=60
         )
 
         if not result.get("success"):
@@ -399,7 +399,7 @@ class GetRecommendedTasksForPersonAndTimeIntentHandler(BaseTaskTrackerIntentHand
             return response
 
         result = await api.get_recommended_tasks(
-            assigned_to=person, available_minutes=int(available_time)
+            username=person, available_minutes=int(available_time)
         )
 
         if not result.get("success"):
@@ -468,7 +468,7 @@ class CreateTaskFromDescriptionIntentHandler(BaseTaskTrackerIntentHandler):
         result = await api.create_task_from_description(
             task_type=task_type,
             task_description=task_details,
-            assigned_to=assigned_to,
+            assigned_users=[assigned_to],
         )
 
         if not result.get("success"):
@@ -484,7 +484,7 @@ class CreateTaskFromDescriptionIntentHandler(BaseTaskTrackerIntentHandler):
                 "tasktracker_task_created",
                 {
                     "task_name": task.get("name") or task_details,
-                    "assigned_to": assigned_to,
+                    "assigned_users": [assigned_to] if assigned_to else [],
                     "creation_data": result.get("data"),
                 },
             )

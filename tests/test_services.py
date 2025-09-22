@@ -151,10 +151,10 @@ class TestTaskTrackerServices:
             )
 
     @pytest.mark.asyncio
-    async def test_complete_task_by_name_without_assigned_to_uses_user_mapping(
+    async def test_complete_task_by_name_without_username_uses_user_mapping(
         self, hass: HomeAssistant, setup_integration: AsyncMock
     ) -> None:
-        """Test complete_task_by_name service without assigned_to uses user mapping."""
+        """Test complete_task_by_name service without username uses user mapping."""
         mock_api = setup_integration
         mock_api.complete_task_by_name.return_value = {
             "success": True,
@@ -171,11 +171,11 @@ class TestTaskTrackerServices:
 
             await async_setup_services(hass, mock_api, {})
 
-            # Call the service without assigned_to
+            # Call the service without username
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_COMPLETE_TASK_BY_NAME,
-                {"name": "Test Task", "notes": "Completed without assigned_to"},
+                {"name": "Test Task", "notes": "Completed without username"},
                 blocking=True,
                 return_response=True,
             )
@@ -187,7 +187,7 @@ class TestTaskTrackerServices:
             mock_api.complete_task_by_name.assert_called_once_with(
                 name="Test Task",
                 completed_by="mapped_user",
-                notes="Completed without assigned_to",
+                notes="Completed without username",
                 completed_at=None,
             )
 
@@ -267,7 +267,7 @@ class TestTaskTrackerServices:
             # Verify API was called
             mock_api.create_leftover.assert_called_once_with(
                 name="leftover pizza",
-                assigned_to=None,
+                assigned_users=None,
                 shelf_life_days=3,
                 days_ago=None,
             )
@@ -294,7 +294,7 @@ class TestTaskTrackerServices:
             SERVICE_CREATE_LEFTOVER,
             {
                 "name": "leftover pizza",
-                "assigned_to": "testuser",
+                "assigned_users": ["testuser"],
                 "shelf_life_days": 3,
                 "days_ago": 1,
             },
@@ -305,7 +305,7 @@ class TestTaskTrackerServices:
         # Verify API was called with all parameters
         mock_api.create_leftover.assert_called_once_with(
             name="leftover pizza",
-            assigned_to="testuser",
+            assigned_users=["testuser"],
             shelf_life_days=3,
             days_ago=1,
         )
@@ -343,7 +343,7 @@ class TestTaskTrackerServices:
             # Verify API was called
             mock_api.create_adhoc_task.assert_called_once_with(
                 name="adhoc task",
-                assigned_to="testuser",
+                assigned_users=["testuser"],
                 duration_minutes=30,
                 priority=3,
             )
@@ -415,14 +415,14 @@ class TestTaskTrackerServices:
 
             # Verify API was called
             mock_api.get_recommended_tasks.assert_called_once_with(
-                assigned_to="testuser", available_minutes=30
+                username="testuser", available_minutes=30
             )
 
     @pytest.mark.asyncio
-    async def test_get_recommended_tasks_service_without_assigned_to_uses_user_mapping(
+    async def test_get_recommended_tasks_service_without_username_uses_user_mapping(
         self, hass: HomeAssistant, setup_integration: AsyncMock
     ) -> None:
-        """Test get_recommended_tasks service without assigned_to uses user mapping."""
+        """Test get_recommended_tasks service without username uses user mapping."""
         mock_api = setup_integration
         mock_api.get_recommended_tasks.return_value = {
             "success": True,
@@ -438,7 +438,7 @@ class TestTaskTrackerServices:
 
             await async_setup_services(hass, mock_api, {})
 
-            # Call the service without assigned_to
+            # Call the service without username
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_GET_RECOMMENDED_TASKS,
@@ -452,7 +452,7 @@ class TestTaskTrackerServices:
 
             # Verify API was called with mapped username
             mock_api.get_recommended_tasks.assert_called_once_with(
-                assigned_to="mapped_user", available_minutes=30
+                username="mapped_user", available_minutes=30
             )
 
     @pytest.mark.asyncio
@@ -475,14 +475,14 @@ class TestTaskTrackerServices:
         await hass.services.async_call(
             DOMAIN,
             SERVICE_GET_AVAILABLE_TASKS,
-            {"assigned_to": "testuser", "available_minutes": 45, "upcoming_days": 7},
+            {"username": "testuser", "available_minutes": 45, "upcoming_days": 7},
             blocking=True,
             return_response=True,
         )
 
         # Verify API was called
         mock_api.get_available_tasks.assert_called_once_with(
-            assigned_to="testuser", available_minutes=45, upcoming_days=7
+            username="testuser", available_minutes=45, upcoming_days=7
         )
 
     @pytest.mark.asyncio
@@ -505,14 +505,14 @@ class TestTaskTrackerServices:
         await hass.services.async_call(
             DOMAIN,
             SERVICE_GET_RECENT_COMPLETIONS,
-            {"assigned_to": "testuser", "days": 7, "limit": 10},
+            {"username": "testuser", "days": 7, "limit": 10},
             blocking=True,
             return_response=True,
         )
 
         # Verify API was called
         mock_api.get_recent_completions.assert_called_once_with(
-            assigned_to="testuser", days=7, limit=10
+            username="testuser", days=7, limit=10
         )
 
     @pytest.mark.asyncio
@@ -571,7 +571,7 @@ class TestTaskTrackerServices:
         )
 
         # Verify API was called with thin=True and response is returned
-        mock_api.get_all_tasks.assert_called_once_with(thin=True, assigned_to=None)
+        mock_api.get_all_tasks.assert_called_once_with(thin=True, username=None)
         assert response is not None
         assert response["success"] is True
 
@@ -600,9 +600,9 @@ class TestTaskTrackerServices:
             return_response=True,
         )
 
-        # Verify API was called with thin=False (default) and assigned_to=None
+        # Verify API was called with thin=False (default) and username=None
         # and response is returned
-        mock_api.get_all_tasks.assert_called_once_with(thin=False, assigned_to=None)
+        mock_api.get_all_tasks.assert_called_once_with(thin=False, username=None)
         assert response is not None
         assert response["success"] is True
 
@@ -637,14 +637,14 @@ class TestTaskTrackerServices:
             mock_api.create_task_from_description.assert_called_once_with(
                 task_type="RecurringTask",
                 task_description="Do dishes every night",
-                assigned_to="mapped_user",
+                assigned_users=["mapped_user"],
             )
 
     @pytest.mark.asyncio
     async def test_create_task_from_description_with_explicit_user(
         self, hass: HomeAssistant, setup_integration: AsyncMock
     ) -> None:
-        """Test creating a task from description with explicit assigned_to passes through to API."""
+        """Test creating a task from description with explicit assigned_users passes through to API."""
         mock_api = setup_integration
         mock_api.create_task_from_description.return_value = {
             "success": True,
@@ -661,7 +661,7 @@ class TestTaskTrackerServices:
             {
                 "task_type": "SelfCareTask",
                 "task_description": "Stretch in the morning",
-                "assigned_to": "alice",
+                "assigned_users": ["alice"],
             },
             blocking=True,
             return_response=True,
@@ -670,7 +670,7 @@ class TestTaskTrackerServices:
         mock_api.create_task_from_description.assert_called_once_with(
             task_type="SelfCareTask",
             task_description="Stretch in the morning",
-            assigned_to="alice",
+            assigned_users=["alice"],
         )
 
     @pytest.mark.asyncio

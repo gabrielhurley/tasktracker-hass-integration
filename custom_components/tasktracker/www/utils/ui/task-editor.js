@@ -222,9 +222,21 @@ export class TaskTrackerTaskEditor {
     // Assignment Section (if multiple users available)
     if (availableUsers && availableUsers.length > 1) {
       const userOptions = availableUsers.map(username => ({ value: username, label: username }));
-      sections.push(this.createSection('Assignment', [
-        this.createSelectField('assigned_to', 'Assigned To', task.assigned_to, userOptions)
-      ]));
+      const isSelfCare = task.task_type === 'SelfCareTask';
+
+      if (isSelfCare) {
+        // Self-care tasks require exactly one assignee
+        sections.push(this.createSection('Assignment', [
+          this.createSelectField('assigned_users_single', 'Assigned To',
+            task.assigned_users?.[0] || '', userOptions)
+        ]));
+      } else {
+        // Other tasks support multiple assignees
+        sections.push(this.createSection('Assignment', [
+          this.createMultiSelectField('assigned_users', 'Assigned To',
+            task.assigned_users || [], userOptions)
+        ]));
+      }
     }
 
     // Tags Section
@@ -447,13 +459,32 @@ export class TaskTrackerTaskEditor {
     });
 
     // String fields
-    const stringFields = ['frequency_unit', 'suitable_after_hours', 'assigned_to'];
+    const stringFields = ['frequency_unit', 'suitable_after_hours'];
     stringFields.forEach(field => {
       const value = formData.get(field);
       if (value && value !== originalTask[field]) {
         updates[field] = value;
       }
     });
+
+    // Handle assignment fields
+    const isSelfCare = originalTask.task_type === 'SelfCareTask';
+    if (isSelfCare) {
+      // Self-care task: single user assignment
+      const singleUser = formData.get('assigned_users_single');
+      if (singleUser) {
+        const newAssignedUsers = [singleUser];
+        if (JSON.stringify(newAssignedUsers) !== JSON.stringify(originalTask.assigned_users || [])) {
+          updates.assigned_users = newAssignedUsers;
+        }
+      }
+    } else {
+      // Multi-user assignment for other task types
+      const assignedUsersData = formData.getAll('assigned_users[]');
+      if (JSON.stringify(assignedUsersData) !== JSON.stringify(originalTask.assigned_users || [])) {
+        updates.assigned_users = assignedUsersData;
+      }
+    }
 
     // Boolean fields
     const booleanFields = ['is_active', 'requires_fair_weather'];

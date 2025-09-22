@@ -29,7 +29,7 @@ COMPLETE_TASK_BY_NAME_SCHEMA = vol.Schema(
 CREATE_LEFTOVER_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("assigned_users"): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional("shelf_life_days"): cv.positive_int,
         vol.Optional("days_ago"): cv.positive_int,
     }
@@ -39,7 +39,7 @@ CREATE_LEFTOVER_SCHEMA = vol.Schema(
 CREATE_ADHOC_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("assigned_users"): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional("duration_minutes"): cv.positive_int,
         vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=5)),
     }
@@ -58,7 +58,7 @@ QUERY_TASK_SCHEMA = vol.Schema(
 
 GET_RECOMMENDED_TASKS_SCHEMA = vol.Schema(
     {
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("username"): cv.string,
         vol.Required("available_minutes"): cv.positive_int,
     }
 )
@@ -66,7 +66,7 @@ GET_RECOMMENDED_TASKS_SCHEMA = vol.Schema(
 
 GET_AVAILABLE_TASKS_SCHEMA = vol.Schema(
     {
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("username"): cv.string,
         vol.Optional("available_minutes"): cv.positive_int,
         vol.Optional("upcoming_days"): cv.positive_int,
     }
@@ -75,7 +75,7 @@ GET_AVAILABLE_TASKS_SCHEMA = vol.Schema(
 
 GET_RECENT_COMPLETIONS_SCHEMA = vol.Schema(
     {
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("username"): cv.string,
         vol.Optional("days"): cv.positive_int,
         vol.Optional("limit"): cv.positive_int,
     }
@@ -84,7 +84,7 @@ GET_RECENT_COMPLETIONS_SCHEMA = vol.Schema(
 
 LIST_LEFTOVERS_SCHEMA = vol.Schema(
     {
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("username"): cv.string,
     }
 )
 
@@ -92,7 +92,7 @@ LIST_LEFTOVERS_SCHEMA = vol.Schema(
 GET_ALL_TASKS_SCHEMA = vol.Schema(
     {
         vol.Optional("thin"): cv.boolean,
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("username"): cv.string,
     }
 )
 
@@ -103,7 +103,7 @@ UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Required("task_type"): vol.In(
             ["RecurringTask", "AdHocTask", "SelfCareTask"]
         ),
-        vol.Required("assigned_to"): cv.string,
+        vol.Optional("assigned_users"): vol.All(cv.ensure_list, [cv.string]),
         # BaseTask fields
         vol.Optional("name"): cv.string,
         vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=3)),
@@ -168,7 +168,7 @@ CREATE_TASK_FROM_DESCRIPTION_SCHEMA = vol.Schema(
             ["RecurringTask", "AdHocTask", "SelfCareTask"]
         ),
         vol.Required("task_description"): cv.string,
-        vol.Optional("assigned_to"): cv.string,
+        vol.Optional("assigned_users"): vol.All(cv.ensure_list, [cv.string]),
     }
 )
 
@@ -216,6 +216,5 @@ DELETE_TASK_SCHEMA = vol.Schema(
         vol.Required("task_type"): vol.In(
             ["RecurringTask", "AdHocTask", "SelfCareTask"]
         ),
-        vol.Optional("assigned_to"): cv.string,
     }
 )

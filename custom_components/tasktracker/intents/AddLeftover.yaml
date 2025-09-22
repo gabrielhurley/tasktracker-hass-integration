@@ -18,7 +18,7 @@ intent:
       - service: tasktracker.create_leftover
         data:
           name: "{{ leftover_name }}"
-          assigned_to: "{{ leftover_assigned_to|default('') }}"
+          assigned_users: ["{{ leftover_assigned_to|default('') }}"]
           shelf_life_days: "{{ leftover_shelf_life|default('') }}"
           days_ago: "{{ days_ago|default('') }}"
         response_variable: result

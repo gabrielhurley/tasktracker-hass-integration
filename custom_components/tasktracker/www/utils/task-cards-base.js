@@ -94,14 +94,14 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       return;
     }
 
-    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, userValidation.username, () => {
+    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, task.assigned_users, () => {
       if (typeof this.onAfterSnooze === 'function') this.onAfterSnooze();
     });
   }
 
   async _saveTask(task, updates) {
     try {
-      const response = await TaskTrackerUtils.updateTask(this._hass, task.id, task.task_type, task.assigned_to, updates);
+      const response = await TaskTrackerUtils.updateTask(this._hass, task.id, task.task_type, task.assigned_users, updates);
       if (response && response.success) {
         TaskTrackerUtils.showSuccess('Task updated successfully');
       } else {

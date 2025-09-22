@@ -37,7 +37,7 @@ def create_leftover_handler_factory(
 
     The returned handler expects the following service data:
         - name (str): The name of the leftover item.
-        - assigned_to (str, optional): The username assigned to the leftover. If not provided,
+        - assigned_users (list[str], optional): The usernames assigned to the leftover. If not provided,
           will be inferred from the service call context.
         - shelf_life_days (int, optional): How many days the leftover is good for.
         - days_ago (int, optional): How many days ago the leftover was created.
@@ -66,9 +66,10 @@ def create_leftover_handler_factory(
 
         """
         try:
+            assigned_users = call.data.get("assigned_users")
             result = await api.create_leftover(
                 name=call.data["name"],
-                assigned_to=call.data.get("assigned_to"),
+                assigned_users=assigned_users,
                 shelf_life_days=call.data.get("shelf_life_days"),
                 days_ago=call.data.get("days_ago"),
             )
@@ -77,7 +78,7 @@ def create_leftover_handler_factory(
                     "tasktracker_leftover_created",
                     {
                         "leftover_name": call.data["name"],
-                        "assigned_to": call.data.get("assigned_to"),
+                        "assigned_users": assigned_users,
                         "shelf_life_days": call.data.get("shelf_life_days"),
                         "days_ago": call.data.get("days_ago"),
                         "creation_data": result.get("data"),
@@ -108,7 +109,7 @@ def list_leftovers_handler_factory(
         A service handler function that lists leftover items.
 
     The returned handler expects the following service data:
-        - assigned_to (str, optional): Filter leftovers by assigned user.
+        - username (str, optional): Filter leftovers by assigned user.
 
     The handler will:
         - Retrieve leftover items via the API
@@ -134,7 +135,7 @@ def list_leftovers_handler_factory(
         """
         try:
             result = await api.list_leftovers(
-                assigned_to=call.data.get("assigned_to"),
+                username=call.data.get("username"),
             )
             _LOGGER.debug("Leftovers retrieved: %s", result)
             return result

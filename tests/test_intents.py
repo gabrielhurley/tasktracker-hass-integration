@@ -94,7 +94,7 @@ class TestIntentHandlers:
         # Verify API was called correctly
         api_mock.create_leftover.assert_called_once_with(
             name="pizza",
-            assigned_to="john",
+            assigned_users=["john"],
             shelf_life_days=3,
             days_ago=None,
         )
@@ -169,7 +169,7 @@ class TestIntentHandlers:
 
         api_mock.create_adhoc_task.assert_called_once_with(
             name="Organize closet",
-            assigned_to="bob",
+            assigned_users=["bob"],
             duration_minutes=30,
             priority=2,
         )
@@ -254,7 +254,7 @@ class TestIntentHandlers:
         response = await handler.async_handle(mock_intent_obj)
 
         api_mock.get_recommended_tasks.assert_called_once_with(
-            assigned_to="alice",
+            username="alice",
             available_minutes=60,
         )
         speech_text = get_speech_text(response)
@@ -288,7 +288,7 @@ class TestIntentHandlers:
         response = await handler.async_handle(mock_intent_obj)
 
         api_mock.get_recommended_tasks.assert_called_once_with(
-            assigned_to="charlie",
+            username="charlie",
             available_minutes=45,
         )
         speech_text = get_speech_text(response)
@@ -424,7 +424,7 @@ class TestIntentRegistration:
             api_mock.create_task_from_description.assert_called_once_with(
                 task_type="RecurringTask",
                 task_description="to deep clean the cat boxes once a month. This task takes 30 minutes and is high effort.",
-                assigned_to="alice",
+                assigned_users=["alice"],
             )
 
             speech_text = get_speech_text(response)
@@ -453,7 +453,7 @@ class TestIntentRegistration:
             api_mock.create_task_from_description.assert_called_once_with(
                 task_type="SelfCareTask",
                 task_description="to stretch and hydrate every morning",
-                assigned_to="bob",
+                assigned_users=["bob"],
             )
 
             speech_text = get_speech_text(response)

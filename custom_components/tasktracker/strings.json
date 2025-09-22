@@ -79,7 +79,7 @@
                     "name": "Task ID",
                     "description": "The unique ID of the task to complete."
                 },
-                "assigned_to": {
+                "username": {
                     "name": "Assigned To",
                     "description": "TaskTracker username. If not provided, will attempt to determine from user context."
                 },
@@ -97,7 +97,7 @@
                     "name": "Task Name",
                     "description": "The name of the task to complete (supports fuzzy matching)."
                 },
-                "assigned_to": {
+                "username": {
                     "name": "Assigned To",
                     "description": "TaskTracker username. If not provided, will attempt to determine from user context."
                 },
@@ -119,7 +119,7 @@
                     "name": "Item Name",
                     "description": "The name of the leftover item."
                 },
-                "assigned_to": {
+                "username": {
                     "name": "Assigned To",
                     "description": "Username of the person responsible for this leftover."
                 },
@@ -141,7 +141,7 @@
                     "name": "Task Name",
                     "description": "The name of the task to create."
                 },
-                "assigned_to": {
+                "username": {
                     "name": "Assigned To",
                     "description": "TaskTracker username. If not provided, will attempt to determine from user context."
                 },
@@ -173,7 +173,7 @@
             "name": "Get Recommended Tasks",
             "description": "Get tasks recommended for a user based on available time.",
             "fields": {
-                "assigned_to": {
+                "username": {
                     "name": "Assigned To",
                     "description": "TaskTracker username. If not provided, will attempt to determine from user context."
                 },
@@ -187,7 +187,7 @@
             "name": "Get Available Tasks",
             "description": "Get all available tasks with optional filtering.",
             "fields": {
-                "assigned_to": {
+                "username": {
                     "name": "Assigned To",
                     "description": "Filter tasks for a specific user."
                 },
@@ -205,7 +205,7 @@
             "name": "Get Recent Completions",
             "description": "Get recently completed tasks.",
             "fields": {
-                "assigned_to": {
+                "username": {
                     "name": "Assigned To",
                     "description": "Filter completions for a specific user."
                 },
@@ -231,7 +231,7 @@
                     "name": "Thin Response",
                     "description": "Return minimal task information for better performance."
                 },
-                "assigned_to": {
+                "username": {
                     "name": "Assigned To",
                     "description": "Filter tasks for a specific user."
                 }
