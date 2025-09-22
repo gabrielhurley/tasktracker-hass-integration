@@ -64,9 +64,8 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
 
     try {
       const response = await TaskTrackerUtils.completeTask(this._hass, task.name, userValidation.username, notes, completed_at);
-      if (response && response.success) {
-        TaskTrackerUtils.showSuccess(response.spoken_response || `Task "${task.name}" completed successfully`);
-      } else {
+      // Success message is handled by TaskTrackerUtils.completeTask to avoid duplication
+      if (response && !response.success) {
         const errorMsg = (response && response.message) || 'Unknown error';
         TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
       }

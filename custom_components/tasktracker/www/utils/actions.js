@@ -9,10 +9,12 @@ export async function completeTask(hass, taskName, username, notes, completed_at
     if (completed_at) params.completed_at = completed_at;
     const response = await hass.callService('tasktracker', 'complete_task_by_name', params, {}, true, true);
     const data = ensureServiceSuccess(response);
-    showSuccess('Task completed successfully');
+    // Use server's spoken_response if available, otherwise fall back to generic message
+    const message = data.spoken_response || 'Task completed successfully';
+    await showSuccess(message);
     return data;
   } catch (error) {
-    showError('Failed to complete task');
+    await showError('Failed to complete task');
     return handleActionError('Failed to complete task', error);
   }
 }

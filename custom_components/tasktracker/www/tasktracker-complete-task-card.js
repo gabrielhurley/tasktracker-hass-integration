@@ -202,7 +202,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
       const response = await TaskTrackerUtils.completeTask(this._hass, selectedTask, selectedUsername, notes);
 
       if (response && response.success) {
-        TaskTrackerUtils.showSuccess(response.spoken_response || 'Task completed successfully');
+        // Success message is handled by TaskTrackerUtils.completeTask to avoid duplication
 
         // Mark that we should reset the form on next render
         this._shouldResetForm = true;

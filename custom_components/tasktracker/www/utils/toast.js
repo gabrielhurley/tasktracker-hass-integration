@@ -1,4 +1,11 @@
-export function showSuccess(message) {
+export async function showSuccess(message) {
+  // Ensure global styles are loaded before creating toast
+  const existingStyles = document.getElementById('tt-global-styles');
+  if (!existingStyles) {
+    const { TaskTrackerStyles } = await import('./styles.js');
+    TaskTrackerStyles.ensureGlobal();
+  }
+
   const toast = document.createElement('div');
   toast.className = 'tt-toast tt-toast--success';
   toast.textContent = message;
@@ -7,7 +14,14 @@ export function showSuccess(message) {
   setTimeout(() => toast.remove(), 3000);
 }
 
-export function showError(message) {
+export async function showError(message) {
+  // Ensure global styles are loaded before creating toast
+  const existingStyles = document.getElementById('tt-global-styles');
+  if (!existingStyles) {
+    const { TaskTrackerStyles } = await import('./styles.js');
+    TaskTrackerStyles.ensureGlobal();
+  }
+
   const toast = document.createElement('div');
   toast.className = 'tt-toast tt-toast--error';
   toast.textContent = message;

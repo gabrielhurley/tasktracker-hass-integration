@@ -484,7 +484,9 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes, completed_at = null) { await super._completeTask(task, notes, completed_at); }
+  async _completeTask(task, notes, completed_at = null) {
+    await super._completeTask(task, notes, completed_at);
+  }
 
   /**
    * Get card-specific styles
