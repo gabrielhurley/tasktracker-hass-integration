@@ -229,7 +229,7 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes, completed_at = null) { await super._completeTask(task, notes, completed_at); }
+  async _completeTask(task, notes, completed_at = null, buttonElement = null) { await super._completeTask(task, notes, completed_at, buttonElement); }
 
   async _saveTask(task, updates) {
     await super._saveTask(task, updates);
@@ -311,6 +311,9 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
       this.setupTaskClickHandlers(
         (task, taskType) => {
           this._showTaskModal(task);
+        },
+        (task, taskType, button) => {
+          this._completeTask(task, '', null, button);
         }
       );
     }

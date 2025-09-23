@@ -259,7 +259,7 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes, completed_at = null) { await super._completeTask(task, notes, completed_at); }
+  async _completeTask(task, notes, completed_at = null, buttonElement = null) { await super._completeTask(task, notes, completed_at, buttonElement); }
 
   async _snoozeTask(task, snoozeUntil) { await super._snoozeTask(task, snoozeUntil); }
 
@@ -311,8 +311,8 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
         (task, taskType) => {
           this._showTaskModal(task);
         },
-        (task, taskType) => {
-          this._completeTask(task, '');
+        (task, taskType, button) => {
+          this._completeTask(task, '', null, button);
         }
       );
     }

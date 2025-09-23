@@ -185,7 +185,20 @@ export class TaskTrackerStyles {
         border-radius: 4px;
         cursor: pointer;
         font-size: 0.8em;
-        transition: background-color 0.2s ease;
+        transition: all 0.2s ease;
+      }
+
+      /* Loading state for complete buttons */
+      .task-item .complete-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        color: var(--primary-color);
+      }
+
+      /* Processing state for tasks during completion */
+      .task-item.processing {
+        opacity: 0.7;
+        background: var(--divider-color);
       }
       .task-item .complete-btn:hover,
       .task-item .dispose-btn:hover {

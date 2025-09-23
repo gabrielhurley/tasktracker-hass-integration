@@ -484,8 +484,8 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     TaskTrackerUtils.showModal(modal);
   }
 
-  async _completeTask(task, notes, completed_at = null) {
-    await super._completeTask(task, notes, completed_at);
+  async _completeTask(task, notes, completed_at = null, buttonElement = null) {
+    await super._completeTask(task, notes, completed_at, buttonElement);
   }
 
   /**
@@ -563,31 +563,16 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
   _attachContentEventListeners(hasValidUserConfig) {
 
     if (hasValidUserConfig) {
-      // Task item click handlers
-      const taskItems = this.shadowRoot.querySelectorAll('.task-item');
-      taskItems.forEach((item) => {
-        item.addEventListener('click', () => {
-          const taskKey = item.dataset.taskKey;
-          const taskData = this._getTaskData(taskKey);
-          if (taskData) {
-            this._showTaskModal(taskData.task, taskData.taskType);
-          }
-        });
-      });
-
-      // Complete button click handlers (generic completion - uses current time)
-      const completeButtons = this.shadowRoot.querySelectorAll('.complete-btn');
-      completeButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-          e.stopPropagation(); // Prevent event bubbling to parent task item
-          const taskKey = button.dataset.taskKey;
-          const taskData = this._getTaskData(taskKey);
-          if (taskData) {
-            // Generic completion - backend will determine window assignment based on current time
-            this._completeTask(taskData.task, '');
-          }
-        });
-      });
+      // Setup standard task click handlers using base class helper
+      this.setupTaskClickHandlers(
+        (task, taskType) => {
+          this._showTaskModal(task, taskType);
+        },
+        (task, taskType, button) => {
+          // Generic completion - backend will determine window assignment based on current time
+          this._completeTask(task, '', null, button);
+        }
+      );
 
       // Window item click handlers (window-specific completion with midpoint timestamps)
       const incompleteWindows = this.shadowRoot.querySelectorAll('.window-item.incomplete');
@@ -1088,7 +1073,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     if (completeBtn) {
       completeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this._completeTask(taskData.task, '');
+        this._completeTask(taskData.task, '', null, completeBtn);
       });
     }
 

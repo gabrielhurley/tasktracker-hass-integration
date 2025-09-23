@@ -45,9 +45,27 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers, this._enhancedUsers);
   }
 
-  async _completeTask(task, notes, completed_at = null) {
+  async _completeTask(task, notes, completed_at = null, buttonElement = null) {
     // Track completion for rapid completion detection
     this._trackCompletion();
+
+    // Provide immediate visual feedback
+    const taskElement = buttonElement ? buttonElement.closest('.task-item') : null;
+    let originalText, originalDisabled;
+
+    if (buttonElement) {
+      // Store original button state
+      originalText = buttonElement.textContent;
+      originalDisabled = buttonElement.disabled;
+
+      // Apply loading state immediately
+      buttonElement.disabled = true;
+      buttonElement.textContent = 'Completing...';
+    }
+
+    if (taskElement) {
+      taskElement.classList.add('processing');
+    }
 
     // Fetch users if not available
     if (!this._enhancedUsers || this._enhancedUsers.length === 0) {
@@ -59,6 +77,14 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
 
     if (!userValidation.canMakeRequests) {
       TaskTrackerUtils.showError(userValidation.error);
+      // Restore button state on error
+      if (buttonElement) {
+        buttonElement.disabled = originalDisabled;
+        buttonElement.textContent = originalText;
+      }
+      if (taskElement) {
+        taskElement.classList.remove('processing');
+      }
       return;
     }
 
@@ -68,7 +94,19 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       if (response && !response.success) {
         const errorMsg = (response && response.message) || 'Unknown error';
         TaskTrackerUtils.showError(`Failed to complete task: ${errorMsg}`);
+        // Restore button state on error
+        if (buttonElement) {
+          buttonElement.disabled = originalDisabled;
+          buttonElement.textContent = originalText;
+        }
+        if (taskElement) {
+          taskElement.classList.remove('processing');
+        }
+      } else {
+        // On success, keep the visual feedback until refresh
+        // The task will be removed/updated when onAfterComplete runs
       }
+
       // Allow subclass to refresh data after completion
       if (typeof this.onAfterComplete === 'function') {
         setTimeout(() => this.onAfterComplete(), 100);
@@ -76,6 +114,14 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     } catch (error) {
       console.error('Failed to complete task:', error);
       TaskTrackerUtils.showError(`Failed to complete task: ${error.message}`);
+      // Restore button state on error
+      if (buttonElement) {
+        buttonElement.disabled = originalDisabled;
+        buttonElement.textContent = originalText;
+      }
+      if (taskElement) {
+        taskElement.classList.remove('processing');
+      }
     }
   }
 
@@ -219,7 +265,7 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
   /**
    * Setup standard task item click handlers
    * @param {Function} onTaskClick - Callback for task item clicks (task, taskType) => void
-   * @param {Function} onCompleteClick - Optional callback for complete button clicks (task, taskType) => void
+   * @param {Function} onCompleteClick - Optional callback for complete button clicks (task, taskType, buttonElement) => void
    */
   setupTaskClickHandlers(onTaskClick, onCompleteClick = null) {
     // Task item click handlers
@@ -243,7 +289,7 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
           const taskKey = button.dataset.taskKey;
           const taskData = this.getTaskData(taskKey);
           if (taskData) {
-            onCompleteClick(taskData.task, taskData.taskType);
+            onCompleteClick(taskData.task, taskData.taskType, button);
           }
         });
       });
