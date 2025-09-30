@@ -287,6 +287,11 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     return this._taskDataMap.get(taskKey);
   }
 
+  // Override base class method to use our own task data map
+  getTaskData(taskKey) {
+    return this._getTaskData(taskKey);
+  }
+
   _setupEventListeners() {
     // Clean up any existing listener
     if (this._eventCleanup) {
