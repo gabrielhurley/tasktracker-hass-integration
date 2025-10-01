@@ -83,14 +83,14 @@ intents:
           task_name:
             required: true
       - sentences:
-          - "(add|create) [a|the] task [called|named] {task_name} with [a|the] duration [of] {task_duration} minutes"
+          - "(add|create) [a|the] [new] task [called|named] {task_name} with [a|the] duration [of] {task_duration} minutes"
         slots:
           task_name:
             required: true
           task_duration:
             required: true
       - sentences:
-          - "(add|create) [a|the] task [called|named] {task_name} assigned to {task_assigned_to}"
+          - "(add|create) [a|the] [new] task [called|named] {task_name} assigned to {task_assigned_to}"
           - "Remind {task_assigned_to} to {task_name}"
         slots:
           task_name:
@@ -98,15 +98,15 @@ intents:
           task_assigned_to:
             required: true
       - sentences:
-          - "(add|create) [a|the] task [called|named] {task_name} with priority {task_priority}"
+          - "(add|create) [a|the] [new] task [called|named] {task_name} with priority {task_priority}"
         slots:
           task_name:
             required: true
           task_priority:
             required: true
       - sentences:
-          - "(add|create) [a|the] task [called|named] {task_name} with priority {task_priority} assigned to {task_assigned_to}"
-          - "(add|create) [a|the] task [called|named] {task_name} assigned to {task_assigned_to} with priority {task_priority}"
+          - "(add|create) [a|the] [new] task [called|named] {task_name} with priority {task_priority} assigned to {task_assigned_to}"
+          - "(add|create) [a|the] [new] task [called|named] {task_name} assigned to {task_assigned_to} with priority {task_priority}"
         slots:
           task_name:
             required: true
