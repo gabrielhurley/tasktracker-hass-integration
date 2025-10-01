@@ -408,7 +408,9 @@ def get_recommended_tasks_handler_factory(
                 current_config = get_current_config()
                 username = user_lookup_fn(hass, user_id, current_config)
                 if not username:
-                    msg = "No username provided and could not determine from user context"
+                    msg = (
+                        "No username provided and could not determine from user context"
+                    )
                     raise TaskTrackerAPIError(msg)
             available_minutes = call.data.get("available_minutes")
             if available_minutes is None:
