@@ -77,6 +77,63 @@ class AddLeftoverIntentHandler(BaseTaskTrackerIntentHandler):
 
     intent_type = "AddLeftover"
 
+    # Simple mapping for spelled-out numbers
+    WORD_TO_NUMBER = {
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+        "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    }
+
+    def _parse_days_ago(self, days_ago_value: str | int | float | dict | None) -> int | None:
+        """Parse days_ago value from 'yesterday', numeric, or spelled-out format.
+
+        Handles multiple input types:
+        - None or empty: returns None
+        - int/float: returns as int
+        - dict: extracts 'value' key and recurses
+        - str: parses "yesterday", numeric strings, or spelled-out numbers
+        """
+        if days_ago_value is None:
+            return None
+
+        # Handle dict (from static slot values)
+        if isinstance(days_ago_value, dict):
+            days_ago_value = days_ago_value.get("value")
+            if not days_ago_value:
+                return None
+            # Recurse to handle the extracted value
+            return self._parse_days_ago(days_ago_value)
+
+        # Handle numeric types directly (Home Assistant's NLP may convert "two" to 2)
+        # Note: Check bool before int since bool is a subclass of int in Python
+        if isinstance(days_ago_value, bool):
+            return None
+        if isinstance(days_ago_value, (int, float)):
+            return int(days_ago_value)
+
+        # Handle string values
+        if isinstance(days_ago_value, str):
+            # Empty string check
+            if not days_ago_value.strip():
+                return None
+
+            # Handle "yesterday"
+            if days_ago_value.lower() == "yesterday":
+                return 1
+
+            # Try numeric format
+            try:
+                return int(days_ago_value)
+            except ValueError:
+                pass
+
+            # Try spelled-out number
+            word = days_ago_value.lower().strip()
+            return self.WORD_TO_NUMBER.get(word)
+
+        # Unknown type
+        return None
+
     async def _handle_intent(
         self, intent_obj: Any, api: TaskTrackerAPI
     ) -> IntentResponse:
@@ -101,13 +158,16 @@ class AddLeftoverIntentHandler(BaseTaskTrackerIntentHandler):
         shelf_life_days = intent_obj.slots.get("leftover_shelf_life", {}).get(
             "value", ""
         )
-        days_ago = intent_obj.slots.get("days_ago", {}).get("value", "")
+        # Get days_ago - could be a string or dict depending on how it's set
+        days_ago_slot = intent_obj.slots.get("days_ago", {})
+        days_ago_raw = days_ago_slot.get("value", days_ago_slot) if isinstance(days_ago_slot, dict) else days_ago_slot
+        days_ago = self._parse_days_ago(days_ago_raw)
 
         result = await api.create_leftover(
             name=leftover_name,
             assigned_users=[leftover_assigned_to] if leftover_assigned_to else None,
             shelf_life_days=int(shelf_life_days) if shelf_life_days else None,
-            days_ago=int(days_ago) if days_ago else None,
+            days_ago=days_ago,
         )
 
         if not result.get("success"):

@@ -66,10 +66,16 @@ intents:
           leftover_name:
             required: true
       - sentences:
-          - "I (added|put) leftover {leftover_name} (to|in) the (fridge|refridgerator) {days_ago} days ago"
-          - "I (added|put) {leftover_name} leftovers (to|in) the (fridge|refridgerator) {days_ago} days ago"
+          - "I (added|put) [leftover] {leftover_name} [leftover|leftovers] (to|in) the (fridge|refridgerator) yesterday"
         slots:
-          task_name:
+          leftover_name:
+            required: true
+          days_ago:
+            value: "yesterday"
+      - sentences:
+          - "I (added|put) [leftover] {leftover_name} [leftover|leftovers] (to|in) the (fridge|refridgerator) {days_ago} (day|days) ago"
+        slots:
+          leftover_name:
             required: true
           days_ago:
             required: true

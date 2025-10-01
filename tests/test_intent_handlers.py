@@ -417,3 +417,193 @@ class TestSpecificIntentHandlers:
             "There was an error adding the leftover: Network error occurred"
             in speech_text
         )
+
+
+class TestAddLeftoverDaysAgoParser:
+    """Test the days_ago parsing logic in AddLeftoverIntentHandler."""
+
+    def test_parse_yesterday(self, mock_hass: MagicMock) -> None:
+        """Test parsing 'yesterday' returns 1."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago("yesterday") == 1  # noqa: SLF001
+        assert handler._parse_days_ago("Yesterday") == 1  # noqa: SLF001
+        assert handler._parse_days_ago("YESTERDAY") == 1  # noqa: SLF001
+
+    def test_parse_numeric_values(self, mock_hass: MagicMock) -> None:
+        """Test parsing numeric string values."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago("1") == 1  # noqa: SLF001
+        assert handler._parse_days_ago("2") == 2  # noqa: SLF001
+        assert handler._parse_days_ago("7") == 7  # noqa: SLF001
+        assert handler._parse_days_ago("14") == 14  # noqa: SLF001
+
+    def test_parse_word_numbers(self, mock_hass: MagicMock) -> None:
+        """Test parsing spelled-out number words."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago("one") == 1  # noqa: SLF001
+        assert handler._parse_days_ago("two") == 2  # noqa: SLF001
+        assert handler._parse_days_ago("three") == 3  # noqa: SLF001
+        assert handler._parse_days_ago("five") == 5  # noqa: SLF001
+        assert handler._parse_days_ago("ten") == 10  # noqa: SLF001
+        assert handler._parse_days_ago("fourteen") == 14  # noqa: SLF001
+
+    def test_parse_word_numbers_case_insensitive(self, mock_hass: MagicMock) -> None:
+        """Test parsing spelled-out numbers is case insensitive."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago("Two") == 2  # noqa: SLF001
+        assert handler._parse_days_ago("THREE") == 3  # noqa: SLF001
+        assert handler._parse_days_ago("FiVe") == 5  # noqa: SLF001
+
+    def test_parse_empty_or_none(self, mock_hass: MagicMock) -> None:
+        """Test parsing empty or None values."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago("") is None  # noqa: SLF001
+        assert handler._parse_days_ago(None) is None  # noqa: SLF001
+
+    def test_parse_unknown_word(self, mock_hass: MagicMock) -> None:
+        """Test parsing unknown word returns None."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago("fifteen") is None  # noqa: SLF001
+        assert handler._parse_days_ago("unknown") is None  # noqa: SLF001
+
+    def test_parse_dict_value(self, mock_hass: MagicMock) -> None:
+        """Test parsing dict values (from static slot values)."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        # Dict with value key (from static YAML slot values)
+        assert handler._parse_days_ago({"value": "yesterday"}) == 1  # noqa: SLF001
+        assert handler._parse_days_ago({"value": "2"}) == 2  # noqa: SLF001
+        assert handler._parse_days_ago({"value": "three"}) == 3  # noqa: SLF001
+        # Empty dict or dict without value
+        assert handler._parse_days_ago({}) is None  # noqa: SLF001
+        assert handler._parse_days_ago({"other": "key"}) is None  # noqa: SLF001
+
+    def test_parse_integer_values(self, mock_hass: MagicMock) -> None:
+        """Test parsing integer values (Home Assistant NLP conversion)."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        # Home Assistant may convert "two" to 2 (int)
+        assert handler._parse_days_ago(1) == 1  # noqa: SLF001
+        assert handler._parse_days_ago(2) == 2  # noqa: SLF001
+        assert handler._parse_days_ago(7) == 7  # noqa: SLF001
+        assert handler._parse_days_ago(14) == 14  # noqa: SLF001
+
+    def test_parse_float_values(self, mock_hass: MagicMock) -> None:
+        """Test parsing float values (Home Assistant NLP conversion)."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago(2.0) == 2  # noqa: SLF001
+        assert handler._parse_days_ago(3.0) == 3  # noqa: SLF001
+        assert handler._parse_days_ago(5.5) == 5  # noqa: SLF001
+
+    def test_parse_nested_dict_with_int(self, mock_hass: MagicMock) -> None:
+        """Test parsing dict containing integer value."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        # Dict with integer value (NLP converted)
+        assert handler._parse_days_ago({"value": 2}) == 2  # noqa: SLF001
+        assert handler._parse_days_ago({"value": 5}) == 5  # noqa: SLF001
+
+    def test_parse_nested_dict_with_float(self, mock_hass: MagicMock) -> None:
+        """Test parsing dict containing float value."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago({"value": 2.0}) == 2  # noqa: SLF001
+        assert handler._parse_days_ago({"value": 3.5}) == 3  # noqa: SLF001
+
+    def test_parse_empty_string(self, mock_hass: MagicMock) -> None:
+        """Test parsing empty or whitespace strings."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        assert handler._parse_days_ago("") is None  # noqa: SLF001
+        assert handler._parse_days_ago("   ") is None  # noqa: SLF001
+        assert handler._parse_days_ago("\t\n") is None  # noqa: SLF001
+
+    def test_parse_invalid_types(self, mock_hass: MagicMock) -> None:
+        """Test parsing invalid or unexpected types."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        # These should return None gracefully
+        assert handler._parse_days_ago([]) is None  # noqa: SLF001
+        assert handler._parse_days_ago(True) is None  # noqa: SLF001
+        assert handler._parse_days_ago(object()) is None  # noqa: SLF001
+
+    async def test_add_leftover_with_yesterday(
+        self, mock_hass: MagicMock, mock_intent_obj: MagicMock
+    ) -> None:
+        """Test AddLeftover intent with 'yesterday' days_ago value."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        mock_intent_obj.slots = {
+            "leftover_name": {"value": "chicken"},
+            "leftover_assigned_to": {"value": "alice"},
+            "days_ago": {"value": "yesterday"},
+        }
+
+        # Mock successful API response
+        api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+        api_mock.create_leftover.return_value = {
+            "success": True,
+            "spoken_response": "Chicken leftover added successfully",
+            "data": {},
+        }
+
+        response = await handler.async_handle(mock_intent_obj)
+
+        assert isinstance(response, IntentResponse)
+        api_mock.create_leftover.assert_called_once_with(
+            name="chicken",
+            assigned_users=["alice"],
+            shelf_life_days=None,
+            days_ago=1,  # yesterday should be converted to 1
+        )
+
+    async def test_add_leftover_with_word_number(
+        self, mock_hass: MagicMock, mock_intent_obj: MagicMock
+    ) -> None:
+        """Test AddLeftover intent with spelled-out number days_ago value."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        mock_intent_obj.slots = {
+            "leftover_name": {"value": "pizza"},
+            "leftover_assigned_to": {"value": "bob"},
+            "days_ago": {"value": "three"},
+        }
+
+        # Mock successful API response
+        api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+        api_mock.create_leftover.return_value = {
+            "success": True,
+            "spoken_response": "Pizza leftover added successfully",
+            "data": {},
+        }
+
+        response = await handler.async_handle(mock_intent_obj)
+
+        assert isinstance(response, IntentResponse)
+        api_mock.create_leftover.assert_called_once_with(
+            name="pizza",
+            assigned_users=["bob"],
+            shelf_life_days=None,
+            days_ago=3,  # "three" should be converted to 3
+        )
+
+    async def test_add_leftover_with_numeric_days_ago(
+        self, mock_hass: MagicMock, mock_intent_obj: MagicMock
+    ) -> None:
+        """Test AddLeftover intent with numeric days_ago value."""
+        handler = AddLeftoverIntentHandler(mock_hass)
+        mock_intent_obj.slots = {
+            "leftover_name": {"value": "soup"},
+            "leftover_assigned_to": {"value": "charlie"},
+            "days_ago": {"value": "5"},
+        }
+
+        # Mock successful API response
+        api_mock = mock_hass.data[DOMAIN]["test_entry"]["api"]
+        api_mock.create_leftover.return_value = {
+            "success": True,
+            "spoken_response": "Soup leftover added successfully",
+            "data": {},
+        }
+
+        response = await handler.async_handle(mock_intent_obj)
+
+        assert isinstance(response, IntentResponse)
+        api_mock.create_leftover.assert_called_once_with(
+            name="soup",
+            assigned_users=["charlie"],
+            shelf_life_days=None,
+            days_ago=5,  # numeric value should be preserved
+        )
