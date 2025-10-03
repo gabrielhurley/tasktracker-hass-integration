@@ -102,7 +102,13 @@ TASK_NUDGE_SCHEMA = vol.Schema(
     {
         vol.Optional("id"): cv.positive_int,
         vol.Required("trigger_type"): vol.In(
-            ["on_due", "on_overdue", "time_of_day", "after_due_delay", "overdue_threshold"]
+            [
+                "on_due",
+                "on_overdue",
+                "time_of_day",
+                "after_due_delay",
+                "overdue_threshold",
+            ]
         ),
         vol.Optional("trigger_config"): dict,
         vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=10)),

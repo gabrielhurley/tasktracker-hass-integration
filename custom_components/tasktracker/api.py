@@ -171,7 +171,8 @@ class TaskTrackerAPI:
         task_type: str,
         **kwargs: dict[str, Any],
     ) -> dict[str, Any]:
-        """Update a task's details.
+        """
+        Update a task's details.
 
         Supports all task fields including task_nudges.
         task_nudges should be a list of dicts with keys:
