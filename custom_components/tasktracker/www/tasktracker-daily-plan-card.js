@@ -32,9 +32,9 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
   }
 
   // Hooks consumed by TaskTrackerTasksBaseCard
-  onAfterComplete() { this._fetchPlan(); }
-  onAfterUpdate() { this._fetchPlan(); }
-  onAfterSnooze() { this._fetchPlan(); }
+  async onAfterComplete() { await this._fetchPlan(); }
+  async onAfterUpdate() { await this._fetchPlan(); }
+  async onAfterSnooze() { await this._fetchPlan(); }
 
   static getStubConfig() {
     return {
@@ -129,12 +129,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
   }
 
   async _fetchPlan(options = {}) {
-    // Skip refresh if we're in rapid completion mode and not forcing
-    if (this._isInRapidCompletionMode() && !options.forceRefresh) {
-      this._queuedRefresh = true;
-      return;
-    }
-
     // Only show loading state if we don't have previous data (initial load)
     const isInitialLoad = !this._previousData;
     if (isInitialLoad) {
@@ -202,12 +196,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
 
             // Header event listeners should persist since header DOM is not modified during partial updates
             // No need to reattach unless there's evidence they're being lost
-
-            // Process any queued refresh
-            if (this._queuedRefresh) {
-              this._queuedRefresh = false;
-              setTimeout(() => this._fetchPlan({ forceRefresh: true }), 1000);
-            }
             return;
           }
         }
@@ -231,12 +219,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       this._taskDataMap.clear();
       this._loading = false;
       this._renderContent();
-    }
-
-    // Process any queued refresh
-    if (this._queuedRefresh) {
-      this._queuedRefresh = false;
-      setTimeout(() => this._fetchPlan({ forceRefresh: true }), 1000);
     }
   }
 
@@ -310,46 +292,38 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     }
 
     // Listen for task completion events to refresh the plan
-    const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
+    const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(this._hass, async (eventData) => {
       const currentUsername = this._getUsername();
       if (!currentUsername || currentUsername === eventData.username) {
         // Use the normal fetch flow which includes partial update logic
-        setTimeout(() => {
-          this._fetchPlan();
-        }, 100); // Shorter delay since we know data has changed
+        await this._fetchPlan();
       }
     });
 
     // Listen for mood update events to refresh the plan
-    const moodUpdateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'mood_set', (event) => {
+    const moodUpdateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'mood_set', async (event) => {
       const evUsername = event?.username;
       const username = this._getUsername();
       if (!username || username === evUsername) {
         // Mood updates should trigger refresh even in rapid mode
-        setTimeout(() => {
-          this._fetchPlan({ forceRefresh: true });
-        }, 100);
+        await this._fetchPlan({ forceRefresh: true });
       }
     });
 
     // Listen for generic task updates (includes deletions via reused event)
-    const taskUpdateCleanup = TaskTrackerUtils.setupTaskUpdateListener(this._hass, () => {
+    const taskUpdateCleanup = TaskTrackerUtils.setupTaskUpdateListener(this._hass, async () => {
       // Task updates (edits, deletions) should refresh even in rapid mode
-      setTimeout(() => {
-        this._fetchPlan({ forceRefresh: true });
-      }, 100);
+      await this._fetchPlan({ forceRefresh: true });
     });
 
     // Listen for completion deletions (undo completion) to refresh the plan
-    const completionDeletionCleanup = TaskTrackerUtils.setupCompletionDeletionListener(this._hass, () => {
+    const completionDeletionCleanup = TaskTrackerUtils.setupCompletionDeletionListener(this._hass, async () => {
       // Completion deletions should refresh to show the task reappearing
-      setTimeout(() => {
-        this._fetchPlan();
-      }, 100);
+      await this._fetchPlan();
     });
 
     // Listen for daily state events to refresh the plan
-    const dailyStateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'daily_state_set', (eventData) => {
+    const dailyStateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'daily_state_set', async (eventData) => {
       const evUsername = eventData?.username;
       const username = this._getUsername();
       if (!username || username === evUsername) {
@@ -360,9 +334,7 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
         };
         // Force a full refresh to sync all data and avoid partial update race conditions
         // This ensures using_defaults changes are properly detected
-        setTimeout(() => {
-          this._fetchPlan({ forceRefresh: true });
-        }, 100);
+        await this._fetchPlan({ forceRefresh: true });
       }
     });
 
@@ -489,11 +461,9 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       {
         use_emoji_labels: true // Use emoji labels by default
       },
-      (savedState) => {
+      async (savedState) => {
         // Callback when state is saved - refresh both plan and daily state
-        setTimeout(() => {
-          this._fetchPlan();
-        }, 500);
+        await this._fetchPlan();
       }
     );
 
@@ -669,8 +639,8 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     `;
   }
 
-  onAutoRefresh() { this._fetchPlan(); }
-  onRefresh() { this._fetchPlan(); }
+  async onAutoRefresh() { await this._fetchPlan(); }
+  async onRefresh() { await this._fetchPlan(); }
 
   _renderPlanContent() {
     if (!this._plan) {

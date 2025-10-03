@@ -24,8 +24,6 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     this._error = null;
     this._taskDataManager = new TaskDataManager();
     this._lastRefreshTime = 0;
-    this._recentCompletions = [];
-    this._queuedRefresh = false;
     this._previousData = null;
     this._taskDataMap = new Map(); // Store task data in memory instead of DOM
   }
@@ -46,9 +44,6 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
   }
 
   async _completeTask(task, notes, completed_at = null, buttonElement = null) {
-    // Track completion for rapid completion detection
-    this._trackCompletion();
-
     // Provide immediate visual feedback
     const taskElement = buttonElement ? buttonElement.closest('.task-item') : null;
     let originalText, originalDisabled;
@@ -58,9 +53,14 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       originalText = buttonElement.textContent;
       originalDisabled = buttonElement.disabled;
 
-      // Apply loading state immediately
+      // Preserve button width to prevent layout shift
+      const currentWidth = buttonElement.offsetWidth;
+      buttonElement.style.width = `${currentWidth}px`;
+
+      // Apply loading state immediately - replace text with loading indicator
       buttonElement.disabled = true;
-      buttonElement.textContent = 'Completing...';
+      buttonElement.textContent = '';
+      buttonElement.classList.add('tt-loading-dots');
     }
 
     if (taskElement) {
@@ -98,6 +98,8 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
         if (buttonElement) {
           buttonElement.disabled = originalDisabled;
           buttonElement.textContent = originalText;
+          buttonElement.classList.remove('tt-loading-dots');
+          buttonElement.style.width = '';
         }
         if (taskElement) {
           taskElement.classList.remove('processing');
@@ -109,7 +111,7 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
 
       // Allow subclass to refresh data after completion
       if (typeof this.onAfterComplete === 'function') {
-        setTimeout(() => this.onAfterComplete(), 100);
+        await this.onAfterComplete();
       }
     } catch (error) {
       console.error('Failed to complete task:', error);
@@ -118,6 +120,8 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       if (buttonElement) {
         buttonElement.disabled = originalDisabled;
         buttonElement.textContent = originalText;
+        buttonElement.classList.remove('tt-loading-dots');
+        buttonElement.style.width = '';
       }
       if (taskElement) {
         taskElement.classList.remove('processing');
@@ -139,9 +143,10 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       return;
     }
 
-    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, task.assigned_users, () => {
-      if (typeof this.onAfterSnooze === 'function') this.onAfterSnooze();
-    });
+    await TaskTrackerUtils.snoozeTask(this._hass, task, snoozeUntil, task.assigned_users);
+    if (typeof this.onAfterSnooze === 'function') {
+      await this.onAfterSnooze();
+    }
   }
 
   async _saveTask(task, updates) {
@@ -154,7 +159,7 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
         TaskTrackerUtils.showError(`Failed to update task: ${errorMsg}`);
       }
       if (typeof this.onAfterUpdate === 'function') {
-        setTimeout(() => this.onAfterUpdate(), 100);
+        await this.onAfterUpdate();
       }
     } catch (error) {
       console.error('Failed to update task:', error);
@@ -181,7 +186,7 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       const taskType = task.task_type;
       await TaskTrackerUtils.deleteTask(this._hass, taskId, taskType, userValidation.username || null);
       if (typeof this.onAfterUpdate === 'function') {
-        setTimeout(() => this.onAfterUpdate(), 100);
+        await this.onAfterUpdate();
       }
     } catch (error) {
       // Toasts are handled in the action util
@@ -297,28 +302,13 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
   }
 
   /**
-   * Check if we're in rapid completion mode to prevent excessive refreshes
-   */
-  _isInRapidCompletionMode() {
-    const now = Date.now();
-    this._recentCompletions = this._recentCompletions.filter(time => now - time < 5000); // 5 second window
-    return this._recentCompletions.length >= 2;
-  }
-
-  /**
    * Enhanced data fetching with partial update support
    * @param {Object} options - Fetch options
    * @param {boolean} options.forceFullRender - Skip partial updates and force full render
-   * @param {boolean} options.forceRefresh - Force refresh even in rapid completion mode
    * @param {Function} fetchCallback - Function that returns the API response
    * @param {Function} updateCallback - Function to handle the response data
    */
   async _fetchWithPartialUpdateSupport(options = {}, fetchCallback, updateCallback) {
-    // Skip refresh if we're in rapid completion mode and not forcing
-    if (this._isInRapidCompletionMode() && !options.forceRefresh) {
-      this._queuedRefresh = true;
-      return;
-    }
 
     // Only show loading state if we don't have previous data (initial load)
     const isInitialLoad = !this._previousData;
@@ -342,12 +332,6 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
             // Update internal state without full re-render
             this._previousData = newData;
             if (this._populateTaskDataMap) this._populateTaskDataMap();
-
-            // Process any queued refresh
-            if (this._queuedRefresh) {
-              this._queuedRefresh = false;
-              setTimeout(() => this._fetchWithPartialUpdateSupport({ forceRefresh: true }, fetchCallback, updateCallback), 1000);
-            }
             return;
           }
         }
@@ -365,19 +349,6 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       this._loading = false;
       if (this._renderContent) this._renderContent();
     }
-
-    // Process any queued refresh
-    if (this._queuedRefresh) {
-      this._queuedRefresh = false;
-      setTimeout(() => this._fetchWithPartialUpdateSupport({ forceRefresh: true }, fetchCallback, updateCallback), 1000);
-    }
-  }
-
-  /**
-   * Track a completion for rapid completion detection
-   */
-  _trackCompletion() {
-    this._recentCompletions.push(Date.now());
   }
 
   /**

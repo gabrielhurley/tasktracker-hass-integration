@@ -111,8 +111,8 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
   }
 
   onHassFirstRun() { this._fetchAvailableTasks(); this._setupEventListeners(); }
-  onAutoRefresh() { this._fetchAvailableTasks(); }
-  onRefresh() { this._fetchAvailableTasks(); }
+  async onAutoRefresh() { await this._fetchAvailableTasks(); }
+  async onRefresh() { await this._fetchAvailableTasks(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
@@ -321,8 +321,8 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
   // Base header integration
   getCardTitle() { return 'Available Tasks'; }
   getHeaderStatusHTML() { return this._refreshing ? '<div class="refreshing-indicator"></div>' : ''; }
-  onAutoRefresh() { this._fetchAvailableTasks(); }
-  onRefresh() { this._fetchAvailableTasks(); }
+  async onAutoRefresh() { await this._fetchAvailableTasks(); }
+  async onRefresh() { await this._fetchAvailableTasks(); }
 
   _renderContent() {
     // Only show loading state on initial load
@@ -388,27 +388,27 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
     const cleanups = [];
 
     cleanups.push(
-      TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
+      TaskTrackerUtils.setupTaskCompletionListener(this._hass, async (eventData) => {
         const shouldRefresh = this._shouldRefreshForUser(eventData.username);
-        if (shouldRefresh) setTimeout(() => this._fetchAvailableTasks(), 500);
+        if (shouldRefresh) await this._fetchAvailableTasks();
       })
     );
     cleanups.push(
-      TaskTrackerUtils.setupTaskCreationListener(this._hass, (eventData) => {
+      TaskTrackerUtils.setupTaskCreationListener(this._hass, async (eventData) => {
         const shouldRefresh = this._shouldRefreshForUser(eventData.assigned_users);
-        if (shouldRefresh) setTimeout(() => this._fetchAvailableTasks(), 500);
+        if (shouldRefresh) await this._fetchAvailableTasks();
       })
     );
     cleanups.push(
-      TaskTrackerUtils.setupTaskUpdateListener(this._hass, () => {
-        setTimeout(() => this._fetchAvailableTasks(), 500);
+      TaskTrackerUtils.setupTaskUpdateListener(this._hass, async () => {
+        await this._fetchAvailableTasks();
       })
     );
     // Also refresh on deletions via the reused task_updated event
     // (already covered by setupTaskUpdateListener)
     cleanups.push(
-      TaskTrackerUtils.setupCompletionDeletionListener(this._hass, () => {
-        setTimeout(() => this._fetchAvailableTasks(), 500);
+      TaskTrackerUtils.setupCompletionDeletionListener(this._hass, async () => {
+        await this._fetchAvailableTasks();
       })
     );
 

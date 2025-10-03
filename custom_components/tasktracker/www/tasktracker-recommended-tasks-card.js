@@ -327,8 +327,8 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
   getHeaderStatusHTML() {
     return this._refreshing ? '<div class="refreshing-indicator"></div>' : '';
   }
-  onAutoRefresh() { this._fetchRecommendedTasks(); }
-  onRefresh() { this._fetchRecommendedTasks(); }
+  async onAutoRefresh() { await this._fetchRecommendedTasks(); }
+  async onRefresh() { await this._fetchRecommendedTasks(); }
 
   _renderContent() {
     // Only show loading state on initial load
@@ -359,33 +359,33 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
     const cleanups = [];
 
     cleanups.push(
-      TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
+      TaskTrackerUtils.setupTaskCompletionListener(this._hass, async (eventData) => {
         const currentUsername = this._getCurrentUsername();
         if (currentUsername && eventData.username === currentUsername) {
-          setTimeout(() => this._fetchRecommendedTasks(), 500);
+          await this._fetchRecommendedTasks();
         }
       })
     );
 
     cleanups.push(
-      TaskTrackerUtils.setupTaskCreationListener(this._hass, (eventData) => {
+      TaskTrackerUtils.setupTaskCreationListener(this._hass, async (eventData) => {
         const currentUsername = this._getCurrentUsername();
         if (currentUsername && eventData.assigned_users && eventData.assigned_users.includes(currentUsername)) {
-          setTimeout(() => this._fetchRecommendedTasks(), 500);
+          await this._fetchRecommendedTasks();
         }
       })
     );
 
     cleanups.push(
-      TaskTrackerUtils.setupTaskUpdateListener(this._hass, () => {
-        setTimeout(() => this._fetchRecommendedTasks(), 500);
+      TaskTrackerUtils.setupTaskUpdateListener(this._hass, async () => {
+        await this._fetchRecommendedTasks();
       })
     );
     // Deletions also come through the same update event
 
     cleanups.push(
-      TaskTrackerUtils.setupCompletionDeletionListener(this._hass, () => {
-        setTimeout(() => this._fetchRecommendedTasks(), 500);
+      TaskTrackerUtils.setupCompletionDeletionListener(this._hass, async () => {
+        await this._fetchRecommendedTasks();
       })
     );
 

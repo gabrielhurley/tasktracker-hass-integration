@@ -195,6 +195,20 @@ export class TaskTrackerStyles {
         color: var(--primary-color);
       }
 
+      /* Animated loading dots for buttons */
+      .tt-loading-dots::after {
+        content: '•••';
+        display: inline-block;
+        letter-spacing: 0.1em;
+        animation: tt-dots 1.2s steps(3) infinite;
+      }
+
+      @keyframes tt-dots {
+        0% { content: '•  '; }
+        33% { content: '••  '; }
+        66% { content: '•••'; }
+      }
+
       /* Processing state for tasks during completion */
       .task-item.processing {
         opacity: 0.7;

@@ -385,8 +385,8 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         ></textarea>
       </div>
 
-      <button class="complete-btn ${this._completing ? 'completing' : ''}" ${this._completing ? 'disabled' : ''}>
-        ${this._completing ? 'Completing...' : 'Complete Task'}
+      <button class="complete-btn ${this._completing ? 'tt-loading-dots' : ''}" ${this._completing ? 'disabled' : ''}>
+        ${this._completing ? '' : 'Complete Task'}
       </button>
     `;
   }

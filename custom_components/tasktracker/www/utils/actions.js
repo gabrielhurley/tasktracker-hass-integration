@@ -69,7 +69,7 @@ export async function snoozeTask(hass, task, snoozeUntil, assignedUsers, refresh
     }, {}, true, true);
     const data = ensureServiceSuccess(response);
     showSuccess('Task snoozed');
-    if (refreshCallback) setTimeout(() => refreshCallback(), 100);
+    if (refreshCallback) await refreshCallback();
     return true;
   } catch (error) {
     showError('Failed to snooze task');

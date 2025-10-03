@@ -93,8 +93,8 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
     }
   }
 
-  onAutoRefresh() { this._fetchLeftovers(); }
-  onRefresh() { this._fetchLeftovers(); }
+  async onAutoRefresh() { await this._fetchLeftovers(); }
+  async onRefresh() { await this._fetchLeftovers(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
@@ -227,13 +227,13 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
   _setupEventListeners() {
     const cleanups = [];
     cleanups.push(
-      TaskTrackerUtils.setupLeftoverDisposalListener(this._hass, () => setTimeout(() => this._fetchLeftovers(), 500))
+      TaskTrackerUtils.setupLeftoverDisposalListener(this._hass, async () => await this._fetchLeftovers())
     );
     cleanups.push(
-      TaskTrackerUtils.setupLeftoverCreationListener(this._hass, () => setTimeout(() => this._fetchLeftovers(), 500))
+      TaskTrackerUtils.setupLeftoverCreationListener(this._hass, async () => await this._fetchLeftovers())
     );
     cleanups.push(
-      TaskTrackerUtils.setupTaskCompletionListener(this._hass, () => setTimeout(() => this._fetchLeftovers(), 500))
+      TaskTrackerUtils.setupTaskCompletionListener(this._hass, async () => await this._fetchLeftovers())
     );
     this.setEventCleanups(cleanups);
   }
@@ -264,9 +264,7 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
       }
 
       // Refresh leftovers after disposal
-      setTimeout(() => {
-        this._fetchLeftovers();
-      }, 100);
+      await this._fetchLeftovers();
 
     } catch (error) {
       console.error('Failed to dispose leftover:', error);

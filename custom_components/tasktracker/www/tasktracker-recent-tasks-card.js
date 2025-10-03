@@ -96,8 +96,8 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
     }
   }
 
-  onAutoRefresh() { this._fetchRecentCompletions(); }
-  onRefresh() { this._fetchRecentCompletions(); }
+  async onAutoRefresh() { await this._fetchRecentCompletions(); }
+  async onRefresh() { await this._fetchRecentCompletions(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
@@ -302,25 +302,25 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
   _setupEventListeners() {
     const cleanups = [];
     cleanups.push(
-      TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
+      TaskTrackerUtils.setupTaskCompletionListener(this._hass, async (eventData) => {
         const shouldRefresh = this._shouldRefreshForUser(eventData.username);
-        if (shouldRefresh) setTimeout(() => this._fetchRecentCompletions(), 500);
+        if (shouldRefresh) await this._fetchRecentCompletions();
       })
     );
     cleanups.push(
-      TaskTrackerUtils.setupLeftoverDisposalListener(this._hass, (eventData) => {
+      TaskTrackerUtils.setupLeftoverDisposalListener(this._hass, async (eventData) => {
         const shouldRefresh = this._shouldRefreshForUser(eventData.username);
-        if (shouldRefresh) setTimeout(() => this._fetchRecentCompletions(), 500);
+        if (shouldRefresh) await this._fetchRecentCompletions();
       })
     );
     cleanups.push(
-      TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_completion_deleted', () => {
-        setTimeout(() => this._fetchRecentCompletions(), 500);
+      TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_completion_deleted', async () => {
+        await this._fetchRecentCompletions();
       })
     );
     cleanups.push(
-      TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_completion_updated', () => {
-        setTimeout(() => this._fetchRecentCompletions(), 500);
+      TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_completion_updated', async () => {
+        await this._fetchRecentCompletions();
       })
     );
     this.setEventCleanups(cleanups);
