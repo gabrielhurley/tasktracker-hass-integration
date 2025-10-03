@@ -1,4 +1,5 @@
 import { TaskTrackerStyles } from '../styles.js';
+import { TaskTrackerDateTime } from '../datetime-utils.js';
 import { createStyledButton } from './components.js';
 import {
   formatDateTimeForInput,
@@ -388,6 +389,75 @@ export function createTaskModal(
       assignFields.appendChild(createFieldRow('Assigned To', createDisplay(displayText)));
     }
     formContainer.appendChild(assignSection);
+  }
+
+  // Section: Task Nudges (read-only display)
+  if (!onSave) {
+    const { section: nudgesSection, fieldsContainer: nudgesFields } = createSection('Task Nudges');
+
+    if (task.task_nudges && task.task_nudges.length > 0) {
+      task.task_nudges.forEach(nudge => {
+        const nudgeContainer = document.createElement('div');
+        nudgeContainer.className = 'tt-nudge-item';
+
+        const triggerTypeLabels = {
+          'on_due': 'When task becomes due',
+          'on_overdue': 'When task becomes overdue',
+          'time_of_day': 'At specific time of day',
+          'after_due_delay': 'After due with delay',
+          'overdue_threshold': 'When overdue threshold reached'
+        };
+
+        const triggerLabel = triggerTypeLabels[nudge.trigger_type] || nudge.trigger_type;
+        let configText = '';
+
+        if (nudge.trigger_type === 'time_of_day' && nudge.trigger_config?.time) {
+          const formattedTime = TaskTrackerDateTime.formatTimeForDisplay(nudge.trigger_config.time);
+          configText = ` (at ${formattedTime})`;
+        } else if (nudge.trigger_type === 'after_due_delay' && nudge.trigger_config?.minutes) {
+          const hours = Math.floor(nudge.trigger_config.minutes / 60);
+          const mins = nudge.trigger_config.minutes % 60;
+          if (hours > 0 && mins > 0) {
+            configText = ` (${hours}h ${mins}m after due)`;
+          } else if (hours > 0) {
+            configText = ` (${hours}h after due)`;
+          } else {
+            configText = ` (${mins}m after due)`;
+          }
+        } else if (nudge.trigger_type === 'overdue_threshold' && nudge.trigger_config?.days) {
+          configText = ` (${nudge.trigger_config.days} days overdue)`;
+        }
+
+        const triggerText = document.createElement('div');
+        triggerText.className = 'tt-nudge-trigger';
+        triggerText.textContent = `${triggerLabel}${configText}`;
+        nudgeContainer.appendChild(triggerText);
+
+        if (nudge.custom_message) {
+          const messageText = document.createElement('div');
+          messageText.className = 'tt-nudge-message';
+          messageText.textContent = `"${nudge.custom_message}"`;
+          nudgeContainer.appendChild(messageText);
+        }
+
+        const metaText = document.createElement('div');
+        metaText.className = 'tt-nudge-meta';
+        const parts = [];
+        parts.push(`Priority: ${nudge.priority}`);
+        if (!nudge.is_active) parts.push('Inactive');
+        metaText.textContent = parts.join(' • ');
+        nudgeContainer.appendChild(metaText);
+
+        nudgesFields.appendChild(nudgeContainer);
+      });
+    } else {
+      const noNudgesText = document.createElement('div');
+      noNudgesText.className = 'tt-text-muted';
+      noNudgesText.textContent = 'No custom nudges configured for this task';
+      nudgesFields.appendChild(noNudgesText);
+    }
+
+    formContainer.appendChild(nudgesSection);
   }
 
   // Section: Tags & Notes

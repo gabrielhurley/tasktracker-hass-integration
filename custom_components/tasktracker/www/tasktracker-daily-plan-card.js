@@ -263,6 +263,17 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     }
   }
 
+  _canDoPartialUpdate(oldData, newData) {
+    // Check if we're in reduced plan mode (using_defaults: true)
+    // Reduced plans have a different DOM structure, so partial updates don't work
+    if (oldData?.using_defaults || newData?.using_defaults) {
+      return false;
+    }
+
+    // Otherwise use the base class logic
+    return super._canDoPartialUpdate(oldData, newData);
+  }
+
   _populateTaskDataMap() {
     this._taskDataMap.clear();
 

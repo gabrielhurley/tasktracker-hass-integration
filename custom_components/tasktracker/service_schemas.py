@@ -97,6 +97,20 @@ GET_ALL_TASKS_SCHEMA = vol.Schema(
 )
 
 
+# Task nudge schema for nested validation
+TASK_NUDGE_SCHEMA = vol.Schema(
+    {
+        vol.Optional("id"): cv.positive_int,
+        vol.Required("trigger_type"): vol.In(
+            ["on_due", "on_overdue", "time_of_day", "after_due_delay", "overdue_threshold"]
+        ),
+        vol.Optional("trigger_config"): dict,
+        vol.Optional("priority"): vol.All(cv.positive_int, vol.Range(min=1, max=10)),
+        vol.Optional("is_active"): cv.boolean,
+        vol.Optional("custom_message"): cv.string,
+    }
+)
+
 UPDATE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.string,
@@ -141,6 +155,8 @@ UPDATE_TASK_SCHEMA = vol.Schema(
         vol.Optional("required_occurrences"): cv.positive_int,
         # Tags field
         vol.Optional("tags"): vol.All(cv.ensure_list, [cv.string]),
+        # Task nudges field
+        vol.Optional("task_nudges"): vol.All(cv.ensure_list, [TASK_NUDGE_SCHEMA]),
     }
 )
 

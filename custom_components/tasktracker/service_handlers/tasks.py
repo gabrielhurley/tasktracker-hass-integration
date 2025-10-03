@@ -686,6 +686,7 @@ def update_task_handler_factory(
                 "level",
                 "required_occurrences",
                 "tags",
+                "task_nudges",
             ]
             for field in update_fields:
                 if field in call.data:

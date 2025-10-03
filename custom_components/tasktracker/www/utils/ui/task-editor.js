@@ -239,13 +239,197 @@ export class TaskTrackerTaskEditor {
       }
     }
 
+    // Task Nudges Section
+    sections.push(this.createTaskNudgesSection(task));
+
     // Tags Section
-    sections.push(this.createSection('Tags', [
+    sections.push(this.createSection('Tags & Notes', [
       this.createTagsField('tags', 'Tags', task.tags ?? [], true),
       this.createTextAreaField('notes', 'Notes', task.notes ?? '', true)
     ]));
 
     return sections;
+  }
+
+  static createTaskNudgesSection(task) {
+    const section = document.createElement('div');
+    section.className = 'tt-box';
+
+    const sectionTitle = document.createElement('h4');
+    sectionTitle.textContent = 'Task Nudges';
+    sectionTitle.className = 'tt-box-title';
+
+    const description = document.createElement('p');
+    description.className = 'tt-text-muted';
+    description.style.fontSize = '0.85em';
+    description.style.marginBottom = '12px';
+    description.textContent = 'Configure custom reminders for this task';
+
+    const nudgesContainer = document.createElement('div');
+    nudgesContainer.className = 'tt-nudges-container';
+    nudgesContainer.setAttribute('data-nudges', JSON.stringify(task.task_nudges || []));
+
+    const existingNudges = task.task_nudges || [];
+    existingNudges.forEach((nudge, index) => {
+      nudgesContainer.appendChild(this.createNudgeEditor(nudge, index));
+    });
+
+    const addButton = document.createElement('button');
+    addButton.type = 'button';
+    addButton.textContent = '+ Add Nudge';
+    addButton.className = 'tt-btn tt-mt-12';
+    addButton.addEventListener('click', () => {
+      const currentNudges = Array.from(nudgesContainer.querySelectorAll('.tt-nudge-editor'));
+      const newIndex = currentNudges.length;
+      nudgesContainer.appendChild(this.createNudgeEditor({
+        trigger_type: 'on_due',
+        trigger_config: {},
+        priority: 5,
+        is_active: true,
+        custom_message: ''
+      }, newIndex));
+    });
+
+    section.appendChild(sectionTitle);
+    section.appendChild(description);
+    section.appendChild(nudgesContainer);
+    section.appendChild(addButton);
+
+    return section;
+  }
+
+  static createNudgeEditor(nudge, index) {
+    const editor = document.createElement('div');
+    editor.className = 'tt-nudge-editor';
+    editor.setAttribute('data-nudge-index', index);
+    if (nudge.id) editor.setAttribute('data-nudge-id', nudge.id);
+
+    const header = document.createElement('div');
+    header.className = 'tt-nudge-editor-header';
+
+    const title = document.createElement('span');
+    title.textContent = `Nudge ${index + 1}`;
+    title.style.fontWeight = '500';
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.textContent = 'Remove';
+    deleteButton.className = 'tt-btn tt-btn--link';
+    deleteButton.addEventListener('click', () => {
+      editor.remove();
+    });
+
+    header.appendChild(title);
+    header.appendChild(deleteButton);
+
+    const fields = document.createElement('div');
+    fields.className = 'tt-grid-auto';
+
+    // Trigger type
+    const triggerSelect = this.createSelectField(
+      `nudge_trigger_type_${index}`,
+      'Trigger Type',
+      nudge.trigger_type || 'on_due',
+      [
+        { value: 'on_due', label: 'When task becomes due' },
+        { value: 'on_overdue', label: 'When task becomes overdue' },
+        { value: 'time_of_day', label: 'At specific time of day' },
+        { value: 'after_due_delay', label: 'After due with delay' },
+        { value: 'overdue_threshold', label: 'When overdue threshold reached' }
+      ]
+    );
+    fields.appendChild(triggerSelect);
+
+    // Trigger config container (dynamic based on trigger type)
+    const configContainer = document.createElement('div');
+    configContainer.className = 'tt-nudge-config';
+    configContainer.setAttribute('data-config-for', index);
+
+    const updateConfigFields = (triggerType) => {
+      configContainer.innerHTML = '';
+
+      if (triggerType === 'time_of_day') {
+        const timeField = this.createFieldWrapper(
+          `nudge_config_time_${index}`,
+          'Time',
+          () => {
+            const input = document.createElement('input');
+            input.type = 'time';
+            input.name = `nudge_config_time_${index}`;
+            input.value = nudge.trigger_config?.time || '20:00';
+            this.styleInput(input);
+            return input;
+          }
+        );
+        configContainer.appendChild(timeField);
+      } else if (triggerType === 'after_due_delay') {
+        const minutesField = this.createNumberField(
+          `nudge_config_minutes_${index}`,
+          'Minutes after due',
+          nudge.trigger_config?.minutes || 60,
+          1,
+          10080
+        );
+        configContainer.appendChild(minutesField);
+      } else if (triggerType === 'overdue_threshold') {
+        const daysField = this.createNumberField(
+          `nudge_config_days_${index}`,
+          'Days overdue',
+          nudge.trigger_config?.days || 1,
+          1,
+          365
+        );
+        configContainer.appendChild(daysField);
+      }
+    };
+
+    // Update config fields on trigger type change
+    const triggerSelectInput = triggerSelect.querySelector('select');
+    triggerSelectInput.addEventListener('change', (e) => {
+      updateConfigFields(e.target.value);
+    });
+
+    // Initial config fields
+    updateConfigFields(nudge.trigger_type || 'on_due');
+
+    fields.appendChild(configContainer);
+
+    // Priority
+    const priorityField = this.createSelectField(
+      `nudge_priority_${index}`,
+      'Priority',
+      nudge.priority || 5,
+      [
+        { value: 1, label: 'Highest' },
+        { value: 3, label: 'High' },
+        { value: 5, label: 'Medium' },
+        { value: 7, label: 'Low' },
+        { value: 9, label: 'Lowest' },
+      ]
+    );
+    fields.appendChild(priorityField);
+
+    // Active checkbox
+    const activeField = this.createCheckboxField(
+      `nudge_active_${index}`,
+      'Active',
+      nudge.is_active !== false
+    );
+    fields.appendChild(activeField);
+
+    // Custom message
+    const messageField = this.createTextAreaField(
+      `nudge_message_${index}`,
+      'Custom Message (optional)',
+      nudge.custom_message || ''
+    );
+    messageField.classList.add('tt-col-span-full');
+    fields.appendChild(messageField);
+
+    editor.appendChild(header);
+    editor.appendChild(fields);
+
+    return editor;
   }
 
   static createSection(title, fields) {
@@ -519,6 +703,51 @@ export class TaskTrackerTaskEditor {
       const originalTags = originalTask.tags || [];
       if (JSON.stringify(tags.sort()) !== JSON.stringify(originalTags.sort())) {
         updates.tags = tags;
+      }
+    }
+
+    // Task nudges field
+    const nudgesContainer = form.querySelector('.tt-nudges-container');
+    if (nudgesContainer) {
+      const nudgeEditors = Array.from(nudgesContainer.querySelectorAll('.tt-nudge-editor'));
+      const newNudges = nudgeEditors.map(editor => {
+        const index = editor.getAttribute('data-nudge-index');
+        const nudgeId = editor.getAttribute('data-nudge-id');
+        const triggerType = formData.get(`nudge_trigger_type_${index}`);
+        const priority = parseInt(formData.get(`nudge_priority_${index}`) || '5', 10);
+        const isActive = formData.get(`nudge_active_${index}`) === 'on';
+        const customMessage = formData.get(`nudge_message_${index}`) || '';
+
+        const nudge = {
+          trigger_type: triggerType,
+          priority: priority,
+          is_active: isActive,
+          custom_message: customMessage,
+          trigger_config: {}
+        };
+
+        if (nudgeId) {
+          nudge.id = parseInt(nudgeId, 10);
+        }
+
+        // Extract trigger config based on type
+        if (triggerType === 'time_of_day') {
+          const time = formData.get(`nudge_config_time_${index}`);
+          if (time) nudge.trigger_config.time = time;
+        } else if (triggerType === 'after_due_delay') {
+          const minutes = parseInt(formData.get(`nudge_config_minutes_${index}`) || '60', 10);
+          nudge.trigger_config.minutes = minutes;
+        } else if (triggerType === 'overdue_threshold') {
+          const days = parseInt(formData.get(`nudge_config_days_${index}`) || '1', 10);
+          nudge.trigger_config.days = days;
+        }
+
+        return nudge;
+      });
+
+      const originalNudges = originalTask.task_nudges || [];
+      if (JSON.stringify(newNudges) !== JSON.stringify(originalNudges)) {
+        updates.task_nudges = newNudges;
       }
     }
 

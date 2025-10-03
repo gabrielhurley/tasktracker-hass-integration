@@ -282,6 +282,19 @@ export class TaskTrackerStyles {
       .time-slider { flex: 1; width: 100%; height: 4px; background: var(--divider-color); border-radius: 2px; outline: none; -webkit-appearance: none; display: block; }
       .time-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--divider-color); }
       .time-slider::-moz-range-track { height: 4px; border-radius: 2px; background: var(--divider-color); }
+
+      /* Task Nudges */
+      .tt-nudge-item { padding: 12px; margin-bottom: 8px; background: var(--secondary-background-color); border-radius: 6px; border-left: 3px solid var(--divider-color); }
+      .tt-nudge-item:last-child { margin-bottom: 0; }
+      .tt-nudge-trigger { font-weight: 500; color: var(--primary-text-color); margin-bottom: 4px; }
+      .tt-nudge-message { font-style: italic; color: var(--secondary-text-color); font-size: 0.9em; margin-bottom: 4px; }
+      .tt-nudge-meta { font-size: 0.8em; color: var(--secondary-text-color); }
+
+      .tt-nudges-container { display: flex; flex-direction: column; gap: 12px; }
+      .tt-nudge-editor { padding: 16px; background: var(--secondary-background-color); border-radius: 6px; border: 1px solid var(--divider-color); }
+      .tt-nudge-editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--divider-color); }
+      .tt-nudge-config { grid-column: 1 / -1; }
+      .tt-flex-col { display: flex; flex-direction: column; }
     `;
   }
   static ensureGlobal() {

@@ -529,12 +529,17 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
 
     const relevantFields = [
       'id', 'name', 'completed', 'outstanding_occurrences',
-      'required_occurrences', 'recommendation_score', 'windows'
+      'required_occurrences', 'recommendation_score', 'windows', 'task_nudges'
     ];
 
     for (const field of relevantFields) {
       if (field === 'windows') {
         if (!this._windowsEqual(task1.windows, task2.windows)) return false;
+      } else if (field === 'task_nudges') {
+        // Compare task_nudges arrays using JSON stringification for deep equality
+        const nudges1 = JSON.stringify(task1.task_nudges || []);
+        const nudges2 = JSON.stringify(task2.task_nudges || []);
+        if (nudges1 !== nudges2) return false;
       } else if (task1[field] !== task2[field]) {
         return false;
       }
