@@ -105,8 +105,16 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
           taskElement.classList.remove('processing');
         }
       } else {
-        // On success, keep the visual feedback until refresh
-        // The task will be removed/updated when onAfterComplete runs
+        // SUCCESS: Start fade-out animation immediately to sync with success toast
+        if (taskElement) {
+          taskElement.classList.add('fade-out');
+          // Schedule removal to match animation duration
+          setTimeout(() => {
+            if (taskElement.parentNode) {
+              taskElement.remove();
+            }
+          }, 300);
+        }
       }
 
       // Allow subclass to refresh data after completion
@@ -566,6 +574,13 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
       const element = this.shadowRoot.querySelector(`[data-task-key="${taskKey}"]`);
 
       if (element) {
+        // Check if already fading out (from immediate completion feedback)
+        if (element.classList.contains('fade-out')) {
+          // Already animating, just clean up data manager
+          this._taskDataManager.removeKey(taskKey);
+          return;
+        }
+
         // Add fade-out animation
         element.classList.add('fade-out');
 

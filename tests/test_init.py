@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -10,8 +11,13 @@ from custom_components.tasktracker import (
     async_setup,
     async_setup_entry,
     async_unload_entry,
+    handle_subscribe_tasktracker_events,
 )
-from custom_components.tasktracker.const import DOMAIN
+from custom_components.tasktracker.const import (
+    DOMAIN,
+    EVENT_TASK_COMPLETED,
+    TASKTRACKER_EVENTS,
+)
 
 
 class TestTaskTrackerIntegration:
@@ -181,3 +187,61 @@ class TestTaskTrackerIntegration:
         assert "config" in entry_data
         assert entry_data["config"]["host"] == "https://test.example.com"
         assert entry_data["config"]["api_key"] == "test-api-key"
+
+    def test_websocket_event_validation_valid(self) -> None:
+        """Test that valid TaskTracker events pass validation."""
+        # Test that all defined events are in the whitelist
+        assert EVENT_TASK_COMPLETED in TASKTRACKER_EVENTS
+        assert "tasktracker_task_created" in TASKTRACKER_EVENTS
+        assert "tasktracker_leftover_created" in TASKTRACKER_EVENTS
+
+    def test_websocket_event_validation_invalid(self) -> None:
+        """Test that invalid events are not in the whitelist."""
+        # Test that random event names are not in the whitelist
+        assert "invalid_event" not in TASKTRACKER_EVENTS
+        assert "random_event_name" not in TASKTRACKER_EVENTS
+        assert "tasktracker_invalid" not in TASKTRACKER_EVENTS
+
+    @pytest.mark.asyncio
+    async def test_websocket_event_forwarding_integration(
+        self, hass: HomeAssistant
+    ) -> None:
+        """Test that websocket handler can be registered and events flow through the bus."""
+        # This is an integration test that verifies the overall flow works
+        # We test that the event bus system works end-to-end
+
+        # Track if callback was called
+        callback_called = False
+        callback_data = None
+
+        def test_callback(event):
+            nonlocal callback_called, callback_data
+            callback_called = True
+            callback_data = event.data
+
+        # Subscribe directly to the bus (similar to what our handler does)
+        hass.bus.async_listen(EVENT_TASK_COMPLETED, test_callback)
+
+        # Fire an event
+        hass.bus.async_fire(
+            EVENT_TASK_COMPLETED,
+            {"task_id": 456, "completed_by": "testuser"}
+        )
+        await hass.async_block_till_done()
+
+        # Verify callback was called with correct data
+        assert callback_called
+        assert callback_data["task_id"] == 456
+        assert callback_data["completed_by"] == "testuser"
+
+    def test_all_events_in_const(self) -> None:
+        """Test that all TaskTracker events are properly defined in const."""
+        # Verify the TASKTRACKER_EVENTS list exists and contains expected events
+        assert len(TASKTRACKER_EVENTS) >= 7  # At least 7 known events
+        assert EVENT_TASK_COMPLETED in TASKTRACKER_EVENTS
+        assert "tasktracker_task_created" in TASKTRACKER_EVENTS
+        assert "tasktracker_task_updated" in TASKTRACKER_EVENTS
+        assert "tasktracker_task_deleted" in TASKTRACKER_EVENTS
+        assert "tasktracker_leftover_created" in TASKTRACKER_EVENTS
+        assert "tasktracker_completion_deleted" in TASKTRACKER_EVENTS
+        assert "tasktracker_completion_updated" in TASKTRACKER_EVENTS

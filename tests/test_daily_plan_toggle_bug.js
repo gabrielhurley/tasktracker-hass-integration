@@ -45,7 +45,7 @@ describe('Daily Plan Card Toggle Bug', () => {
       callService: jest.fn(),
       states: {},
       connection: {
-        subscribeEvents: jest.fn(() => Promise.resolve(() => {}))
+        subscribeMessage: jest.fn(() => Promise.resolve(() => {}))
       }
     };
 

@@ -99,6 +99,26 @@ SERVICE_DELETE_TASK: Final = "delete_task"
 # Event names
 EVENT_DAILY_PLAN: Final = "tasktracker_daily_plan"
 EVENT_DAILY_STATE_SET: Final = "tasktracker_daily_state_set"
+EVENT_TASK_COMPLETED: Final = "tasktracker_task_completed"
+EVENT_TASK_CREATED: Final = "tasktracker_task_created"
+EVENT_TASK_UPDATED: Final = "tasktracker_task_updated"
+EVENT_TASK_DELETED: Final = "tasktracker_task_deleted"
+EVENT_LEFTOVER_CREATED: Final = "tasktracker_leftover_created"
+EVENT_COMPLETION_DELETED: Final = "tasktracker_completion_deleted"
+EVENT_COMPLETION_UPDATED: Final = "tasktracker_completion_updated"
+
+# All events that should be accessible to non-admin users
+TASKTRACKER_EVENTS: Final = [
+    EVENT_DAILY_PLAN,
+    EVENT_DAILY_STATE_SET,
+    EVENT_TASK_COMPLETED,
+    EVENT_TASK_CREATED,
+    EVENT_TASK_UPDATED,
+    EVENT_TASK_DELETED,
+    EVENT_LEFTOVER_CREATED,
+    EVENT_COMPLETION_DELETED,
+    EVENT_COMPLETION_UPDATED,
+]
 
 # API endpoints
 ENDPOINT_COMPLETE_TASK: Final = "/api/completions/complete_task/"

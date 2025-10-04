@@ -1,11 +1,21 @@
 export function setupEventListener(hass, eventType, callback) {
-  let unsubscribePromise = hass.connection.subscribeEvents(
-    (event) => {
-      callback(event.data);
-    },
-    `tasktracker_${eventType}`,
-  );
+  const fullEventType = `tasktracker_${eventType}`;
+  let unsubscribePromise;
   let isCleanedUp = false;
+
+  // Use custom TaskTracker websocket command for non-admin users
+  unsubscribePromise = hass.connection.subscribeMessage(
+    (message) => {
+      if (message.event_type === fullEventType) {
+        callback(message.data);
+      }
+    },
+    {
+      type: 'tasktracker/subscribe_events',
+      event_type: fullEventType,
+    }
+  );
+
   return async () => {
     if (isCleanedUp) return;
     try {

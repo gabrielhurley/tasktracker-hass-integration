@@ -21,10 +21,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import homeassistant.helpers.config_validation as cv
+from homeassistant.components import websocket_api
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import TaskTrackerAPI
-from .const import DOMAIN
+from .const import DOMAIN, TASKTRACKER_EVENTS
 from .intents import async_register_intents
 from .services import async_setup_services, async_unload_services
 from .www import JSModuleRegistration
@@ -138,6 +139,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.debug("Registering TaskTracker intent handlers")
         await async_register_intents(hass)
 
+        # Register websocket event subscriptions for non-admin users
+        _LOGGER.debug("Registering TaskTracker websocket event permissions")
+        websocket_api.async_register_command(hass, handle_subscribe_tasktracker_events)
+
         # Register frontend resources
         _LOGGER.debug("Registering TaskTracker frontend resources")
         module_register = JSModuleRegistration(hass)
@@ -164,6 +169,47 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
 
     return True
+
+
+@websocket_api.websocket_command(
+    {
+        "type": "tasktracker/subscribe_events",
+        "event_type": str,
+    }
+)
+@websocket_api.async_response
+async def handle_subscribe_tasktracker_events(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict,
+) -> None:
+    """Handle websocket subscription to TaskTracker events for non-admin users."""
+    event_type = msg["event_type"]
+
+    # Validate that the requested event is a TaskTracker event
+    if event_type not in TASKTRACKER_EVENTS:
+        connection.send_error(
+            msg["id"],
+            websocket_api.const.ERR_INVALID_FORMAT,
+            f"Event type {event_type} is not a valid TaskTracker event",
+        )
+        return
+
+    # Send initial success response
+    connection.send_result(msg["id"])
+
+    # Subscribe to the event and forward to the websocket connection
+    @websocket_api.callback
+    def forward_event(event):
+        """Forward events to websocket."""
+        connection.send_message(
+            websocket_api.event_message(msg["id"], {"event_type": event.event_type, "data": event.data})
+        )
+
+    # Register the listener
+    connection.subscriptions[msg["id"]] = hass.bus.async_listen(
+        event_type, forward_event
+    )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

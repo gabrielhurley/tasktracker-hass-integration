@@ -314,12 +314,12 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
       })
     );
     cleanups.push(
-      TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_completion_deleted', async () => {
+      TaskTrackerUtils.setupEventListener(this._hass, 'completion_deleted', async () => {
         await this._fetchRecentCompletions();
       })
     );
     cleanups.push(
-      TaskTrackerUtils.setupEventListener(this._hass, 'tasktracker_completion_updated', async () => {
+      TaskTrackerUtils.setupEventListener(this._hass, 'completion_updated', async () => {
         await this._fetchRecentCompletions();
       })
     );
