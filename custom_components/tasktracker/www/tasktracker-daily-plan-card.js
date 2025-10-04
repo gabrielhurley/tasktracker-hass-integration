@@ -300,15 +300,8 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
       }
     });
 
-    // Listen for mood update events to refresh the plan
-    const moodUpdateCleanup = TaskTrackerUtils.setupEventListener(this._hass, 'mood_set', async (event) => {
-      const evUsername = event?.username;
-      const username = this._getUsername();
-      if (!username || username === evUsername) {
-        // Mood updates should trigger refresh even in rapid mode
-        await this._fetchPlan({ forceRefresh: true });
-      }
-    });
+    // Note: mood_set event not currently fired by backend, removed listener
+    // If mood events are added in the future, also add to TASKTRACKER_EVENTS in const.py
 
     // Listen for generic task updates (includes deletions via reused event)
     const taskUpdateCleanup = TaskTrackerUtils.setupTaskUpdateListener(this._hass, async () => {
@@ -342,7 +335,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     this._eventCleanup = async () => {
       await Promise.all([
         completionCleanup().catch(() => {}),
-        moodUpdateCleanup().catch(() => {}),
         dailyStateCleanup().catch(() => {}),
         taskUpdateCleanup().catch(() => {}),
         completionDeletionCleanup().catch(() => {})

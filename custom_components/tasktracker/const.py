@@ -104,6 +104,7 @@ EVENT_TASK_CREATED: Final = "tasktracker_task_created"
 EVENT_TASK_UPDATED: Final = "tasktracker_task_updated"
 EVENT_TASK_DELETED: Final = "tasktracker_task_deleted"
 EVENT_LEFTOVER_CREATED: Final = "tasktracker_leftover_created"
+EVENT_LEFTOVER_DISPOSED: Final = "tasktracker_leftover_disposed"
 EVENT_COMPLETION_DELETED: Final = "tasktracker_completion_deleted"
 EVENT_COMPLETION_UPDATED: Final = "tasktracker_completion_updated"
 
@@ -116,6 +117,7 @@ TASKTRACKER_EVENTS: Final = [
     EVENT_TASK_UPDATED,
     EVENT_TASK_DELETED,
     EVENT_LEFTOVER_CREATED,
+    EVENT_LEFTOVER_DISPOSED,
     EVENT_COMPLETION_DELETED,
     EVENT_COMPLETION_UPDATED,
 ]

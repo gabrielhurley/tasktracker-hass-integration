@@ -237,11 +237,14 @@ class TestTaskTrackerIntegration:
     def test_all_events_in_const(self) -> None:
         """Test that all TaskTracker events are properly defined in const."""
         # Verify the TASKTRACKER_EVENTS list exists and contains expected events
-        assert len(TASKTRACKER_EVENTS) >= 7  # At least 7 known events
+        assert len(TASKTRACKER_EVENTS) >= 10  # At least 10 known events
         assert EVENT_TASK_COMPLETED in TASKTRACKER_EVENTS
         assert "tasktracker_task_created" in TASKTRACKER_EVENTS
         assert "tasktracker_task_updated" in TASKTRACKER_EVENTS
         assert "tasktracker_task_deleted" in TASKTRACKER_EVENTS
         assert "tasktracker_leftover_created" in TASKTRACKER_EVENTS
+        assert "tasktracker_leftover_disposed" in TASKTRACKER_EVENTS
         assert "tasktracker_completion_deleted" in TASKTRACKER_EVENTS
         assert "tasktracker_completion_updated" in TASKTRACKER_EVENTS
+        assert "tasktracker_daily_plan" in TASKTRACKER_EVENTS
+        assert "tasktracker_daily_state_set" in TASKTRACKER_EVENTS
