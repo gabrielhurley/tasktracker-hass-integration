@@ -206,6 +206,7 @@ class TestSpecificIntentHandlers:
                 "username": "sarah",
                 "notes": None,
                 "completion_data": {},
+                "assigned_users": [],  # May be empty if task not found in coordinator
             },
         )
 

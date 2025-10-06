@@ -389,7 +389,11 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
 
     cleanups.push(
       TaskTrackerUtils.setupTaskCompletionListener(this._hass, async (eventData) => {
-        const shouldRefresh = this._shouldRefreshForUser(eventData.username);
+        // Check if this user is affected by the completion using assigned_users
+        const assignedUsers = eventData.assigned_users || [];
+        const shouldRefresh = assignedUsers.length === 0 || // No assigned_users data, refresh to be safe
+                             this._shouldRefreshForUser(assignedUsers) ||
+                             this._shouldRefreshForUser(eventData.username);
         if (shouldRefresh) await this._fetchAvailableTasks();
       })
     );

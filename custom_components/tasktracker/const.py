@@ -148,3 +148,18 @@ ENDPOINT_DELETE_TASK: Final = "/api/tasks/delete-task/"
 
 # Default values
 DEFAULT_SCAN_INTERVAL: Final = 300  # 5 minutes
+
+# Cache configuration (TTL in seconds)
+CACHE_TTL_ENCOURAGEMENT: Final = 300  # 5 minutes - pull-only, no background refresh
+CACHE_TTL_RECOMMENDED_TASKS: Final = 300  # 5 minutes
+CACHE_TTL_AVAILABLE_TASKS: Final = 300  # 5 minutes
+CACHE_TTL_LEFTOVERS: Final = 300  # 5 minutes
+CACHE_TTL_RECENT_COMPLETIONS: Final = 300  # 5 minutes
+CACHE_TTL_ALL_TASKS: Final = 300  # 5 minutes
+
+# Coordinator configuration
+COORDINATOR_UPDATE_INTERVAL_DAILY_PLAN: Final = 180  # 3 minutes
+
+# Additional cache TTLs
+CACHE_TTL_AVAILABLE_USERS: Final = 600  # 10 minutes - config changes are rare
+CACHE_TTL_DAILY_STATE: Final = 300  # 5 minutes

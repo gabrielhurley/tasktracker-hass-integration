@@ -6,6 +6,17 @@ import logging
 from typing import TYPE_CHECKING
 
 from ..api import TaskTrackerAPI, TaskTrackerAPIError
+from ..cache_utils import (
+    get_cached_or_fetch,
+    get_entry_data,
+    invalidate_all_user_caches,
+)
+from ..const import (
+    CACHE_TTL_ALL_TASKS,
+    CACHE_TTL_AVAILABLE_TASKS,
+    CACHE_TTL_RECENT_COMPLETIONS,
+    CACHE_TTL_RECOMMENDED_TASKS,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -76,12 +87,36 @@ def complete_task_handler_factory(
                 if not completed_by:
                     msg = "No completed_by provided and could not determine from user context"
                     raise TaskTrackerAPIError(msg)
+
             result = await api.complete_task(
                 task_id=call.data["task_id"],
                 completed_by=completed_by,
                 notes=call.data.get("notes"),
             )
             if result.get("success"):
+                # Aggressively invalidate all user caches
+                # Task may be assigned to multiple users
+                await invalidate_all_user_caches(hass)
+
+                # Try to extract assigned_users from coordinator data
+                # This helps frontend cards intelligently filter refresh events
+                assigned_users = []
+                entry_data = get_entry_data(hass)
+                coordinators = entry_data.get("coordinators", {})
+                task_id = call.data["task_id"]
+
+                # Check all coordinators for this task
+                for username, coords in coordinators.items():
+                    daily_plan_coord = coords.get("daily_plan")
+                    if daily_plan_coord and daily_plan_coord.data:
+                        tasks = daily_plan_coord.data.get("data", {}).get("tasks", [])
+                        for task in tasks:
+                            if task.get("id") == task_id:
+                                assigned_users = task.get("assigned_users", [])
+                                break
+                        if assigned_users:
+                            break
+
                 hass.bus.fire(
                     "tasktracker_task_completed",
                     {
@@ -89,6 +124,7 @@ def complete_task_handler_factory(
                         "username": completed_by,
                         "notes": call.data.get("notes"),
                         "completion_data": result.get("data"),
+                        "assigned_users": assigned_users,  # May be empty if task not found in coordinator
                     },
                 )
             _LOGGER.info("Task completed successfully: %s", result)
@@ -166,6 +202,7 @@ def complete_task_by_name_handler_factory(
                     msg = "No completed_by provided and could not determine from user context"
                     raise TaskTrackerAPIError(msg)
             _LOGGER.debug("Completing task by name: %s", call.data["name"])
+
             result = await api.complete_task_by_name(
                 name=call.data["name"],
                 completed_by=completed_by,
@@ -173,6 +210,29 @@ def complete_task_by_name_handler_factory(
                 completed_at=call.data.get("completed_at"),
             )
             if result.get("success"):
+                # Aggressively invalidate all user caches
+                # Task may be assigned to multiple users
+                await invalidate_all_user_caches(hass)
+
+                # Try to extract assigned_users from coordinator data by searching by name
+                # This is best-effort since we don't have task ID
+                assigned_users = []
+                task_name = call.data["name"].lower()
+                entry_data = get_entry_data(hass)
+                coordinators = entry_data.get("coordinators", {})
+
+                # Check all coordinators for a task with this name
+                for username, coords in coordinators.items():
+                    daily_plan_coord = coords.get("daily_plan")
+                    if daily_plan_coord and daily_plan_coord.data:
+                        tasks = daily_plan_coord.data.get("data", {}).get("tasks", [])
+                        for task in tasks:
+                            if task.get("name", "").lower() == task_name:
+                                assigned_users = task.get("assigned_users", [])
+                                break
+                        if assigned_users:
+                            break
+
                 event_type = call.data.get("event_type", "task_completed")
                 if event_type == "leftover_disposed":
                     hass.bus.fire(
@@ -182,6 +242,7 @@ def complete_task_by_name_handler_factory(
                             "username": completed_by,
                             "notes": call.data.get("notes"),
                             "disposal_data": result.get("data"),
+                            "assigned_users": assigned_users,  # May be empty
                         },
                     )
                 else:
@@ -192,6 +253,7 @@ def complete_task_by_name_handler_factory(
                             "username": completed_by,
                             "notes": call.data.get("notes"),
                             "completion_data": result.get("data"),
+                            "assigned_users": assigned_users,  # May be empty
                         },
                     )
             _LOGGER.info("Task completed by name successfully: %s", result)
@@ -274,6 +336,10 @@ def create_adhoc_task_handler_factory(
                 priority=call.data.get("priority"),
             )
             if result.get("success"):
+                # Aggressively invalidate all user caches
+                # Task may be assigned to multiple users
+                await invalidate_all_user_caches(hass)
+
                 hass.bus.fire(
                     "tasktracker_task_created",
                     {
@@ -416,10 +482,23 @@ def get_recommended_tasks_handler_factory(
             if available_minutes is None:
                 msg = "available_minutes is required for get_recommended_tasks"
                 raise TaskTrackerAPIError(msg)
-            result = await api.get_recommended_tasks(
-                username=username,
-                available_minutes=available_minutes,
+
+            # Use cache helper
+            cache_key = f"recommended_tasks:{username}:{available_minutes}"
+
+            async def fetch_recommended_tasks():
+                return await api.get_recommended_tasks(
+                    username=username,
+                    available_minutes=available_minutes,
+                )
+
+            result = await get_cached_or_fetch(
+                hass,
+                cache_key,
+                CACHE_TTL_RECOMMENDED_TASKS,
+                fetch_recommended_tasks,
             )
+
             _LOGGER.debug("Recommended tasks retrieved: %s", result)
             return result
         except TaskTrackerAPIError:
@@ -433,12 +512,14 @@ def get_recommended_tasks_handler_factory(
 
 
 def get_available_tasks_handler_factory(
+    hass: HomeAssistant,
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
     """
     Create a service handler for getting available tasks.
 
     Args:
+        hass: The Home Assistant instance.
         api: The TaskTracker API client instance.
 
     Returns:
@@ -472,11 +553,27 @@ def get_available_tasks_handler_factory(
 
         """
         try:
-            result = await api.get_available_tasks(
-                username=call.data.get("username"),
-                available_minutes=call.data.get("available_minutes"),
-                upcoming_days=call.data.get("upcoming_days"),
+            username = call.data.get("username")
+            available_minutes = call.data.get("available_minutes")
+            upcoming_days = call.data.get("upcoming_days")
+
+            # Use cache helper
+            cache_key = f"available_tasks:{username}:{available_minutes}:{upcoming_days}"
+
+            async def fetch_available_tasks():
+                return await api.get_available_tasks(
+                    username=username,
+                    available_minutes=available_minutes,
+                    upcoming_days=upcoming_days,
+                )
+
+            result = await get_cached_or_fetch(
+                hass,
+                cache_key,
+                CACHE_TTL_AVAILABLE_TASKS,
+                fetch_available_tasks,
             )
+
             _LOGGER.debug("Available tasks retrieved: %s", result)
             return result
         except TaskTrackerAPIError:
@@ -490,12 +587,14 @@ def get_available_tasks_handler_factory(
 
 
 def get_all_tasks_handler_factory(
+    hass: HomeAssistant,
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
     """
     Create a service handler for getting all tasks.
 
     Args:
+        hass: The Home Assistant instance.
         api: The TaskTracker API client instance.
 
     Returns:
@@ -528,10 +627,22 @@ def get_all_tasks_handler_factory(
 
         """
         try:
-            result = await api.get_all_tasks(
-                thin=call.data.get("thin", False),
-                username=call.data.get("username"),
+            thin = call.data.get("thin", False)
+            username = call.data.get("username")
+
+            # Use cache helper
+            cache_key = f"all_tasks:{username}:{thin}"
+
+            async def fetch_all_tasks():
+                return await api.get_all_tasks(thin=thin, username=username)
+
+            result = await get_cached_or_fetch(
+                hass,
+                cache_key,
+                CACHE_TTL_ALL_TASKS,
+                fetch_all_tasks,
             )
+
             _LOGGER.debug("All tasks retrieved: %s", result)
             return result
         except TaskTrackerAPIError:
@@ -545,12 +656,14 @@ def get_all_tasks_handler_factory(
 
 
 def get_recent_completions_handler_factory(
+    hass: HomeAssistant,
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
     """
     Create a service handler for getting recent task completions.
 
     Args:
+        hass: The Home Assistant instance.
         api: The TaskTracker API client instance.
 
     Returns:
@@ -584,11 +697,27 @@ def get_recent_completions_handler_factory(
 
         """
         try:
-            result = await api.get_recent_completions(
-                username=call.data.get("username"),
-                days=call.data.get("days"),
-                limit=call.data.get("limit"),
+            username = call.data.get("username")
+            days = call.data.get("days")
+            limit = call.data.get("limit")
+
+            # Use cache helper
+            cache_key = f"recent_completions:{username}:{days}:{limit}"
+
+            async def fetch_recent_completions():
+                return await api.get_recent_completions(
+                    username=username,
+                    days=days,
+                    limit=limit,
+                )
+
+            result = await get_cached_or_fetch(
+                hass,
+                cache_key,
+                CACHE_TTL_RECENT_COMPLETIONS,
+                fetch_recent_completions,
             )
+
             _LOGGER.debug("Recent completions retrieved: %s", result)
             return result
         except TaskTrackerAPIError:
@@ -786,6 +915,10 @@ def create_task_from_description_handler_factory(
                 assigned_users=assigned_users,
             )
             if result.get("success"):
+                # Aggressively invalidate all user caches
+                # Task may be assigned to multiple users
+                await invalidate_all_user_caches(hass)
+
                 data = result.get("data", {}) or {}
                 task = data.get("task") or {}
                 hass.bus.fire(

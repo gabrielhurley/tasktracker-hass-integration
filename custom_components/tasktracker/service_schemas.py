@@ -207,6 +207,7 @@ GET_DAILY_PLAN_SCHEMA = vol.Schema(
 GET_DAILY_PLAN_ENCOURAGEMENT_SCHEMA = vol.Schema(
     {
         vol.Optional("username"): cv.string,
+        vol.Optional("force_refresh"): cv.boolean,
     }
 )
 

@@ -235,6 +235,24 @@ class CompleteTaskIntentHandler(BaseTaskTrackerIntentHandler):
                 f"There was an error completing the task: {error_msg}"
             )
         else:
+            # Try to extract assigned_users from coordinator data
+            assigned_users = []
+            from .cache_utils import get_entry_data
+            entry_data = get_entry_data(self.hass)
+            coordinators = entry_data.get("coordinators", {})
+            task_name_lower = task_name.lower()
+
+            for username, coords in coordinators.items():
+                daily_plan_coord = coords.get("daily_plan")
+                if daily_plan_coord and daily_plan_coord.data:
+                    tasks = daily_plan_coord.data.get("data", {}).get("tasks", [])
+                    for task in tasks:
+                        if task.get("name", "").lower() == task_name_lower:
+                            assigned_users = task.get("assigned_users", [])
+                            break
+                    if assigned_users:
+                        break
+
             # Fire custom event for frontend cards
             self.hass.bus.fire(
                 "tasktracker_task_completed",
@@ -243,6 +261,7 @@ class CompleteTaskIntentHandler(BaseTaskTrackerIntentHandler):
                     "username": task_completed_by,
                     "notes": None,
                     "completion_data": result.get("data"),
+                    "assigned_users": assigned_users,  # May be empty
                 },
             )
 

@@ -1,4 +1,4 @@
-"""Service handlers for daily plan and daily state."""
+"""Service handlers for daily plan and state operations."""
 
 from __future__ import annotations
 
@@ -6,6 +6,11 @@ import logging
 from typing import TYPE_CHECKING
 
 from ..api import TaskTrackerAPI, TaskTrackerAPIError
+from ..cache_utils import get_cached_or_fetch, invalidate_user_cache
+from ..const import (
+    CACHE_TTL_DAILY_STATE,
+    CACHE_TTL_ENCOURAGEMENT,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -13,7 +18,6 @@ if TYPE_CHECKING:
 
     from homeassistant.core import HomeAssistant, ServiceCall
 
-from ..const import EVENT_DAILY_PLAN, EVENT_DAILY_STATE_SET
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +29,7 @@ def get_daily_plan_handler_factory(
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
     """
-    Create a service handler for retrieving daily plans.
+    Create a service handler for getting daily plans.
 
     Args:
         hass: The Home Assistant instance.
@@ -34,17 +38,19 @@ def get_daily_plan_handler_factory(
         user_lookup_fn: Function to look up usernames from Home Assistant user IDs.
 
     Returns:
-        A service handler function that retrieves daily plans.
+        A service handler function that gets daily plans.
 
     The returned handler expects the following service data:
         - username (str, optional): The username to get the plan for. If not provided,
           will be inferred from the service call context.
-        - fair_weather (bool, optional): Whether to include fair weather tasks.
-        - select_recommended (bool, optional): Whether to select recommended tasks.
+        - select_recommended (bool, optional): Whether to filter tasks by recommendation.
+        - fair_weather (bool, optional): Weather constraint filter.
 
     The handler will:
-        - Retrieve the daily plan via the API
-        - Fire a 'tasktracker_daily_plan' event on success
+        - Check for an existing DailyPlanCoordinator for the user
+        - If found, update coordinator parameters and request refresh if needed
+        - Return data from coordinator if available
+        - Fall back to direct API call if no coordinator or data
         - Log the operation result
         - Return the API response
 
@@ -52,16 +58,16 @@ def get_daily_plan_handler_factory(
 
     async def get_daily_plan_service(call: ServiceCall) -> dict[str, Any]:
         """
-        Get a daily plan for a user.
+        Get daily plan for a user.
 
         Args:
-            call: The Home Assistant service call containing plan parameters.
+            call: The Home Assistant service call containing user information and filters.
 
         Returns:
             The API response containing the daily plan.
 
         Raises:
-            TaskTrackerAPIError: If the API call fails.
+            TaskTrackerAPIError: If the API call fails or no username can be determined.
             Exception: For any other unexpected errors.
 
         """
@@ -71,20 +77,51 @@ def get_daily_plan_handler_factory(
                 user_id = call.context.user_id if call.context else None
                 current_config = get_current_config()
                 username = user_lookup_fn(hass, user_id, current_config)
-                # username may remain None, backend will infer by api key mapping
+                if not username:
+                    msg = (
+                        "No username provided and could not determine from user context"
+                    )
+                    raise TaskTrackerAPIError(msg)
+
+            select_recommended = call.data.get("select_recommended", False)
+            fair_weather = call.data.get("fair_weather")
+
+            # Check for coordinator
+            from ..cache_utils import get_entry_data
+
+            entry_data = get_entry_data(hass)
+            coordinators = entry_data.get("coordinators", {})
+
+            if username in coordinators and "daily_plan" in coordinators[username]:
+                coordinator = coordinators[username]["daily_plan"]
+                _LOGGER.debug("Found coordinator for %s, has data: %s", username, coordinator.data is not None)
+
+                # Update coordinator parameters if they changed
+                params_changed = (
+                    coordinator.select_recommended != select_recommended
+                    or coordinator.fair_weather != fair_weather
+                )
+
+                if params_changed:
+                    _LOGGER.debug("Coordinator params changed for %s, requesting refresh", username)
+                    coordinator.select_recommended = select_recommended
+                    coordinator.fair_weather = fair_weather
+                    await coordinator.async_request_refresh()
+
+                # Return coordinator data if available
+                if coordinator.data:
+                    _LOGGER.info("Returning daily plan from coordinator for %s", username)
+                    return coordinator.data
+                else:
+                    _LOGGER.warning("Coordinator for %s has no data, falling back to API", username)
+
+            # Fallback to direct API call
+            _LOGGER.debug("Using direct API call for %s daily plan", username)
             result = await api.get_daily_plan(
                 username=username,
-                fair_weather=call.data.get("fair_weather"),
-                select_recommended=call.data.get("select_recommended"),
+                select_recommended=select_recommended,
+                fair_weather=fair_weather,
             )
-            if result.get("success"):
-                hass.bus.fire(
-                    EVENT_DAILY_PLAN,
-                    {
-                        "username": username,
-                        "plan": result.get("data"),
-                    },
-                )
             _LOGGER.debug("Daily plan retrieved: %s", result)
             return result
         except TaskTrackerAPIError:
@@ -104,7 +141,7 @@ def get_daily_plan_encouragement_handler_factory(
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
     """
-    Create a service handler for retrieving daily plan encouragement messages.
+    Create a service handler for getting daily plan encouragement.
 
     Args:
         hass: The Home Assistant instance.
@@ -113,14 +150,17 @@ def get_daily_plan_encouragement_handler_factory(
         user_lookup_fn: Function to look up usernames from Home Assistant user IDs.
 
     Returns:
-        A service handler function that retrieves encouragement messages.
+        A service handler function that gets daily plan encouragement.
 
     The returned handler expects the following service data:
         - username (str, optional): The username to get encouragement for. If not provided,
           will be inferred from the service call context.
+        - force_refresh (bool, optional): Whether to bypass the cache.
 
     The handler will:
-        - Retrieve encouragement messages via the API
+        - Get encouragement messages via the API (with caching)
+        - Use cache-only approach (no background refresh) to avoid LLM API costs
+        - Support force_refresh parameter to bypass cache when needed
         - Log the operation result
         - Return the API response
 
@@ -129,6 +169,9 @@ def get_daily_plan_encouragement_handler_factory(
     async def get_daily_plan_encouragement_service(call: ServiceCall) -> dict[str, Any]:
         """
         Get encouragement messages for a user's daily plan.
+
+        Uses cache-only approach (no background refresh) to avoid
+        unnecessary LLM API calls when users aren't viewing the dashboard.
 
         Args:
             call: The Home Assistant service call containing user information.
@@ -147,7 +190,27 @@ def get_daily_plan_encouragement_handler_factory(
                 user_id = call.context.user_id if call.context else None
                 current_config = get_current_config()
                 username = user_lookup_fn(hass, user_id, current_config)
-            result = await api.get_daily_plan_encouragement(username=username)
+
+            # Check for force_refresh parameter
+            force_refresh = call.data.get("force_refresh", False)
+
+            # Use cache helper with long TTL
+            cache_key = f"encouragement:{username}"
+
+            async def fetch_encouragement():
+                _LOGGER.info(
+                    "Fetching new encouragement for %s (LLM API call)", username
+                )
+                return await api.get_daily_plan_encouragement(username=username)
+
+            result = await get_cached_or_fetch(
+                hass,
+                cache_key,
+                CACHE_TTL_ENCOURAGEMENT,
+                fetch_encouragement,
+                force_refresh=force_refresh,
+            )
+
             _LOGGER.debug("Daily plan encouragement retrieved: %s", result)
             return result
         except TaskTrackerAPIError:
@@ -169,7 +232,7 @@ def get_daily_state_handler_factory(
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
     """
-    Create a service handler for retrieving daily state information.
+    Create a service handler for getting daily state.
 
     Args:
         hass: The Home Assistant instance.
@@ -178,14 +241,14 @@ def get_daily_state_handler_factory(
         user_lookup_fn: Function to look up usernames from Home Assistant user IDs.
 
     Returns:
-        A service handler function that retrieves daily state.
+        A service handler function that gets daily state.
 
     The returned handler expects the following service data:
         - username (str, optional): The username to get state for. If not provided,
           will be inferred from the service call context.
 
     The handler will:
-        - Retrieve daily state via the API
+        - Get daily state information via the API (with caching)
         - Log the operation result
         - Return the API response
 
@@ -220,7 +283,20 @@ def get_daily_state_handler_factory(
                         "No username provided and could not determine from user context"
                     )
                     raise TaskTrackerAPIError(msg)
-            result = await api.get_daily_state(username)
+
+            # Use cache helper
+            cache_key = f"daily_state:{username}"
+
+            async def fetch_daily_state():
+                return await api.get_daily_state(username)
+
+            result = await get_cached_or_fetch(
+                hass,
+                cache_key,
+                CACHE_TTL_DAILY_STATE,
+                fetch_daily_state,
+            )
+
             _LOGGER.debug("Daily state retrieved: %s", result)
             return result
         except TaskTrackerAPIError:
@@ -240,7 +316,7 @@ def set_daily_state_handler_factory(
     user_lookup_fn: Callable[[HomeAssistant, str | None, dict[str, Any]], str | None],
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
     """
-    Create a service handler for setting daily state information.
+    Create a service handler for setting daily state.
 
     Args:
         hass: The Home Assistant instance.
@@ -254,17 +330,12 @@ def set_daily_state_handler_factory(
     The returned handler expects the following service data:
         - username (str, optional): The username to set state for. If not provided,
           will be inferred from the service call context.
-        - energy (int, optional): Energy level (1-10).
-        - motivation (int, optional): Motivation level (1-10).
-        - focus (int, optional): Focus level (1-10).
-        - pain (int, optional): Pain level (1-10).
-        - mood (int, optional): Mood level (1-10).
-        - free_time (int, optional): Available free time in minutes.
-        - is_sick (bool, optional): Whether the user is sick.
+        - daily_state (dict): The daily state data to set.
 
     The handler will:
-        - Set daily state via the API
-        - Fire a 'tasktracker_daily_state_set' event on success
+        - Set daily state information via the API
+        - Invalidate cache for the user
+        - Fire a 'tasktracker_daily_state_updated' event on success
         - Log the operation result
         - Return the API response
 
@@ -278,7 +349,7 @@ def set_daily_state_handler_factory(
         Set daily state information for a user.
 
         Args:
-            call: The Home Assistant service call containing state data.
+            call: The Home Assistant service call containing user information and state data.
 
         Returns:
             The API response from the state update operation.
@@ -309,16 +380,19 @@ def set_daily_state_handler_factory(
                 free_time=call.data.get("free_time"),
                 is_sick=call.data.get("is_sick"),
             )
+
             if result.get("success"):
-                state_data = result.get("data", {})
+                # Invalidate cache for user
+                await invalidate_user_cache(hass, username)
+
                 hass.bus.fire(
-                    EVENT_DAILY_STATE_SET,
+                    "tasktracker_daily_state_updated",
                     {
                         "username": username,
-                        "state": state_data,
+                        "state_data": result.get("data"),
                     },
                 )
-            _LOGGER.debug("Daily state updated: %s", result)
+            _LOGGER.debug("Daily state set: %s", result)
             return result
         except TaskTrackerAPIError:
             _LOGGER.exception("Failed to set daily state")

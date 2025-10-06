@@ -294,8 +294,19 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
     // Listen for task completion events to refresh the plan
     const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(this._hass, async (eventData) => {
       const currentUsername = this._getUsername();
-      if (!currentUsername || currentUsername === eventData.username) {
-        // Use the normal fetch flow which includes partial update logic
+      if (!currentUsername) {
+        // No user configured, always refresh
+        await this._fetchPlan();
+        return;
+      }
+
+      // Check if this user is affected by the completion
+      const assignedUsers = eventData.assigned_users || [];
+      const shouldRefresh = assignedUsers.length === 0 || // No assigned_users data, refresh to be safe
+                           assignedUsers.includes(currentUsername) || // Task was assigned to this user
+                           eventData.username === currentUsername; // This user completed the task
+
+      if (shouldRefresh) {
         await this._fetchPlan();
       }
     });

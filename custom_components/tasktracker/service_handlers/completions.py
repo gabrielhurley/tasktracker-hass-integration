@@ -6,17 +6,19 @@ import logging
 from typing import TYPE_CHECKING
 
 from ..api import TaskTrackerAPI, TaskTrackerAPIError
+from ..cache_utils import invalidate_all_user_caches
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from typing import Any
 
-    from homeassistant.core import ServiceCall
+    from homeassistant.core import HomeAssistant, ServiceCall
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def delete_completion_handler_factory(
+    hass: HomeAssistant,
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:  # type: ignore[name-defined]
     """
@@ -59,8 +61,11 @@ def delete_completion_handler_factory(
                 completion_id=call.data["completion_id"],
             )
             if result.get("success"):
-                hass = call.hass
-                hass.bus.fire(
+                # Aggressively invalidate all user caches
+                # Undo may affect multiple users
+                await invalidate_all_user_caches(hass)
+
+                call.hass.bus.fire(
                     "tasktracker_completion_deleted",
                     {
                         "completion_id": call.data["completion_id"],
@@ -80,6 +85,7 @@ def delete_completion_handler_factory(
 
 
 def update_completion_handler_factory(
+    hass: HomeAssistant,
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:  # type: ignore[name-defined]
     """
@@ -128,8 +134,11 @@ def update_completion_handler_factory(
                 completed_at=call.data.get("completed_at"),
             )
             if result.get("success"):
-                hass = call.hass
-                hass.bus.fire(
+                # Aggressively invalidate all user caches
+                # Update may affect multiple users
+                await invalidate_all_user_caches(hass)
+
+                call.hass.bus.fire(
                     "tasktracker_completion_updated",
                     {
                         "completion_id": call.data["completion_id"],

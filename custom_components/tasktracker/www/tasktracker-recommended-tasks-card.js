@@ -361,7 +361,15 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
     cleanups.push(
       TaskTrackerUtils.setupTaskCompletionListener(this._hass, async (eventData) => {
         const currentUsername = this._getCurrentUsername();
-        if (currentUsername && eventData.username === currentUsername) {
+        if (!currentUsername) return;
+
+        // Check if this user is affected by the completion
+        const assignedUsers = eventData.assigned_users || [];
+        const shouldRefresh = assignedUsers.length === 0 || // No assigned_users data, refresh to be safe
+                             assignedUsers.includes(currentUsername) ||
+                             eventData.username === currentUsername;
+
+        if (shouldRefresh) {
           await this._fetchRecommendedTasks();
         }
       })

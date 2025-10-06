@@ -5,7 +5,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from ..const import CONF_HA_USER_ID, CONF_TASKTRACKER_USERNAME, CONF_USERS
+from ..cache_utils import get_cached_or_fetch
+from ..const import (
+    CACHE_TTL_AVAILABLE_USERS,
+    CONF_HA_USER_ID,
+    CONF_TASKTRACKER_USERNAME,
+    CONF_USERS,
+)
 from ..utils import get_available_tasktracker_usernames
 
 if TYPE_CHECKING:
@@ -35,7 +41,7 @@ def get_available_users_handler_factory(
     The returned handler expects no service data parameters.
 
     The handler will:
-        - Get available TaskTracker usernames from configuration
+        - Get available TaskTracker usernames from configuration (with caching)
         - Enhance user data with Home Assistant user information
         - Create a spoken response listing available users
         - Log the operation result
@@ -63,45 +69,60 @@ def get_available_users_handler_factory(
 
         """
         try:
-            current_config = get_current_config()
-            usernames = get_available_tasktracker_usernames(current_config)
+            # Use cache helper - config changes are rare
+            cache_key = "available_users"
 
-            user_mappings = current_config.get(CONF_USERS, [])
-            enhanced_users = []
+            async def fetch_available_users():
+                current_config = get_current_config()
+                usernames = get_available_tasktracker_usernames(current_config)
 
-            ha_users = await hass.auth.async_get_users()
-            ha_user_map = {
-                user.id: user.name for user in ha_users if user.is_active and user.name
-            }
+                user_mappings = current_config.get(CONF_USERS, [])
+                enhanced_users = []
 
-            for username in usernames:
-                display_name = username
-                ha_user_id = None
-                for mapping in user_mappings:
-                    if mapping.get(CONF_TASKTRACKER_USERNAME) == username:
-                        ha_user_id = mapping.get(CONF_HA_USER_ID)
-                        if ha_user_id and ha_user_id in ha_user_map:
-                            display_name = ha_user_map[ha_user_id]
-                        break
-                enhanced_users.append(
-                    {
-                        "username": username,
-                        "display_name": display_name,
-                        "ha_user_id": ha_user_id,
-                    }
-                )
+                ha_users = await hass.auth.async_get_users()
+                ha_user_map = {
+                    user.id: user.name
+                    for user in ha_users
+                    if user.is_active and user.name
+                }
 
-            _LOGGER.debug("Available TaskTracker usernames: %s", usernames)
-            _LOGGER.debug("Enhanced user data: %s", enhanced_users)
+                for username in usernames:
+                    display_name = username
+                    ha_user_id = None
+                    for mapping in user_mappings:
+                        if mapping.get(CONF_TASKTRACKER_USERNAME) == username:
+                            ha_user_id = mapping.get(CONF_HA_USER_ID)
+                            if ha_user_id and ha_user_id in ha_user_map:
+                                display_name = ha_user_map[ha_user_id]
+                            break
+                    enhanced_users.append(
+                        {
+                            "username": username,
+                            "display_name": display_name,
+                            "ha_user_id": ha_user_id,
+                        }
+                    )
 
-            return {
-                "success": True,
-                "spoken_response": f"Available users: {', '.join(usernames)}",
-                "data": {
-                    "users": usernames,
-                    "enhanced_users": enhanced_users,
-                },
-            }
+                _LOGGER.debug("Available TaskTracker usernames: %s", usernames)
+                _LOGGER.debug("Enhanced user data: %s", enhanced_users)
+
+                return {
+                    "success": True,
+                    "spoken_response": f"Available users: {', '.join(usernames)}",
+                    "data": {
+                        "users": usernames,
+                        "enhanced_users": enhanced_users,
+                    },
+                }
+
+            result = await get_cached_or_fetch(
+                hass,
+                cache_key,
+                CACHE_TTL_AVAILABLE_USERS,
+                fetch_available_users,
+            )
+
+            return result
         except Exception:
             _LOGGER.exception("Unexpected error in get_available_users_service")
             raise

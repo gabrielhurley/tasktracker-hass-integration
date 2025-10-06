@@ -25,7 +25,9 @@ from homeassistant.components import websocket_api
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import TaskTrackerAPI
+from .cache import TaskTrackerCache
 from .const import DOMAIN, TASKTRACKER_EVENTS
+from .coordinators import DailyPlanCoordinator
 from .intents import async_register_intents
 from .services import async_setup_services, async_unload_services
 from .www import JSModuleRegistration
@@ -125,10 +127,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             session=session, host=entry.data["host"], api_key=entry.data["api_key"]
         )
 
+        # Initialize cache
+        cache = TaskTrackerCache()
+        _LOGGER.debug("Initialized TaskTracker cache")
+
+        # Initialize coordinators for configured users
+        coordinators = {}
+        user_mappings = entry.data.get("users", [])
+        configured_usernames = {
+            user["tasktracker_username"] for user in user_mappings
+        }
+
+        for username in configured_usernames:
+            coordinators[username] = {
+                "daily_plan": DailyPlanCoordinator(hass, api, username),
+            }
+            _LOGGER.debug("Created daily plan coordinator for user: %s", username)
+
+        # Start coordinators with first refresh
+        for username, coords in coordinators.items():
+            for coord_name, coord in coords.items():
+                try:
+                    await coord.async_config_entry_first_refresh()
+                    _LOGGER.info(
+                        "Started %s coordinator for user %s", coord_name, username
+                    )
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.warning(
+                        "Failed to initialize %s coordinator for %s: %s",
+                        coord_name,
+                        username,
+                        err,
+                    )
+                    # Continue setup even if coordinator fails
+
         hass.data.setdefault(DOMAIN, {})
         hass.data[DOMAIN][entry.entry_id] = {
             "api": api,
             "config": entry.data,
+            "cache": cache,
+            "coordinators": coordinators,
         }
 
         # Set up services
@@ -221,6 +259,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Unload platforms if we have any
     # unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS) # noqa: ERA001
+
+    # Clean up coordinators
+    entry_data = hass.data[DOMAIN].get(entry.entry_id, {})
+    coordinators = entry_data.get("coordinators", {})
+    for username, coords in coordinators.items():
+        for coord in coords.values():
+            # Coordinators clean up automatically when references are removed
+            _LOGGER.debug("Stopped coordinator for user: %s", username)
 
     # Remove from hass.data
     hass.data[DOMAIN].pop(entry.entry_id)

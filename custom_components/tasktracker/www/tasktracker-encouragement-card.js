@@ -152,7 +152,15 @@ class TaskTrackerEncouragementCard extends HTMLElement {
     // Listen for task completion events to refresh encouragement
     const completionCleanup = TaskTrackerUtils.setupTaskCompletionListener(this._hass, (eventData) => {
       const currentUsername = this._getUsername();
-      if (!currentUsername || currentUsername === eventData.username) {
+      if (!currentUsername) return;
+
+      // Check if this user is affected by the completion
+      const assignedUsers = eventData.assigned_users || [];
+      const shouldRefresh = assignedUsers.length === 0 || // No assigned_users data, refresh to be safe
+                           assignedUsers.includes(currentUsername) ||
+                           eventData.username === currentUsername;
+
+      if (shouldRefresh) {
         setTimeout(() => {
           this._fetchEncouragement();
         }, 500);

@@ -6,6 +6,8 @@ import logging
 from typing import TYPE_CHECKING
 
 from ..api import TaskTrackerAPI, TaskTrackerAPIError
+from ..cache_utils import get_cached_or_fetch, invalidate_user_cache
+from ..const import CACHE_TTL_LEFTOVERS
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -74,6 +76,11 @@ def create_leftover_handler_factory(
                 days_ago=call.data.get("days_ago"),
             )
             if result.get("success"):
+                # Invalidate cache for all assigned users
+                if assigned_users:
+                    for user in assigned_users:
+                        await invalidate_user_cache(hass, user)
+
                 hass.bus.fire(
                     "tasktracker_leftover_created",
                     {
@@ -97,12 +104,14 @@ def create_leftover_handler_factory(
 
 
 def list_leftovers_handler_factory(
+    hass: HomeAssistant,
     api: TaskTrackerAPI,
 ) -> Callable[[ServiceCall], Awaitable[dict[str, Any]]]:
     """
     Create a service handler for listing leftover items.
 
     Args:
+        hass: The Home Assistant instance.
         api: The TaskTracker API client instance.
 
     Returns:
@@ -134,9 +143,21 @@ def list_leftovers_handler_factory(
 
         """
         try:
-            result = await api.list_leftovers(
-                username=call.data.get("username"),
+            username = call.data.get("username")
+
+            # Use cache helper
+            cache_key = f"leftovers:{username}"
+
+            async def fetch_leftovers():
+                return await api.list_leftovers(username=username)
+
+            result = await get_cached_or_fetch(
+                hass,
+                cache_key,
+                CACHE_TTL_LEFTOVERS,
+                fetch_leftovers,
             )
+
             _LOGGER.debug("Leftovers retrieved: %s", result)
             return result
         except TaskTrackerAPIError:
