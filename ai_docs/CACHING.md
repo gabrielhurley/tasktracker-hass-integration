@@ -208,6 +208,56 @@ coordinator.last_update_time     # DateTime
 ⚠️ Memory usage for cache storage (minimal, ~KB per user)
 ⚠️ Background polling overhead (20 req/hour per user)
 
+## Logical Day Boundary Handling
+
+### The Problem
+
+The coordinator caches data with a `current_logical_date`. When a new logical day starts (at the user's `daily_reset_time`), the cached data from yesterday persisted indefinitely:
+
+**Example**:
+- User sets daily state at 11 PM on 2025-10-06
+- Coordinator caches plan with `current_logical_date: "2025-10-06"` and `using_defaults: false`
+- Daily reset time is 5 AM
+- New logical day starts at 5 AM on 2025-10-07
+- **Coordinator continues returning stale data from 2025-10-06 all day**
+- Frontend receives yesterday's plan showing tasks without the "Set Daily State" button
+- Problem persists for hours (observed 9+ hours after reset time)
+
+### The Solution
+
+On each `get_daily_plan` request, the service handler:
+
+1. Extracts `current_logical_date` and `user_context` from cached coordinator data
+2. Calculates the current logical date using user's timezone and reset time
+3. Compares cached vs. current logical date
+4. If they don't match, clears coordinator data and forces immediate refresh
+
+**Code location**: `service_handlers/daily.py` lines 99-141
+
+```python
+# Calculate current logical date
+if now.hour < reset_hour or (now.hour == reset_hour and now.minute < reset_minute):
+    current_logical_date = (now - timedelta(days=1)).date()
+else:
+    current_logical_date = now.date()
+
+# If dates don't match, logical day has changed
+if cached_logical_date_str != current_logical_date_str:
+    logical_day_changed = True
+    coordinator.data = None  # Clear stale data
+    await coordinator.async_refresh()  # Fetch fresh data
+```
+
+### Why This Works
+
+- **Timezone-aware**: Uses user's `timezone` from `user_context`
+- **Respects reset time**: Correctly handles users with custom daily reset times
+- **No extra API calls**: Uses data already in the coordinator response
+- **Immediate**: Detects boundary crossing on first request, not after 3-minute delay
+- **Safe fallback**: On error, coordinator continues normal refresh cycle
+
+This ensures users always see the correct UI state (daily state button vs. full plan) immediately after crossing a logical day boundary, rather than waiting up to 3 minutes.
+
 ## Future Enhancements
 
 Possible improvements if needed:
@@ -216,3 +266,4 @@ Possible improvements if needed:
 3. **Configurable TTLs** via integration configuration
 4. **Cache size limits** with LRU eviction
 5. **WebSocket support** for push-based updates instead of polling
+6. **Proactive coordinator invalidation** at daily reset time (requires background task scheduler)
