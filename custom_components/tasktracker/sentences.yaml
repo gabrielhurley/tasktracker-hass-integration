@@ -179,7 +179,7 @@ intents:
           task_details:
             required: true
       - sentences:
-          - "(create|add|make) [a|the] [new] (ad hoc|adhoc|ad-hoc) task {task_details}"
+          - "(create|add|make) [a|an|the] [new] (ad hoc|adhoc|ad-hoc) task {task_details}"
         slots:
           task_type:
             value: "AdHocTask"
