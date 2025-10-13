@@ -44,8 +44,14 @@ python run_tests.py
 
 #### Coverage Reports
 The python test runner automatically generates:
-- Terminal coverage report
+- Terminal coverage report with missing lines
 - HTML coverage report in `htmlcov/index.html`
+- XML coverage report in `coverage.xml`
+
+Coverage is configured via:
+- `.coveragerc` - Coverage settings and exclusions
+- `pytest.ini` - Pytest integration with coverage flags
+
 Always check coverage reports to ensure new code is properly tested.
 
 ### 2.2. Javascript Tests

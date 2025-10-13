@@ -26,22 +26,20 @@ def run_tests() -> int:
 
     print("🧪 Running TaskTracker integration tests...")  # noqa: T201
 
-    # Run pytest with coverage
+    # Run pytest (coverage configured in pytest.ini)
     cmd = [
         sys.executable,
         "-m",
         "pytest",
         "tests/",
-        "--cov=custom_components.tasktracker",
-        "--cov-report=term-missing",
-        "--cov-report=html:htmlcov",
-        "-v",
     ]
 
     try:
         subprocess.run(cmd, check=True)  # noqa: S603
         print("\n✅ All tests passed!")  # noqa: T201
-        print("📊 Coverage report generated in htmlcov/index.html")  # noqa: T201
+        print("📊 Coverage reports generated:")  # noqa: T201
+        print("   - HTML: htmlcov/index.html")  # noqa: T201
+        print("   - XML: coverage.xml")  # noqa: T201
         retval = 0
     except subprocess.CalledProcessError:
         print("\n❌ Some tests failed. Check output above.")  # noqa: T201
