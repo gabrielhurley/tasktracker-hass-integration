@@ -13,3 +13,26 @@ alwaysApply: false
 - This project uses `jest` as the Javascript testing framework.
 
 - Invoke the test suite using `npm test`.
+
+## Coverage Reports
+
+JavaScript tests automatically generate coverage reports:
+
+- **Terminal**: Coverage summary displays after test run
+- **HTML Report**: Open `coverage/index.html` in a browser for detailed coverage
+- **LCOV Report**: `coverage/lcov-report/index.html` for detailed line-by-line coverage
+
+### Running Tests
+
+```bash
+# Run tests with coverage (default)
+npm test
+
+# Run tests without coverage (faster for development)
+npm run test:no-coverage
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+Always check coverage reports after adding new code to ensure proper test coverage.

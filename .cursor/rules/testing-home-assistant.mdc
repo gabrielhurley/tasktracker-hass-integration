@@ -53,12 +53,28 @@ Always check coverage reports to ensure new code is properly tested.
 #### Running Javascript Tests
 
 ```bash
+# Run tests with coverage (default)
 npm test
+
+# Run tests without coverage (faster for development)
+npm run test:no-coverage
+
+# Run tests in watch mode
+npm run test:watch
 ```
 
 #### Test Structure
 - Tests are located in the `tasktracker-hass-integration/tests/` directory
-- Use `jest` patterns for javascript testing.
+- Use `jest` patterns for javascript testing
+- Test environment is `jsdom` to support DOM operations
+
+#### Coverage Reports
+The javascript test runner automatically generates:
+- Terminal coverage report
+- HTML coverage report in `coverage/index.html`
+- LCOV coverage report in `coverage/lcov-report/index.html`
+
+Always check coverage reports to ensure new code is properly tested.
 
 ## 3. Before & After Changes
 - ALWAYS run tests before editing code to establish a baseline.
