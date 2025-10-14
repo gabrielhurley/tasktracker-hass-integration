@@ -48,6 +48,7 @@ def complete_task_handler_factory(
 
     The returned handler expects the following service data:
         - task_id (str): The ID of the task to complete.
+        - task_type (str): The type of task (RecurringTask, SelfCareTask, or AdHocTask).
         - completed_by (str, optional): The username who completed the task. If not provided,
           will be inferred from the service call context.
         - notes (str, optional): Notes about the completion.
@@ -90,6 +91,7 @@ def complete_task_handler_factory(
 
             result = await api.complete_task(
                 task_id=call.data["task_id"],
+                task_type=call.data["task_type"],
                 completed_by=completed_by,
                 notes=call.data.get("notes"),
             )

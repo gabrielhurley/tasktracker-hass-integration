@@ -7,6 +7,15 @@ complete_task:
       example: "123"
       selector:
         text:
+    task_type:
+      required: true
+      example: "RecurringTask"
+      selector:
+        select:
+          options:
+            - "RecurringTask"
+            - "AdHocTask"
+            - "SelfCareTask"
     completed_by:
       required: false
       example: "john_doe"

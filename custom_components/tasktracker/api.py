@@ -94,12 +94,26 @@ class TaskTrackerAPI:
 
     # Task completion methods
     async def complete_task(
-        self, task_id: int, completed_by: str, notes: str | None = None
+        self,
+        task_id: int,
+        task_type: str,
+        completed_by: str,
+        notes: str | None = None,
     ) -> dict[str, Any]:
-        """Complete a task by ID."""
+        """Complete a task by ID.
+
+        Args:
+            task_id: The ID of the task to complete.
+            task_type: The type of task (RecurringTask, SelfCareTask, or AdHocTask).
+            completed_by: Username of the person completing the task.
+            notes: Optional notes about the completion.
+
+        Returns:
+            API response dictionary.
+        """
         data: dict[str, Any] = {
             "task_id": task_id,
-            "task_type": "recurring",  # Default task type, may need to be configurable
+            "task_type": task_type,
             "completed_by": completed_by,
         }
         if notes:

@@ -51,6 +51,7 @@ async def test_complete_task_includes_assigned_users_in_event(hass, mock_config_
             SERVICE_COMPLETE_TASK,
             {
                 "task_id": 123,
+                "task_type": "RecurringTask",
                 "completed_by": "gabriel",
             },
             blocking=True,
@@ -171,6 +172,7 @@ async def test_complete_task_empty_assigned_users_when_task_not_in_coordinator(h
             SERVICE_COMPLETE_TASK,
             {
                 "task_id": 123,
+                "task_type": "RecurringTask",
                 "completed_by": "gabriel",
             },
             blocking=True,
@@ -255,6 +257,7 @@ async def test_complete_task_searches_all_coordinators_for_assigned_users(hass):
             SERVICE_COMPLETE_TASK,
             {
                 "task_id": 789,
+                "task_type": "RecurringTask",
                 "completed_by": "gabriel",
             },
             blocking=True,
@@ -323,6 +326,7 @@ async def test_complete_task_invalidates_all_user_caches(hass):
             SERVICE_COMPLETE_TASK,
             {
                 "task_id": 123,
+                "task_type": "RecurringTask",
                 "completed_by": "gabriel",
             },
             blocking=True,

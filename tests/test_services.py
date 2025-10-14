@@ -71,14 +71,21 @@ class TestTaskTrackerServices:
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_COMPLETE_TASK,
-                {"task_id": 123, "notes": "Completed via test"},
+                {
+                    "task_id": 123,
+                    "task_type": "RecurringTask",
+                    "notes": "Completed via test",
+                },
                 blocking=True,
                 return_response=True,
             )
 
             # Verify API was called
             mock_api.complete_task.assert_called_once_with(
-                task_id=123, completed_by="testuser", notes="Completed via test"
+                task_id=123,
+                task_type="RecurringTask",
+                completed_by="testuser",
+                notes="Completed via test",
             )
 
     @pytest.mark.asyncio
@@ -103,6 +110,7 @@ class TestTaskTrackerServices:
             SERVICE_COMPLETE_TASK,
             {
                 "task_id": 123,
+                "task_type": "RecurringTask",
                 "completed_by": "explicituser",
                 "notes": "Completed via test",
             },
@@ -112,7 +120,10 @@ class TestTaskTrackerServices:
 
         # Verify API was called with explicit username
         mock_api.complete_task.assert_called_once_with(
-            task_id=123, completed_by="explicituser", notes="Completed via test"
+            task_id=123,
+            task_type="RecurringTask",
+            completed_by="explicituser",
+            notes="Completed via test",
         )
 
     @pytest.mark.asyncio
@@ -695,7 +706,7 @@ class TestTaskTrackerServices:
                 await hass.services.async_call(
                     DOMAIN,
                     SERVICE_COMPLETE_TASK,
-                    {"task_id": 123},
+                    {"task_id": 123, "task_type": "RecurringTask"},
                     blocking=True,
                     return_response=True,
                 )
@@ -725,7 +736,7 @@ class TestTaskTrackerServices:
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_COMPLETE_TASK,
-                {"task_id": 999},
+                {"task_id": 999, "task_type": "RecurringTask"},
                 blocking=True,
                 return_response=True,
             )
@@ -752,7 +763,7 @@ class TestTaskTrackerServices:
                 await hass.services.async_call(
                     DOMAIN,
                     SERVICE_COMPLETE_TASK,
-                    {"task_id": 123},
+                    {"task_id": 123, "task_type": "RecurringTask"},
                     blocking=True,
                     return_response=True,
                 )
@@ -779,7 +790,7 @@ class TestTaskTrackerServices:
                 await hass.services.async_call(
                     DOMAIN,
                     SERVICE_COMPLETE_TASK,
-                    {"task_id": 123},
+                    {"task_id": 123, "task_type": "RecurringTask"},
                     blocking=True,
                     return_response=True,
                 )

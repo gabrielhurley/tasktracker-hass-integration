@@ -9,6 +9,9 @@ from homeassistant.helpers import config_validation as cv
 COMPLETE_TASK_SCHEMA = vol.Schema(
     {
         vol.Required("task_id"): cv.positive_int,
+        vol.Required("task_type"): vol.In(
+            ["RecurringTask", "AdHocTask", "SelfCareTask"]
+        ),
         vol.Optional("completed_by"): cv.string,
         vol.Optional("notes"): cv.string,
     }
