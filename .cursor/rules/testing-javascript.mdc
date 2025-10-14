@@ -1,38 +1,892 @@
 ---
-description: Any time testing, unit tests, jest, or other javascript testing is involved.
-alwaysApply: false
+title: Frontend JavaScript Testing Guide
+description: Best practices for testing TaskTracker frontend cards and utilities in Jest
 ---
 
-# Testing javascript code in the tasktracker-hass-integration project
+# TaskTracker Frontend JavaScript Testing Guide
 
-## Always check your directory and vitrualenv
+## Overview
 
-**CRITICAL:** Always ensure you are in the `tasktracker-hass-integration` directory
-**CRITICAL:** Always ensure you have activate the tasktracker-hass-integration virtualenv with the `source .venv/bin/activate` command.
+This document describes the established patterns for testing TaskTracker's frontend JavaScript code, including custom Lovelace cards, editors, and utilities.
 
-- This project uses `jest` as the Javascript testing framework.
+## Core Testing Philosophy
 
-- Invoke the test suite using `npm test`.
+1. **Import actual source files** to enable coverage tracking
+2. **Mock all external dependencies** to isolate the code under test
+3. **Test behavior, not implementation details**
+4. **Work within JSDOM limitations** for custom elements
+5. **Use test helpers** to reduce boilerplate and maintain consistency
 
-## Coverage Reports
+## Quick Start: Using Test Helpers
 
-JavaScript tests automatically generate coverage reports:
+**Recommended approach for new tests:**
 
-- **Terminal**: Coverage summary displays after test run
-- **HTML Report**: Open `coverage/index.html` in a browser for detailed coverage
-- **LCOV Report**: `coverage/lcov-report/index.html` for detailed line-by-line coverage
+```javascript
+const {
+  setupCardTestEnvironment,
+  createCardInstance,
+  mockShadowQuery,
+  createMockHass,
+  expectCardRegistered,
+  expectStubConfig,
+  createMockInput,
+  createMockButton
+} = require('./helpers/card-test-helpers');
 
-### Running Tests
+// Setup mocks BEFORE importing
+setupCardTestEnvironment();
 
-```bash
-# Run tests with coverage (default)
-npm test
+// Import the card
+require('../custom_components/tasktracker/www/your-card.js');
 
-# Run tests without coverage (faster for development)
-npm run test:no-coverage
+// Get mocked utilities
+const { TaskTrackerUtils } = require('../custom_components/tasktracker/www/tasktracker-utils.js');
 
-# Run tests in watch mode
-npm run test:watch
+describe('YourCard', () => {
+  test('should register correctly', () => {
+    expectCardRegistered('your-card-type', 'Your Card Name');
+  });
+
+  describe('Behavior', () => {
+    let card;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      card = createCardInstance('your-card-type');
+      card._hass = createMockHass();
+    });
+
+    test('should handle user input', async () => {
+      mockShadowQuery(card, {
+        '#input-field': createMockInput('test value'),
+        '#submit-btn': createMockButton()
+      });
+
+      await card._handleSubmit();
+
+      expect(TaskTrackerUtils.someMethod).toHaveBeenCalledWith('test value');
+    });
+  });
+});
 ```
 
-Always check coverage reports after adding new code to ensure proper test coverage.
+See `tests/create-task-card-with-helpers.test.js` for a complete example.
+
+## Test Helpers Reference
+
+The `tests/helpers/card-test-helpers.js` module provides reusable utilities for testing custom cards.
+
+### Setup Functions
+
+#### `setupCardTestEnvironment()`
+
+Sets up all common mocks required for card testing. **Must be called before importing card files.**
+
+**Returns:** Object containing all mock instances (mockUtils, mockStyles, mockBaseClass, etc.)
+
+**Example:**
+```javascript
+const mocks = setupCardTestEnvironment();
+// Now safe to import card files
+require('../custom_components/tasktracker/www/your-card.js');
+```
+
+**What it mocks:**
+- `TaskTrackerUtils` - All utility methods (showError, createTaskModal, etc.)
+- `TaskTrackerStyles` - Style utilities (getCommonCardStyles, ensureGlobal)
+- `TaskTrackerTasksBaseCard` - Base class for task cards
+- `TaskTrackerTaskEditor` - Task editor utilities
+- `TaskTrackerBaseEditor` - Base class for config editors
+- `customElements` - Custom elements registry
+- `window.customCards` - Card registration array
+
+#### `createCardInstance(cardType)`
+
+Creates a card instance with pre-configured mocked shadow root.
+
+**Parameters:**
+- `cardType` (string) - Custom element name (e.g., 'tasktracker-daily-plan-card')
+
+**Returns:** Card instance with mocked `shadowRoot`
+
+**Example:**
+```javascript
+const card = createCardInstance('tasktracker-create-task-card');
+card._hass = createMockHass();
+// Card is ready for testing
+```
+
+#### `mockShadowQuery(card, selectorMap)`
+
+Configures the card's `shadowRoot.querySelector` to return specific elements for given selectors.
+
+**Parameters:**
+- `card` (Object) - Card instance
+- `selectorMap` (Object) - Map of CSS selectors to mock elements
+
+**Example:**
+```javascript
+mockShadowQuery(card, {
+  '#submit-btn': createMockButton(),
+  '#task-name': createMockInput('My Task'),
+  '.content-container': createMockContentContainer(),
+  '#type-select': { value: 'RecurringTask', addEventListener: jest.fn() }
+});
+
+// Now card.shadowRoot.querySelector('#submit-btn') returns the mock button
+```
+
+#### `createMockHass(overrides)`
+
+Creates a mock Home Assistant object with common properties.
+
+**Parameters:**
+- `overrides` (Object, optional) - Custom properties to override defaults
+
+**Returns:** Mock HASS object
+
+**Example:**
+```javascript
+const mockHass = createMockHass({
+  states: {
+    'sensor.test': { state: 'on' }
+  }
+});
+
+card._hass = mockHass;
+```
+
+**Default properties:**
+- `callService`: jest.fn()
+- `states`: {}
+- `connection.subscribeMessage`: jest.fn()
+
+### Assertion Helpers
+
+#### `expectCardRegistered(cardType, expectedName)`
+
+Asserts that a card is properly registered in `window.customCards`.
+
+**Parameters:**
+- `cardType` (string) - Custom element name
+- `expectedName` (string) - Expected display name
+
+**Example:**
+```javascript
+expectCardRegistered('tasktracker-create-task-card', 'TaskTracker Create Task');
+// Checks: card exists, has correct name, and preview: true
+```
+
+#### `expectStubConfig(cardType, expectedConfig)`
+
+Asserts that a card's stub config matches expected defaults.
+
+**Parameters:**
+- `cardType` (string) - Custom element name
+- `expectedConfig` (Object) - Expected configuration object
+
+**Example:**
+```javascript
+expectStubConfig('tasktracker-daily-plan-card', {
+  show_header: true,
+  user_filter_mode: 'current'
+});
+```
+
+#### `expectHasConfigElement(cardType)`
+
+Asserts that a card has a config element factory method.
+
+**Parameters:**
+- `cardType` (string) - Custom element name
+
+**Example:**
+```javascript
+expectHasConfigElement('tasktracker-create-task-card');
+// Checks: CardClass.getConfigElement exists and is a function
+```
+
+### Mock Element Creators
+
+#### `createMockContentContainer()`
+
+Creates a mock `.content-container` element with query methods.
+
+**Returns:** Mock container with innerHTML, querySelector, querySelectorAll
+
+**Example:**
+```javascript
+mockShadowQuery(card, {
+  '.content-container': createMockContentContainer()
+});
+```
+
+#### `createMockInput(initialValue)`
+
+Creates a mock input/select/textarea element.
+
+**Parameters:**
+- `initialValue` (string, optional) - Initial value, defaults to ''
+
+**Returns:** Mock input with value and addEventListener
+
+**Example:**
+```javascript
+const input = createMockInput('default value');
+mockShadowQuery(card, {
+  '#task-description': input
+});
+
+// Later in test:
+expect(input.value).toBe('default value');
+```
+
+#### `createMockButton()`
+
+Creates a mock button element.
+
+**Returns:** Mock button with addEventListener and disabled properties
+
+**Example:**
+```javascript
+const button = createMockButton();
+mockShadowQuery(card, {
+  '#submit-btn': button
+});
+
+// Check if button was configured
+expect(button.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+```
+
+### Utilities
+
+#### `flushPromises()`
+
+Waits for all pending promises to resolve. Useful for testing async operations.
+
+**Returns:** Promise that resolves after all pending promises
+
+**Example:**
+```javascript
+test('should update after async operation', async () => {
+  card.triggerAsyncUpdate();
+  await flushPromises();
+  expect(card._updated).toBe(true);
+});
+```
+
+## Complete Test Examples Using Helpers
+
+### Example 1: Basic Card Test
+
+```javascript
+const {
+  setupCardTestEnvironment,
+  createCardInstance,
+  expectCardRegistered,
+  expectStubConfig
+} = require('./helpers/card-test-helpers');
+
+setupCardTestEnvironment();
+require('../custom_components/tasktracker/www/my-card.js');
+
+describe('MyCard', () => {
+  test('should register correctly', () => {
+    expectCardRegistered('my-card-type', 'My Card Name');
+    expectStubConfig('my-card-type', { show_header: true });
+  });
+
+  test('should initialize with defaults', () => {
+    const card = createCardInstance('my-card-type');
+    expect(card._loading).toBe(false);
+    expect(card._data).toBe(null);
+  });
+});
+```
+
+### Example 2: Testing User Interactions
+
+```javascript
+const {
+  setupCardTestEnvironment,
+  createCardInstance,
+  mockShadowQuery,
+  createMockHass,
+  createMockInput,
+  createMockButton
+} = require('./helpers/card-test-helpers');
+
+setupCardTestEnvironment();
+require('../custom_components/tasktracker/www/task-form-card.js');
+const { TaskTrackerUtils } = require('../custom_components/tasktracker/www/tasktracker-utils.js');
+
+describe('TaskFormCard Interactions', () => {
+  let card;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    card = createCardInstance('task-form-card');
+    card._hass = createMockHass();
+  });
+
+  test('should submit form with user input', async () => {
+    mockShadowQuery(card, {
+      '#task-name': createMockInput('Clean kitchen'),
+      '#task-priority': createMockInput('high'),
+      '#submit-btn': createMockButton()
+    });
+
+    TaskTrackerUtils.createTask.mockResolvedValue({ success: true });
+
+    await card._handleSubmit();
+
+    expect(TaskTrackerUtils.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Clean kitchen',
+        priority: 'high'
+      })
+    );
+  });
+
+  test('should show error on validation failure', async () => {
+    mockShadowQuery(card, {
+      '#task-name': createMockInput(''), // Empty name
+      '#submit-btn': createMockButton()
+    });
+
+    await card._handleSubmit();
+
+    expect(TaskTrackerUtils.showError).toHaveBeenCalledWith(
+      'Task name is required'
+    );
+  });
+});
+```
+
+### Example 3: Testing Async Data Loading
+
+```javascript
+const {
+  setupCardTestEnvironment,
+  createCardInstance,
+  createMockHass,
+  flushPromises
+} = require('./helpers/card-test-helpers');
+
+setupCardTestEnvironment();
+require('../custom_components/tasktracker/www/task-list-card.js');
+
+describe('TaskListCard Data Loading', () => {
+  let card;
+  let mockHass;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    card = createCardInstance('task-list-card');
+    mockHass = createMockHass();
+    card._hass = mockHass;
+  });
+
+  test('should load tasks on init', async () => {
+    mockHass.callService.mockResolvedValue({
+      response: {
+        tasks: [
+          { id: 1, name: 'Task 1' },
+          { id: 2, name: 'Task 2' }
+        ]
+      }
+    });
+
+    await card._fetchTasks();
+    await flushPromises();
+
+    expect(card._tasks).toHaveLength(2);
+    expect(card._loading).toBe(false);
+  });
+
+  test('should handle loading errors', async () => {
+    mockHass.callService.mockRejectedValue(new Error('Network error'));
+
+    await card._fetchTasks();
+
+    expect(card._error).toBe('Network error');
+    expect(card._loading).toBe(false);
+  });
+});
+```
+
+### Example 4: Testing State Management
+
+```javascript
+const {
+  setupCardTestEnvironment,
+  createCardInstance,
+  mockShadowQuery,
+  createMockButton
+} = require('./helpers/card-test-helpers');
+
+setupCardTestEnvironment();
+require('../custom_components/tasktracker/www/toggle-card.js');
+
+describe('ToggleCard State', () => {
+  let card;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    card = createCardInstance('toggle-card');
+  });
+
+  test('should toggle state on button click', () => {
+    card._active = false;
+
+    mockShadowQuery(card, {
+      '#toggle-btn': createMockButton()
+    });
+
+    card._handleToggle();
+
+    expect(card._active).toBe(true);
+  });
+
+  test('should call render after state change', () => {
+    const renderSpy = jest.spyOn(card, '_renderContent');
+
+    card._active = false;
+    card._handleToggle();
+
+    expect(renderSpy).toHaveBeenCalled();
+  });
+});
+```
+
+## Benefits of Using Test Helpers
+
+**Without Helpers (100+ lines of boilerplate):**
+```javascript
+// 50+ lines of jest.mock() calls
+// Custom elements registry setup
+// Shadow DOM mocking utilities
+// Repeated test patterns
+```
+
+**With Helpers (10 lines):**
+```javascript
+const { setupCardTestEnvironment, createCardInstance } = require('./helpers/card-test-helpers');
+setupCardTestEnvironment();
+require('../path/to/card.js');
+
+// Start testing immediately
+let card = createCardInstance('card-type');
+```
+
+**Result:** 90% reduction in boilerplate, consistent mocking across all tests, easier maintenance.
+
+## Testing Custom Lovelace Cards
+
+### Method 1: Using Test Helpers (Recommended)
+
+See the Quick Start section above for the recommended approach using helpers.
+
+### Method 2: Manual Setup (Advanced/Custom Cases)
+
+Custom Lovelace cards require careful setup to work in Jest's JSDOM environment. Follow this pattern when you need custom mocking beyond what the helpers provide:
+
+```javascript
+// 1. Mock all dependencies BEFORE importing the card
+jest.mock('../custom_components/tasktracker/www/tasktracker-utils.js', () => ({
+  TaskTrackerUtils: {
+    getAvailableUsers: jest.fn().mockResolvedValue(['user1', 'user2']),
+    showError: jest.fn(),
+    showSuccess: jest.fn(),
+    // ... mock all used methods
+  }
+}));
+
+jest.mock('../custom_components/tasktracker/www/utils/styles.js', () => ({
+  TaskTrackerStyles: {
+    getCommonCardStyles: jest.fn().mockReturnValue('/* Common card styles */'),
+    ensureGlobal: jest.fn()
+  }
+}));
+
+jest.mock('../custom_components/tasktracker/www/utils/task-cards-base.js', () => {
+  const mockBaseClass = class MockTasksBaseCard {
+    constructor() {
+      this.shadowRoot = null;
+      this._config = {};
+      this._hass = null;
+      // ... initialize all expected properties
+    }
+    // Implement all base class methods that the card uses
+    _render() {}
+    clearTaskData() {}
+    renderSimpleTaskRow(task) { return `<div class="task-item">${task.name}</div>`; }
+    // ... other base methods
+  };
+  return { TaskTrackerTasksBaseCard: mockBaseClass };
+});
+
+// 2. Setup custom elements registry
+const mockClasses = new Map();
+const mockDefine = jest.fn((name, clazz) => {
+  mockClasses.set(name, clazz);
+});
+const mockGet = jest.fn((name) => mockClasses.get(name));
+
+global.customElements = {
+  define: mockDefine,
+  get: mockGet
+};
+
+global.window = {
+  customCards: []
+};
+
+// 3. NOW import the actual card file - this enables coverage tracking
+require('../custom_components/tasktracker/www/your-card-name.js');
+
+// 4. Get the mocked utilities for assertions
+const { TaskTrackerUtils } = require('../custom_components/tasktracker/www/tasktracker-utils.js');
+```
+
+### Test Organization
+
+Organize tests into logical groups:
+
+```javascript
+describe('YourCard Module', () => {
+  test('should register card in window.customCards', () => {
+    const registeredCard = global.window.customCards.find(
+      card => card.type === 'your-card-type'
+    );
+    expect(registeredCard).toBeDefined();
+    expect(registeredCard.name).toBe('Expected Name');
+  });
+
+  test('should have correct stub config', () => {
+    const CardClass = global.customElements.get('your-card-type');
+    expect(CardClass).toBeDefined();
+    const stubConfig = CardClass.getStubConfig();
+    expect(stubConfig).toMatchObject({ /* expected defaults */ });
+  });
+});
+
+describe('YourCard Instance Behavior', () => {
+  let CardClass;
+  let card;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Get the registered class
+    CardClass = global.customElements.get('your-card-type');
+
+    // Create instance directly (bypassing DOM)
+    card = new CardClass();
+
+    // Mock shadow root with query methods
+    card.shadowRoot = {
+      innerHTML: '',
+      querySelector: jest.fn(),
+      querySelectorAll: jest.fn(() => [])
+    };
+  });
+
+  describe('Initialization', () => {
+    test('should initialize with default state', () => {
+      expect(card._someProperty).toBe(expectedValue);
+    });
+  });
+
+  describe('Configuration', () => {
+    test('should merge config with defaults', () => {
+      card.setConfig({ custom: 'value' });
+      expect(card._config.custom).toBe('value');
+      expect(card._config.defaultProp).toBeDefined();
+    });
+  });
+
+  describe('Rendering', () => {
+    test('should render expected HTML', () => {
+      const html = card._renderSomeMethod();
+      expect(html).toContain('expected-class');
+    });
+  });
+
+  describe('User Interactions', () => {
+    test('should handle button click', async () => {
+      // Setup DOM mocks for querySelector
+      card.shadowRoot.querySelector = jest.fn((selector) => {
+        if (selector === '#submit-btn') return {
+          value: 'test',
+          addEventListener: jest.fn()
+        };
+        return null;
+      });
+
+      await card._handleSubmit();
+
+      expect(MockedUtility.someMethod).toHaveBeenCalledWith('test');
+    });
+  });
+
+  describe('Error Handling', () => {
+    test('should handle API errors gracefully', async () => {
+      MockedUtility.apiCall.mockRejectedValue(new Error('Network error'));
+
+      await card._someAsyncMethod();
+
+      expect(MockedUtility.showError).toHaveBeenCalledWith('Network error');
+    });
+  });
+});
+```
+
+### Mocking Shadow DOM Queries
+
+When testing methods that query the shadow DOM, mock `querySelector` to return appropriate elements:
+
+```javascript
+card.shadowRoot.querySelector = jest.fn((selector) => {
+  if (selector === '.content-container') {
+    return {
+      innerHTML: '',
+      querySelector: jest.fn(),
+      querySelectorAll: jest.fn(() => [])
+    };
+  }
+  if (selector === '#input-field') {
+    return {
+      value: 'test value',
+      addEventListener: jest.fn()
+    };
+  }
+  if (selector === '#submit-button') {
+    return {
+      addEventListener: jest.fn()
+    };
+  }
+  return null;
+});
+```
+
+## Testing Editors
+
+Config editors follow the same pattern but extend `TaskTrackerBaseEditor`:
+
+```javascript
+jest.mock('../custom_components/tasktracker/www/utils/base-config-editor.js', () => {
+  const mockEditorClass = class MockBaseEditor {
+    constructor() {
+      this.shadowRoot = null;
+      this._config = {};
+    }
+    setConfig(config) {
+      this._config = config;
+    }
+    _valueChanged() {}
+    _updateConfig(key, value) {
+      this._config[key] = value;
+    }
+  };
+  return { TaskTrackerBaseEditor: mockEditorClass };
+});
+```
+
+## Common Testing Patterns
+
+### Testing Async Methods
+
+```javascript
+test('should handle async operation', async () => {
+  MockedUtility.asyncMethod.mockResolvedValue({ data: 'success' });
+
+  await card._handleAsyncAction();
+
+  expect(card._result).toBe('success');
+});
+```
+
+### Testing State Updates
+
+```javascript
+test('should update state correctly', async () => {
+  card._initialState = 'pending';
+
+  await card._performAction();
+
+  expect(card._initialState).toBe('complete');
+});
+```
+
+### Testing Error Validation
+
+```javascript
+test('should validate required fields', async () => {
+  card.shadowRoot.querySelector = jest.fn(() => ({ value: '' }));
+
+  await card._handleSubmit();
+
+  expect(MockedUtility.showError).toHaveBeenCalledWith(
+    'Please fill in required fields'
+  );
+});
+```
+
+### Testing Conditional Rendering
+
+```javascript
+test('should render element when condition is met', () => {
+  card._hasData = true;
+  const html = card._renderContent();
+  expect(html).toContain('data-display');
+});
+
+test('should not render element when condition is false', () => {
+  card._hasData = false;
+  const html = card._renderContent();
+  expect(html).toBe('');
+});
+```
+
+## Coverage Goals
+
+- **Target: 70%+ statement coverage** for all card files
+- Focus on testing critical paths and business logic
+- Don't test framework code or simple getters/setters
+- Uncovered lines should be documented edge cases or framework integration
+
+## Common Pitfalls
+
+### 1. Don't use `document.createElement` for custom elements
+
+```javascript
+// ❌ Don't do this - JSDOM doesn't fully support custom elements
+card = document.createElement('your-custom-element');
+
+// ✅ Do this instead
+CardClass = global.customElements.get('your-custom-element');
+card = new CardClass();
+```
+
+### 2. Don't forget to mock `shadowRoot`
+
+```javascript
+// ✅ Always mock shadowRoot in beforeEach
+card.shadowRoot = {
+  innerHTML: '',
+  querySelector: jest.fn(),
+  querySelectorAll: jest.fn(() => [])
+};
+```
+
+### 3. Don't reference external variables in `jest.mock()`
+
+```javascript
+// ❌ Don't do this - variables aren't in scope
+jest.mock('...', () => {
+  class MyMock extends SomeExternalClass {} // ReferenceError!
+});
+
+// ✅ Do this instead
+jest.mock('...', () => {
+  const mockClass = class MyMock {
+    // Define everything inline
+  };
+  return { MyMock: mockClass };
+});
+```
+
+### 4. Clear mocks between tests
+
+```javascript
+beforeEach(() => {
+  jest.clearAllMocks(); // Reset call counts and mock state
+});
+```
+
+## Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm test -- your-test-file.test.js
+
+# Run with coverage
+npm test -- --coverage
+
+# Run with coverage for specific file
+npm test -- your-test.test.js --coverage --collectCoverageFrom='path/to/source.js'
+```
+
+## Debugging Tests
+
+### View coverage report
+
+After running tests with `--coverage`, open `coverage/index.html` in a browser to see detailed coverage reports.
+
+### Debug failing tests
+
+```javascript
+// Add console.log to inspect values
+test('debugging test', () => {
+  console.log('Card state:', card._someState);
+  console.log('Mock calls:', MockedUtility.method.mock.calls);
+  // ...
+});
+```
+
+### Check mock calls
+
+```javascript
+// See all calls to a mock
+console.log(MockedUtility.method.mock.calls);
+
+// Check if mock was called with specific args
+expect(MockedUtility.method).toHaveBeenCalledWith('expected', 'args');
+
+// Check call count
+expect(MockedUtility.method).toHaveBeenCalledTimes(1);
+```
+
+## Example: Complete Test File
+
+See `tests/create-task-card.test.js` for a comprehensive example that demonstrates:
+- Proper mock setup
+- Module-level tests
+- Instance behavior tests
+- Async operation testing
+- Error handling
+- DOM query mocking
+- Achieving 70%+ coverage
+
+## Summary
+
+The key to successful frontend testing:
+
+1. **Use test helpers** - `setupCardTestEnvironment()` eliminates 90% of boilerplate
+2. **Mock first, import second** - Set up all mocks before requiring the source file
+3. **Create instances properly** - Use `createCardInstance()` for proper setup
+4. **Mock shadow DOM** - Use `mockShadowQuery()` for clean selector mapping
+5. **Test behavior** - Focus on what the code does, not how
+6. **Handle async** - Use `async/await` and mock promise returns
+7. **Achieve coverage** - Import actual files to enable coverage tracking
+
+## Comparison: Original vs Helper-Based Tests
+
+| Aspect | Manual Setup | Using Helpers |
+|--------|-------------|---------------|
+| **Setup lines** | ~120 lines | ~10 lines |
+| **Mock configuration** | Manual jest.mock() calls | `setupCardTestEnvironment()` |
+| **Card creation** | Manual with shadowRoot setup | `createCardInstance()` |
+| **querySelector mocking** | Custom function logic | `mockShadowQuery(card, {...})` |
+| **Common assertions** | Manual expect() calls | `expectCardRegistered()`, etc. |
+| **Maintainability** | Update every test file | Update helper once |
+| **Consistency** | Varies by developer | Enforced by helpers |
+
+**Example Test Size Reduction:**
+- Original `create-task-card.test.js`: ~450 lines
+- Helper version `create-task-card-with-helpers.test.js`: ~150 lines
+- **67% reduction in code**

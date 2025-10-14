@@ -52,15 +52,14 @@ class TaskTrackerCreateTaskCard extends TaskTrackerTasksBaseCard {
 
     try {
       this._creating = true;
-      this._render();
+      this._renderContent();
       const result = await TaskTrackerUtils.createTaskFromDescription(this._hass, taskType, description, assignedTo);
       const task = result?.data?.task || null;
       if (task) {
         this._createdTask = task;
         this._pendingDescription = '';
         this._pendingTaskType = 'RecurringTask';
-        // highlight briefly
-        this._render();
+        this._renderContent();
         // Show modal for the created task to allow edit/complete
         const modal = TaskTrackerUtils.createTaskModal(
           task,
@@ -83,7 +82,7 @@ class TaskTrackerCreateTaskCard extends TaskTrackerTasksBaseCard {
       TaskTrackerUtils.showError(e?.message || 'Failed to create task');
     } finally {
       this._creating = false;
-      this._render();
+      this._renderContent();
     }
   }
 
@@ -99,42 +98,45 @@ class TaskTrackerCreateTaskCard extends TaskTrackerTasksBaseCard {
     `;
   }
 
-  _render() {
-    if (!this.shadowRoot) return;
+  _renderContent() {
+    const container = this.shadowRoot?.querySelector('.content-container');
+    if (!container) return '';
+
     const disabled = this._creating ? 'disabled' : '';
 
-    this.shadowRoot.innerHTML = `
-      <style>
-        ${TaskTrackerStyles.getCommonCardStyles()}
-      </style>
-      <div class="card">
-        ${this._renderHeader()}
-        <div class="tt-form tt-gap-16">
-          <div class="tt-form-row">
-            <label class="tt-label">Task Type</label>
-            <select id="tt-create-type" class="tt-select">
-              <option value="RecurringTask" ${this._pendingTaskType === 'RecurringTask' ? 'selected' : ''}>Recurring Task</option>
-              <option value="AdHocTask" ${this._pendingTaskType === 'AdHocTask' ? 'selected' : ''}>Ad-hoc Task</option>
-              <option value="SelfCareTask" ${this._pendingTaskType === 'SelfCareTask' ? 'selected' : ''}>Self-Care Task</option>
-            </select>
-          </div>
-          <div class="tt-form-row">
-            <label class="tt-label">Describe the task</label>
-            <textarea id="tt-create-desc" class="tt-textarea" placeholder="e.g., Clean the kitchen every evening after dinner for 20 minutes">${this._pendingDescription || ''}</textarea>
-          </div>
-          <div class="tt-flex-end">
-            <button class="tt-btn tt-btn--primary" id="tt-create-btn" ${disabled}>${this._creating ? 'Creating…' : 'Create Task'}</button>
-          </div>
-          ${this._renderCreatedTask()}
+    const html = `
+      <div class="tt-form tt-gap-16">
+        <div class="tt-form-row">
+          <label class="tt-label">Task Type</label>
+          <select id="tt-create-type" class="tt-select">
+            <option value="RecurringTask" ${this._pendingTaskType === 'RecurringTask' ? 'selected' : ''}>Recurring Task</option>
+            <option value="AdHocTask" ${this._pendingTaskType === 'AdHocTask' ? 'selected' : ''}>Ad-hoc Task</option>
+            <option value="SelfCareTask" ${this._pendingTaskType === 'SelfCareTask' ? 'selected' : ''}>Self-Care Task</option>
+          </select>
         </div>
+        <div class="tt-form-row">
+          <label class="tt-label">Describe the task</label>
+          <textarea id="tt-create-desc" class="tt-textarea" placeholder="e.g., Clean the kitchen every evening after dinner for 20 minutes">${this._pendingDescription || ''}</textarea>
+        </div>
+        <div class="tt-flex-end">
+          <button class="tt-btn tt-btn--primary" id="tt-create-btn" ${disabled}>${this._creating ? 'Creating…' : 'Create Task'}</button>
+        </div>
+        ${this._renderCreatedTask()}
       </div>
     `;
 
+    container.innerHTML = html;
+    this._attachContentEventListeners();
+    return html;
+  }
+
+  _attachContentEventListeners() {
     const btn = this.shadowRoot.querySelector('#tt-create-btn');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); this._handleCreate(); });
 
     const typeSel = this.shadowRoot.querySelector('#tt-create-type');
     if (typeSel) typeSel.addEventListener('change', (e) => { this._pendingTaskType = e.target.value; });
+
     const descEl = this.shadowRoot.querySelector('#tt-create-desc');
     if (descEl) descEl.addEventListener('input', (e) => { this._pendingDescription = e.target.value; });
 
@@ -156,7 +158,7 @@ class TaskTrackerCreateTaskCard extends TaskTrackerTasksBaseCard {
           async () => {
             await this._deleteTask(task);
             this._createdTask = null;
-            this._render();
+            this._renderContent();
           }
         );
         TaskTrackerUtils.showModal(modal);

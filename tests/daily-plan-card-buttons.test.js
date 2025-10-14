@@ -1,83 +1,49 @@
 /**
  * Jest Unit Tests for TaskTracker Daily Plan Card - Button Event Listeners
  *
- * This test ensures that daily state buttons are properly attached to their event listeners
- * after the content is rendered, preventing regressions where buttons exist but don't work.
+ * Tests button event listener attachment after content rendering.
+ * Uses test helpers for cleaner, more maintainable test setup.
  */
 
-// Mock DOM environment
-global.customElements = {
-  define: jest.fn(),
-  get: jest.fn().mockReturnValue(undefined)
-};
+const {
+  setupCardTestEnvironment,
+  createCardInstance,
+  mockShadowQuery,
+  createMockButton
+} = require('./helpers/card-test-helpers');
 
-global.window = {
-  customCards: []
-};
+// Setup environment BEFORE imports
+setupCardTestEnvironment();
 
-global.document = {
-  createElement: jest.fn(() => ({
-    addEventListener: jest.fn(),
-    appendChild: jest.fn(),
-    classList: { add: jest.fn(), remove: jest.fn() },
-    innerHTML: ''
-  }))
-};
-
-// Mock Home Assistant API
-const mockHass = {
-  callService: jest.fn()
-};
-
-// Mock TaskTrackerUtils
-const mockTaskTrackerUtils = {
-  getAvailableUsers: jest.fn().mockResolvedValue(['user1', 'user2']),
-  getEnhancedUsers: jest.fn().mockResolvedValue([]),
-  getCurrentUsername: jest.fn().mockReturnValue('testuser'),
-  validateCurrentUser: jest.fn().mockReturnValue({ canMakeRequests: true, username: 'testuser' }),
-  hasValidUserConfig: jest.fn().mockReturnValue(true),
-  createDailyStateModal: jest.fn().mockReturnValue(document.createElement('div')),
-  showModal: jest.fn(),
-  showError: jest.fn(),
-  capitalize: jest.fn(str => str)
-};
-
-// Mock the imports
-jest.mock('../custom_components/tasktracker/www/tasktracker-utils.js', () => ({
-  TaskTrackerUtils: mockTaskTrackerUtils
-}));
-
-jest.mock('../custom_components/tasktracker/www/utils/styles.js', () => ({
-  TaskTrackerStyles: {
-    getDailyPlanCardStyles: jest.fn().mockReturnValue('')
-  }
-}));
-
+// Mock additional utils needed by daily plan card
 jest.mock('../custom_components/tasktracker/www/utils/datetime-utils.js', () => ({
-  TaskTrackerDateTime: {}
-}));
-
-jest.mock('../custom_components/tasktracker/www/utils/task-cards-base.js', () => ({
-  TaskTrackerTasksBaseCard: class MockBaseCard {
-    constructor() {
-      this._config = {};
-      this._hass = null;
-      this._availableUsers = [];
-      this._enhancedUsers = [];
-      this._taskDataMap = new Map();
-    }
-    setConfig() {}
-    set hass(value) { this._hass = value; }
-    _attachHeaderEventListeners() {}
+  TaskTrackerDateTime: {
+    isWindowInPast: jest.fn().mockReturnValue(false),
+    formatTimeForDisplay: jest.fn(time => time),
+    formatWindowTimeRange: jest.fn(() => '9 AM - 5 PM')
   }
 }));
 
-// Simple mock for TaskTrackerDailyPlanCard functionality
+// Import the actual card (not yet - we'll use a mock for this focused test)
+// For this test we're using a simplified mock to test the event listener pattern
+// require('../custom_components/tasktracker/www/tasktracker-daily-plan-card.js');
+
+// Get mocked utilities
+const { TaskTrackerUtils } = require('../custom_components/tasktracker/www/tasktracker-utils.js');
+
+// Extend with daily-plan specific mocks
+TaskTrackerUtils.createDailyStateModal = jest.fn().mockReturnValue(document.createElement('div'));
+TaskTrackerUtils.hasValidUserConfig = jest.fn().mockReturnValue(true);
+TaskTrackerUtils.capitalize = jest.fn(str => str);
+
+// Mock card class for focused testing of event listener logic
 class MockDailyPlanCard {
   constructor() {
     this._config = {};
     this._hass = null;
     this.shadowRoot = null;
+    this._plan = null;
+    this._dailyState = null;
   }
 
   _getUsername() {
@@ -126,118 +92,91 @@ class MockDailyPlanCard {
   }
 
   _renderContent() {
-    // Mock implementation that calls _attachContentEventListeners
     this._attachContentEventListeners(true);
   }
 }
 
 describe('TaskTrackerDailyPlanCard Button Event Listeners', () => {
   let card;
-  let mockShadowRoot;
 
   beforeEach(() => {
-    // Reset all mocks
     jest.clearAllMocks();
 
-    // Create a mock shadow root with query methods
-    mockShadowRoot = {
-      innerHTML: '',
-      querySelector: jest.fn(),
-      querySelectorAll: jest.fn(),
-      appendChild: jest.fn()
-    };
-
-    // Create card instance
     card = new MockDailyPlanCard();
 
-    // Mock shadow root
-    card.shadowRoot = mockShadowRoot;
+    // Setup shadow root
+    card.shadowRoot = {
+      innerHTML: '',
+      querySelector: jest.fn(),
+      querySelectorAll: jest.fn()
+    };
 
-    // Mock internal methods with spies
-    card._getUsername = jest.fn().mockReturnValue('testuser');
+    // Spy on handler
     card._handleSetDailyState = jest.fn();
   });
 
   describe('Daily State Button Event Listeners', () => {
-    test('should attach click listeners to daily state buttons when they exist in content', () => {
-      // Mock buttons existing in the DOM
-      const mockDailyStateButton = {
-        addEventListener: jest.fn(),
-        click: jest.fn()
-      };
-      const mockDailyStateEditButton = {
-        addEventListener: jest.fn(),
-        click: jest.fn()
-      };
+    test('should attach click listeners to daily state buttons when they exist', () => {
+      const dailyStateButton = createMockButton();
+      const dailyStateEditButton = createMockButton();
 
-      // Mock querySelector to return the buttons
-      mockShadowRoot.querySelector
-        .mockReturnValueOnce(mockDailyStateButton) // .daily-state-button
-        .mockReturnValueOnce(mockDailyStateEditButton); // .daily-state-edit-btn
+      mockShadowQuery(card, {
+        '.daily-state-button': dailyStateButton,
+        '.daily-state-edit-btn': dailyStateEditButton
+      });
 
-      // Mock other queries to return empty arrays/null
-      mockShadowRoot.querySelectorAll
-        .mockReturnValueOnce([]) // .task-item
-        .mockReturnValueOnce([]) // .complete-btn
-        .mockReturnValueOnce([]); // .window-item.incomplete
-
-      // Call the content event listener attachment method
       card._attachContentEventListeners(true);
 
-      // Verify daily state button listener was attached
-      expect(mockShadowRoot.querySelector).toHaveBeenCalledWith('.daily-state-button');
-      expect(mockDailyStateButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+      // Verify listeners were attached
+      expect(card.shadowRoot.querySelector).toHaveBeenCalledWith('.daily-state-button');
+      expect(dailyStateButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
 
-      // Verify daily state edit button listener was attached
-      expect(mockShadowRoot.querySelector).toHaveBeenCalledWith('.daily-state-edit-btn');
-      expect(mockDailyStateEditButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+      expect(card.shadowRoot.querySelector).toHaveBeenCalledWith('.daily-state-edit-btn');
+      expect(dailyStateEditButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
 
-      // Test that clicking the buttons calls the handler
-      const dailyStateClickHandler = mockDailyStateButton.addEventListener.mock.calls[0][1];
-      const dailyStateEditClickHandler = mockDailyStateEditButton.addEventListener.mock.calls[0][1];
+      // Test clicking the buttons
+      const dailyStateHandler = dailyStateButton.addEventListener.mock.calls[0][1];
+      const editHandler = dailyStateEditButton.addEventListener.mock.calls[0][1];
 
-      dailyStateClickHandler();
+      dailyStateHandler();
       expect(card._handleSetDailyState).toHaveBeenCalledTimes(1);
 
-      dailyStateEditClickHandler();
+      editHandler();
       expect(card._handleSetDailyState).toHaveBeenCalledTimes(2);
     });
 
     test('should handle missing daily state buttons gracefully', () => {
-      // Mock querySelector to return null (buttons don't exist)
-      mockShadowRoot.querySelector.mockReturnValue(null);
-      mockShadowRoot.querySelectorAll.mockReturnValue([]);
+      mockShadowQuery(card, {
+        '.daily-state-button': null,
+        '.daily-state-edit-btn': null
+      });
 
-      // Should not throw an error
       expect(() => {
         card._attachContentEventListeners(true);
       }).not.toThrow();
 
-      // Verify selectors were called but no event listeners attached
-      expect(mockShadowRoot.querySelector).toHaveBeenCalledWith('.daily-state-button');
-      expect(mockShadowRoot.querySelector).toHaveBeenCalledWith('.daily-state-edit-btn');
+      expect(card.shadowRoot.querySelector).toHaveBeenCalledWith('.daily-state-button');
+      expect(card.shadowRoot.querySelector).toHaveBeenCalledWith('.daily-state-edit-btn');
       expect(card._handleSetDailyState).not.toHaveBeenCalled();
     });
 
-    test('should not attach daily state button listeners when user config is invalid', () => {
-      const mockDailyStateButton = {
-        addEventListener: jest.fn()
-      };
+    test('should not attach listeners when user config is invalid', () => {
+      const dailyStateButton = createMockButton();
 
-      mockShadowRoot.querySelector.mockReturnValue(mockDailyStateButton);
+      mockShadowQuery(card, {
+        '.daily-state-button': dailyStateButton
+      });
 
-      // Call with hasValidUserConfig = false
       card._attachContentEventListeners(false);
 
-      // Should not have tried to find daily state buttons
-      expect(mockShadowRoot.querySelector).not.toHaveBeenCalledWith('.daily-state-button');
-      expect(mockShadowRoot.querySelector).not.toHaveBeenCalledWith('.daily-state-edit-btn');
+      // Should not have tried to find buttons
+      expect(card.shadowRoot.querySelector).not.toHaveBeenCalledWith('.daily-state-button');
+      expect(card.shadowRoot.querySelector).not.toHaveBeenCalledWith('.daily-state-edit-btn');
     });
   });
 
-  describe('Button Rendering Integration', () => {
+  describe('Button Rendering', () => {
     test('should render daily state button in reduced plan mode', () => {
-      // Mock plan data that triggers reduced mode
       card._plan = {
         data: {
           using_defaults: true,
@@ -247,13 +186,11 @@ describe('TaskTrackerDailyPlanCard Button Event Listeners', () => {
 
       const html = card._renderReducedPlan([]);
 
-      // Should contain the daily state button
       expect(html).toContain('daily-state-button');
       expect(html).toContain('Set Your Daily State');
     });
 
-    test('should render daily state edit button when daily state exists', () => {
-      // Mock daily state data
+    test('should render daily state edit button when state exists', () => {
       card._dailyState = {
         data: {
           energy: 3,
@@ -267,26 +204,112 @@ describe('TaskTrackerDailyPlanCard Button Event Listeners', () => {
 
       const html = card._renderDailyStateDisplay();
 
-      // Should contain the daily state edit button
       expect(html).toContain('daily-state-edit-btn');
       expect(html).toContain('Edit');
     });
   });
 
   describe('Event Listener Timing', () => {
-    test('should ensure daily state buttons are handled in content event listeners', () => {
-      // This test documents that daily state buttons should be attached in content event listeners,
-      // not header event listeners, because they are rendered in the content area.
-
-      // Verify the method exists and can be called
+    test('should attach daily state buttons in content event listeners', () => {
+      // Daily state buttons are rendered in content area, not header
       expect(typeof card._attachContentEventListeners).toBe('function');
 
-      // Verify the rendering methods include the expected button classes
       const reducedPlanHtml = card._renderReducedPlan([]);
       const dailyStateDisplayHtml = card._renderDailyStateDisplay();
 
       expect(reducedPlanHtml).toContain('daily-state-button');
       expect(dailyStateDisplayHtml).toContain('daily-state-edit-btn');
+    });
+
+    test('should call handlers when buttons are clicked', () => {
+      const button = createMockButton();
+
+      mockShadowQuery(card, {
+        '.daily-state-button': button
+      });
+
+      card._attachContentEventListeners(true);
+
+      // Simulate click
+      const clickHandler = button.addEventListener.mock.calls[0][1];
+      clickHandler();
+
+      expect(card._handleSetDailyState).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Multiple Button Scenarios', () => {
+    test('should handle when only one button type exists', () => {
+      const dailyStateButton = createMockButton();
+
+      mockShadowQuery(card, {
+        '.daily-state-button': dailyStateButton,
+        '.daily-state-edit-btn': null
+      });
+
+      expect(() => {
+        card._attachContentEventListeners(true);
+      }).not.toThrow();
+
+      expect(dailyStateButton.addEventListener).toHaveBeenCalled();
+    });
+
+    test('should handle when edit button exists but primary does not', () => {
+      const editButton = createMockButton();
+
+      mockShadowQuery(card, {
+        '.daily-state-button': null,
+        '.daily-state-edit-btn': editButton
+      });
+
+      expect(() => {
+        card._attachContentEventListeners(true);
+      }).not.toThrow();
+
+      expect(editButton.addEventListener).toHaveBeenCalled();
+    });
+
+    test('should attach multiple listeners without interference', () => {
+      const button1 = createMockButton();
+      const button2 = createMockButton();
+
+      mockShadowQuery(card, {
+        '.daily-state-button': button1,
+        '.daily-state-edit-btn': button2
+      });
+
+      card._attachContentEventListeners(true);
+
+      // Both should have listeners
+      expect(button1.addEventListener).toHaveBeenCalledTimes(1);
+      expect(button2.addEventListener).toHaveBeenCalledTimes(1);
+
+      // Click both - should each trigger the handler once
+      button1.addEventListener.mock.calls[0][1]();
+      button2.addEventListener.mock.calls[0][1]();
+
+      expect(card._handleSetDailyState).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('State-Based Rendering', () => {
+    test('should show set button when using defaults', () => {
+      card._plan = { data: { using_defaults: true, tasks: [] } };
+      const html = card._renderReducedPlan([]);
+
+      expect(html).toContain('Set Your Daily State');
+      expect(html).toContain('daily-state-prompt');
+    });
+
+    test('should show edit button when state is configured', () => {
+      card._dailyState = {
+        data: { energy: 3, focus: 4, motivation: 3 }
+      };
+
+      const html = card._renderDailyStateDisplay();
+
+      expect(html).toContain('Edit');
+      expect(html).toContain('daily-state-edit-btn');
     });
   });
 });
