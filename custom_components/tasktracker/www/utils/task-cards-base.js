@@ -89,7 +89,7 @@ export class TaskTrackerTasksBaseCard extends TaskTrackerBaseCard {
     }
 
     try {
-      const response = await TaskTrackerUtils.completeTask(this._hass, task.name, userValidation.username, notes, completed_at);
+      const response = await TaskTrackerUtils.completeTask(this._hass, task.id, task.task_type, userValidation.username, notes, completed_at);
       // Success message is handled by TaskTrackerUtils.completeTask to avoid duplication
       if (response && !response.success) {
         const errorMsg = (response && response.message) || 'Unknown error';

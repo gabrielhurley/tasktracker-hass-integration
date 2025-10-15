@@ -1,13 +1,13 @@
 import { handleActionError, ensureServiceSuccess } from './error-handling.js';
 import { showSuccess, showError } from './toast.js';
 
-export async function completeTask(hass, taskName, username, notes, completed_at = null) {
+export async function completeTask(hass, taskId, taskType, username, notes, completed_at = null) {
   try {
-    const params = { name: taskName };
+    const params = { task_id: taskId, task_type: taskType };
     if (username) params.completed_by = username;
     if (notes) params.notes = notes;
     if (completed_at) params.completed_at = completed_at;
-    const response = await hass.callService('tasktracker', 'complete_task_by_name', params, {}, true, true);
+    const response = await hass.callService('tasktracker', 'complete_task', params, {}, true, true);
     const data = ensureServiceSuccess(response);
     // Use server's spoken_response if available, otherwise fall back to generic message
     const message = data.spoken_response || 'Task completed successfully';

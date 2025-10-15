@@ -181,11 +181,11 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     const usernameSelect = this.shadowRoot.querySelector('#username-select');
     const notesField = this.shadowRoot.querySelector('#notes-field');
 
-    const selectedTask = taskSelect.value;
+    const selectedTaskIndex = taskSelect.value;
     const selectedUsername = usernameSelect.value;
     const notes = notesField.value.trim();
 
-    if (!selectedTask) {
+    if (!selectedTaskIndex) {
       this._showError('Please select a task');
       return;
     }
@@ -195,11 +195,20 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
       return;
     }
 
+    // Get the task object from the index
+    const taskIndex = parseInt(selectedTaskIndex, 10);
+    if (taskIndex < 0 || taskIndex >= this._allTasks.length) {
+      this._showError('Invalid task selection');
+      return;
+    }
+
+    const selectedTask = this._allTasks[taskIndex];
+
     this._completing = true;
     this._render();
 
     try {
-      const response = await TaskTrackerUtils.completeTask(this._hass, selectedTask, selectedUsername, notes);
+      const response = await TaskTrackerUtils.completeTask(this._hass, selectedTask.id, selectedTask.task_type, selectedUsername, notes);
 
       if (response && response.success) {
         // Success message is handled by TaskTrackerUtils.completeTask to avoid duplication
@@ -222,16 +231,18 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
     }
   }
 
-  _getSelectedTask(taskName = null) {
-    // If taskName is provided, use it; otherwise try to get from DOM
-    let selectedTaskName = taskName;
-    if (!selectedTaskName) {
+  _getSelectedTask(taskIndex = null) {
+    // If taskIndex is provided, use it; otherwise try to get from DOM
+    let selectedTaskIndex = taskIndex;
+    if (selectedTaskIndex === null || selectedTaskIndex === '') {
       const taskSelect = this.shadowRoot.querySelector('#task-select');
       if (!taskSelect || !taskSelect.value) return null;
-      selectedTaskName = taskSelect.value;
+      selectedTaskIndex = taskSelect.value;
     }
 
-    return this._allTasks.find(task => task.name === selectedTaskName);
+    const index = parseInt(selectedTaskIndex, 10);
+    if (index < 0 || index >= this._allTasks.length) return null;
+    return this._allTasks[index];
   }
 
   _formatTaskDetails(task) {
@@ -359,8 +370,8 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         <label class="form-label" for="task-select">Task Name</label>
         <select id="task-select" class="form-control" ${this._completing ? 'disabled' : ''}>
           <option value="">Select a task...</option>
-          ${this._allTasks.map(task => `
-            <option value="${task.name}">${task.name}</option>
+          ${this._allTasks.map((task, index) => `
+            <option value="${index}" data-task-id="${task.id}" data-task-type="${task.task_type}">${task.name}</option>
           `).join('')}
         </select>
       </div>

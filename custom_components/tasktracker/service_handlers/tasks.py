@@ -52,6 +52,7 @@ def complete_task_handler_factory(
         - completed_by (str, optional): The username who completed the task. If not provided,
           will be inferred from the service call context.
         - notes (str, optional): Notes about the completion.
+        - completed_at (str, optional): ISO timestamp of when the task was completed.
 
     The handler will:
         - Complete the task via the API
@@ -94,6 +95,7 @@ def complete_task_handler_factory(
                 task_type=call.data["task_type"],
                 completed_by=completed_by,
                 notes=call.data.get("notes"),
+                completed_at=call.data.get("completed_at"),
             )
             if result.get("success"):
                 # Aggressively invalidate all user caches

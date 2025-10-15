@@ -116,6 +116,7 @@ async def async_setup_services(  # noqa: PLR0915
         return config
 
     try:
+        # Create service handlers
         complete_task_service = complete_task_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
         )
@@ -139,50 +140,6 @@ async def async_setup_services(  # noqa: PLR0915
         get_available_users_service = get_available_users_handler_factory(
             hass, get_current_config
         )
-        update_task_service = update_task_handler_factory(api)
-        delete_completion_service = delete_completion_handler_factory(hass, api)
-        update_completion_service = update_completion_handler_factory(hass, api)
-        get_daily_plan_service = get_daily_plan_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        get_daily_plan_encouragement_service = (
-            get_daily_plan_encouragement_handler_factory(
-                hass, api, get_current_config, get_tasktracker_username_for_ha_user
-            )
-        )
-        get_daily_state_service = get_daily_state_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        set_daily_state_service = set_daily_state_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        create_task_from_description_service = (
-            create_task_from_description_handler_factory(
-                hass, api, get_current_config, get_tasktracker_username_for_ha_user
-            )
-        )
-        delete_task_service = delete_task_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        complete_task_service = complete_task_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        complete_task_by_name_service = complete_task_by_name_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        create_leftover_service = create_leftover_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        create_adhoc_task_service = create_adhoc_task_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        query_task_service = query_task_handler_factory(api)
-        get_recommended_tasks_service = get_recommended_tasks_handler_factory(
-            hass, api, get_current_config, get_tasktracker_username_for_ha_user
-        )
-        get_available_tasks_service = get_available_tasks_handler_factory(hass, api)
-        list_leftovers_service = list_leftovers_handler_factory(hass, api)
-        get_all_tasks_service = get_all_tasks_handler_factory(hass, api)
         update_task_service = update_task_handler_factory(api)
         delete_completion_service = delete_completion_handler_factory(hass, api)
         update_completion_service = update_completion_handler_factory(hass, api)

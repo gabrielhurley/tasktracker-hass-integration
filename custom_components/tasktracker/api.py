@@ -99,6 +99,7 @@ class TaskTrackerAPI:
         task_type: str,
         completed_by: str,
         notes: str | None = None,
+        completed_at: str | None = None,
     ) -> dict[str, Any]:
         """Complete a task by ID.
 
@@ -107,6 +108,7 @@ class TaskTrackerAPI:
             task_type: The type of task (RecurringTask, SelfCareTask, or AdHocTask).
             completed_by: Username of the person completing the task.
             notes: Optional notes about the completion.
+            completed_at: Optional ISO timestamp of when the task was completed.
 
         Returns:
             API response dictionary.
@@ -118,6 +120,8 @@ class TaskTrackerAPI:
         }
         if notes:
             data["notes"] = notes
+        if completed_at:
+            data["completed_at"] = completed_at
 
         return await self._request("POST", ENDPOINT_COMPLETE_TASK, data=data)
 

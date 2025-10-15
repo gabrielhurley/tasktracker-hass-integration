@@ -86,6 +86,7 @@ class TestTaskTrackerServices:
                 task_type="RecurringTask",
                 completed_by="testuser",
                 notes="Completed via test",
+                completed_at=None,
             )
 
     @pytest.mark.asyncio
@@ -124,6 +125,7 @@ class TestTaskTrackerServices:
             task_type="RecurringTask",
             completed_by="explicituser",
             notes="Completed via test",
+            completed_at=None,
         )
 
     @pytest.mark.asyncio

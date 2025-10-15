@@ -14,6 +14,7 @@ COMPLETE_TASK_SCHEMA = vol.Schema(
         ),
         vol.Optional("completed_by"): cv.string,
         vol.Optional("notes"): cv.string,
+        vol.Optional("completed_at"): cv.string,
     }
 )
 

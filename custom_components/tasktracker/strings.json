@@ -86,6 +86,10 @@
                 "notes": {
                     "name": "Completion Notes",
                     "description": "Optional notes to add when completing the task."
+                },
+                "completed_at": {
+                    "name": "Completion Date/Time",
+                    "description": "Optional ISO format datetime when the task was completed. Defaults to current time if not provided."
                 }
             }
         },
