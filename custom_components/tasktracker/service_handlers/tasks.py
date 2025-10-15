@@ -831,6 +831,10 @@ def update_task_handler_factory(
             )
             if result.get("success"):
                 hass = call.hass
+                # Aggressively invalidate all user caches
+                # Task updates (including snooze) may affect multiple users
+                await invalidate_all_user_caches(hass)
+
                 hass.bus.fire(
                     "tasktracker_task_updated",
                     {
@@ -1005,6 +1009,10 @@ def delete_task_handler_factory(
                 assigned_to=assigned_to,
             )
             if result.get("success"):
+                # Aggressively invalidate all user caches
+                # Task deletion may affect multiple users
+                await invalidate_all_user_caches(hass)
+
                 hass.bus.fire(
                     "tasktracker_task_updated",
                     {

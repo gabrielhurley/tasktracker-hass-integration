@@ -448,7 +448,7 @@ def set_daily_state_handler_factory(
                 await invalidate_user_cache(hass, username)
 
                 hass.bus.fire(
-                    "tasktracker_daily_state_updated",
+                    "tasktracker_daily_state_set",
                     {
                         "username": username,
                         "state_data": result.get("data"),

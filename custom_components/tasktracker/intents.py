@@ -17,6 +17,7 @@ from homeassistant.helpers.intent import (
     async_register,
 )
 
+from .cache_utils import invalidate_all_user_caches
 from .const import DOMAIN
 from .utils import get_user_context
 
@@ -177,6 +178,9 @@ class AddLeftoverIntentHandler(BaseTaskTrackerIntentHandler):
                 f"There was an error adding the leftover: {error_msg}"
             )
         else:
+            # Invalidate cache before firing event
+            await invalidate_all_user_caches(self.hass)
+
             # Fire custom event for frontend cards
             self.hass.bus.fire(
                 "tasktracker_leftover_created",
@@ -235,6 +239,9 @@ class CompleteTaskIntentHandler(BaseTaskTrackerIntentHandler):
                 f"There was an error completing the task: {error_msg}"
             )
         else:
+            # Invalidate cache before extracting assigned_users and firing event
+            await invalidate_all_user_caches(self.hass)
+
             # Try to extract assigned_users from coordinator data
             assigned_users = []
             from .cache_utils import get_entry_data
@@ -314,6 +321,9 @@ class AddAdHocTaskIntentHandler(BaseTaskTrackerIntentHandler):
                 f"There was an error creating the task: {error_msg}"
             )
         else:
+            # Invalidate cache before firing event
+            await invalidate_all_user_caches(self.hass)
+
             # Fire custom event for frontend cards
             self.hass.bus.fire(
                 "tasktracker_task_created",
@@ -557,6 +567,9 @@ class CreateTaskFromDescriptionIntentHandler(BaseTaskTrackerIntentHandler):
                 f"There was an error creating the task: {error_msg}"
             )
         else:
+            # Invalidate cache before firing event
+            await invalidate_all_user_caches(self.hass)
+
             data = result.get("data", {}) or {}
             task = data.get("task") or {}
             # Fire custom event for frontend cards
