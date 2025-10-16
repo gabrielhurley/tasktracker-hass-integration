@@ -774,7 +774,28 @@ export function createTaskModal(
 
   if (editButton && onEdit) { editButton.addEventListener('click', () => { closeModal(); setTimeout(() => { onEdit(task); }, 220); }); }
 
-  completeButton.addEventListener('click', async () => { const notesVal = completionNotesTextarea.value.trim(); try { await onComplete(notesVal); closeModal(); } catch (error) {} });
+  completeButton.addEventListener('click', async () => {
+    const notesVal = completionNotesTextarea.value.trim();
+    // Apply loading state immediately
+    const originalText = completeButton.textContent;
+    const originalDisabled = completeButton.disabled;
+    const currentWidth = completeButton.offsetWidth;
+    completeButton.style.width = `${currentWidth}px`;
+    completeButton.disabled = true;
+    completeButton.textContent = '';
+    completeButton.classList.add('tt-loading-dots');
+
+    try {
+      await onComplete(notesVal);
+      closeModal();
+    } catch (error) {
+      // Restore button state on error
+      completeButton.disabled = originalDisabled;
+      completeButton.textContent = originalText;
+      completeButton.classList.remove('tt-loading-dots');
+      completeButton.style.width = '';
+    }
+  });
 
   completedAlreadyButton.addEventListener('click', () => {
     pastCompletionSection.classList.remove('tt-hidden');
@@ -787,8 +808,29 @@ export function createTaskModal(
   if (deleteButton && onDelete) { deleteButton.addEventListener('click', () => { deleteSection.classList.remove('tt-hidden'); pastCompletionSection.classList.add('tt-hidden'); snoozeSection.classList.add('tt-hidden'); setFooterContent(deleteFooterButtons); }); }
 
   yesterdayButton.addEventListener('click', async () => {
-    const notesVal = completionNotesTextarea.value.trim(); const d = new Date(); d.setDate(d.getDate() - 1);
-    try { await onComplete(notesVal, d.toISOString()); closeModal(); } catch (error) {}
+    const notesVal = completionNotesTextarea.value.trim();
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+
+    // Apply loading state immediately
+    const originalText = yesterdayButton.textContent;
+    const originalDisabled = yesterdayButton.disabled;
+    const currentWidth = yesterdayButton.offsetWidth;
+    yesterdayButton.style.width = `${currentWidth}px`;
+    yesterdayButton.disabled = true;
+    yesterdayButton.textContent = '';
+    yesterdayButton.classList.add('tt-loading-dots');
+
+    try {
+      await onComplete(notesVal, d.toISOString());
+      closeModal();
+    } catch (error) {
+      // Restore button state on error
+      yesterdayButton.disabled = originalDisabled;
+      yesterdayButton.textContent = originalText;
+      yesterdayButton.classList.remove('tt-loading-dots');
+      yesterdayButton.style.width = '';
+    }
   });
 
   customDateButton.addEventListener('click', () => { customDateContainer.classList.remove('tt-hidden'); quickOptionsContainer.classList.add('tt-hidden'); });
@@ -801,10 +843,35 @@ export function createTaskModal(
   });
 
   confirmPastButton.addEventListener('click', async () => {
-    const notesVal = completionNotesTextarea.value.trim(); const completedAtValue = customDateInput.value;
-    if (!completedAtValue) { showError('Please select a completion date and time'); return; }
+    const notesVal = completionNotesTextarea.value.trim();
+    const completedAtValue = customDateInput.value;
+
+    if (!completedAtValue) {
+      showError('Please select a completion date and time');
+      return;
+    }
+
     const completedAtIso = new Date(completedAtValue).toISOString();
-    try { await onComplete(notesVal, completedAtIso); closeModal(); } catch (error) {}
+
+    // Apply loading state immediately
+    const originalText = confirmPastButton.textContent;
+    const originalDisabled = confirmPastButton.disabled;
+    const currentWidth = confirmPastButton.offsetWidth;
+    confirmPastButton.style.width = `${currentWidth}px`;
+    confirmPastButton.disabled = true;
+    confirmPastButton.textContent = '';
+    confirmPastButton.classList.add('tt-loading-dots');
+
+    try {
+      await onComplete(notesVal, completedAtIso);
+      closeModal();
+    } catch (error) {
+      // Restore button state on error
+      confirmPastButton.disabled = originalDisabled;
+      confirmPastButton.textContent = originalText;
+      confirmPastButton.classList.remove('tt-loading-dots');
+      confirmPastButton.style.width = '';
+    }
   });
 
   if (onSnooze) {
