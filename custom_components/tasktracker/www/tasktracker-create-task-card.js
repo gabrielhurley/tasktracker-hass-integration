@@ -28,6 +28,11 @@ class TaskTrackerCreateTaskCard extends TaskTrackerTasksBaseCard {
     this._render();
   }
 
+  _render() {
+    super._render();
+    this._renderContent();
+  }
+
   onAfterUpdate() {
     // If a created task was deleted elsewhere, clear it if it doesn't exist anymore
     // Consumers listening to task updates will cause a re-render via card refreshes in other cards
