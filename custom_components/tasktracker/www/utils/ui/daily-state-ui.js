@@ -75,6 +75,11 @@ export class TaskTrackerDailyStateUI {
       root.querySelectorAll('.tt-ds-preset-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const presetKey = e.currentTarget.dataset.preset;
+
+          // Update visual selection state immediately for responsiveness
+          root.querySelectorAll('.tt-ds-preset-btn').forEach(b => b.classList.remove('tt-selected'));
+          e.currentTarget.classList.add('tt-selected');
+
           if (opts.onSelectPreset) await opts.onSelectPreset(presetKey);
         });
       });
