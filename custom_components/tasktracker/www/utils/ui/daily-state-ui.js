@@ -229,7 +229,51 @@ export class TaskTrackerDailyStateUI {
     return {
       update(newOptions) {
         opts = { ...opts, ...newOptions };
-        render();
+
+        // If only updating saving state or values, update selectively without full re-render
+        const selectiveUpdateKeys = ['saving', 'state', 'currentPreset'];
+        const onlySelectiveUpdate = Object.keys(newOptions).every(key => selectiveUpdateKeys.includes(key));
+
+        if (onlySelectiveUpdate && opts.showAdvanced) {
+          // Update slider values without destroying DOM
+          if (newOptions.state) {
+            const s = opts.state;
+            container.querySelectorAll('input[type="range"]').forEach(slider => {
+              const axis = slider.dataset.axis;
+              if (s[axis] !== undefined) {
+                slider.value = s[axis];
+                // Update display value
+                const valueDisplay = slider.closest('.tt-ds-slider-row')?.querySelector('.tt-ds-slider-value');
+                if (valueDisplay) {
+                  if (axis === 'mood' && opts.getMoodLabel) {
+                    valueDisplay.textContent = opts.getMoodLabel(s[axis]);
+                  } else if (axis === 'free_time' && opts.getFreeTimeLabel) {
+                    valueDisplay.textContent = opts.getFreeTimeLabel(s[axis]);
+                  } else {
+                    valueDisplay.textContent = String(s[axis]);
+                  }
+                }
+              }
+            });
+
+            // Update is_sick checkbox
+            const sickCheckbox = container.querySelector('input[type="checkbox"][data-axis="is_sick"]');
+            if (sickCheckbox) {
+              sickCheckbox.checked = !!s.is_sick;
+            }
+          }
+
+          // Update button states
+          if (newOptions.saving !== undefined) {
+            container.querySelectorAll('.advanced-save-btn, .tt-ds-modal-save').forEach(btn => {
+              btn.disabled = opts.saving;
+              btn.textContent = opts.saving ? 'Saving...' : 'Save';
+            });
+          }
+        } else {
+          // Full re-render needed (view mode change, etc.)
+          render();
+        }
       }
     };
   }

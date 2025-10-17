@@ -153,7 +153,10 @@ class TaskTrackerDailyStateCard extends HTMLElement {
     if (!username) return;
 
     this._saving = true;
-    this._render();
+    // Update UI to show saving state without destroying sliders
+    if (this._uiController) {
+      this._uiController.update({ saving: true });
+    }
 
     const success = await TaskTrackerUtils.saveDailyState(this._hass, username, stateValues);
 
@@ -170,7 +173,14 @@ class TaskTrackerDailyStateCard extends HTMLElement {
     }
 
     this._saving = false;
-    this._render();
+    // Update UI to remove saving state without destroying sliders
+    if (this._uiController) {
+      this._uiController.update({
+        saving: false,
+        state: this._state,
+        currentPreset: this._currentPreset
+      });
+    }
   }
 
       async _handleStateChange(axis, value) {
@@ -181,7 +191,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
     // Update immediately for responsive UI
     this._state = newState;
     this._currentPreset = TaskTrackerUtils.findMatchingDailyStatePreset(this._state);
-    this._render();
+    // Don't call _render() here - sliders handle their own display updates
   }
 
   async _handleAdvancedSave() {
