@@ -25,6 +25,7 @@ def delete_completion_handler_factory(
     Create a service handler for deleting completion records.
 
     Args:
+        hass: Home Assistant instance for cache invalidation and events
         api: The TaskTracker API client instance.
 
     Returns:
@@ -92,6 +93,7 @@ def update_completion_handler_factory(
     Create a service handler for updating completion records.
 
     Args:
+        hass: Home Assistant instance for cache invalidation and events
         api: The TaskTracker API client instance.
 
     Returns:

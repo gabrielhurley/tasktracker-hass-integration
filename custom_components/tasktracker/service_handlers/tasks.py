@@ -110,7 +110,7 @@ def complete_task_handler_factory(
                 task_id = call.data["task_id"]
 
                 # Check all coordinators for this task
-                for username, coords in coordinators.items():
+                for coords in coordinators.values():
                     daily_plan_coord = coords.get("daily_plan")
                     if daily_plan_coord and daily_plan_coord.data:
                         tasks = daily_plan_coord.data.get("data", {}).get("tasks", [])
@@ -226,7 +226,7 @@ def complete_task_by_name_handler_factory(
                 coordinators = entry_data.get("coordinators", {})
 
                 # Check all coordinators for a task with this name
-                for username, coords in coordinators.items():
+                for coords in coordinators.values():
                     daily_plan_coord = coords.get("daily_plan")
                     if daily_plan_coord and daily_plan_coord.data:
                         tasks = daily_plan_coord.data.get("data", {}).get("tasks", [])
@@ -490,7 +490,7 @@ def get_recommended_tasks_handler_factory(
             # Use cache helper
             cache_key = f"recommended_tasks:{username}:{available_minutes}"
 
-            async def fetch_recommended_tasks():
+            async def fetch_recommended_tasks() -> dict[str, Any]:
                 return await api.get_recommended_tasks(
                     username=username,
                     available_minutes=available_minutes,
@@ -566,7 +566,7 @@ def get_available_tasks_handler_factory(
                 f"available_tasks:{username}:{available_minutes}:{upcoming_days}"
             )
 
-            async def fetch_available_tasks():
+            async def fetch_available_tasks() -> dict[str, Any]:
                 return await api.get_available_tasks(
                     username=username,
                     available_minutes=available_minutes,
@@ -639,7 +639,7 @@ def get_all_tasks_handler_factory(
             # Use cache helper
             cache_key = f"all_tasks:{username}:{thin}"
 
-            async def fetch_all_tasks():
+            async def fetch_all_tasks() -> dict[str, Any]:
                 return await api.get_all_tasks(thin=thin, username=username)
 
             result = await get_cached_or_fetch(
@@ -710,7 +710,7 @@ def get_recent_completions_handler_factory(
             # Use cache helper
             cache_key = f"recent_completions:{username}:{days}:{limit}"
 
-            async def fetch_recent_completions():
+            async def fetch_recent_completions() -> dict[str, Any]  :
                 return await api.get_recent_completions(
                     username=username,
                     days=days,

@@ -148,7 +148,7 @@ def list_leftovers_handler_factory(
             # Use cache helper
             cache_key = f"leftovers:{username}"
 
-            async def fetch_leftovers():
+            async def fetch_leftovers() -> dict[str, Any]:
                 return await api.list_leftovers(username=username)
 
             result = await get_cached_or_fetch(

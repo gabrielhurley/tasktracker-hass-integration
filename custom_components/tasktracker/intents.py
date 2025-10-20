@@ -250,7 +250,7 @@ class CompleteTaskIntentHandler(BaseTaskTrackerIntentHandler):
             coordinators = entry_data.get("coordinators", {})
             task_name_lower = task_name.lower()
 
-            for username, coords in coordinators.items():
+            for coords in coordinators.values():
                 daily_plan_coord = coords.get("daily_plan")
                 if daily_plan_coord and daily_plan_coord.data:
                     tasks = daily_plan_coord.data.get("data", {}).get("tasks", [])

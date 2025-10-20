@@ -35,7 +35,7 @@ from .www import JSModuleRegistration
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.const import Platform
-    from homeassistant.core import HomeAssistant
+    from homeassistant.core import Event, HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -236,7 +236,7 @@ async def handle_subscribe_tasktracker_events(
 
     # Subscribe to the event and forward to the websocket connection
     @websocket_api.callback
-    def forward_event(event):
+    def forward_event(event: Event) -> None:
         """Forward events to websocket."""
         connection.send_message(
             websocket_api.event_message(
@@ -264,7 +264,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry_data = hass.data[DOMAIN].get(entry.entry_id, {})
     coordinators = entry_data.get("coordinators", {})
     for username, coords in coordinators.items():
-        for coord in coords.values():
+        for _coord in coords.values():
             # Coordinators clean up automatically when references are removed
             _LOGGER.debug("Stopped coordinator for user: %s", username)
 

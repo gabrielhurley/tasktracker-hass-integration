@@ -6,6 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
@@ -67,7 +69,7 @@ async def invalidate_user_cache(hass: HomeAssistant, username: str) -> None:
             try:
                 await daily_plan_coord.async_refresh()
                 _LOGGER.debug("Refreshed daily plan coordinator for: %s", username)
-            except Exception as err:
+            except (TimeoutError, OSError) as err:
                 _LOGGER.warning(
                     "Failed to refresh coordinator for %s: %s", username, err
                 )
@@ -105,7 +107,7 @@ async def invalidate_all_user_caches(hass: HomeAssistant) -> None:
     _LOGGER.debug("Invalidated all shared caches")
 
     # Invalidate per-user caches and coordinators for ALL configured users
-    for username in coordinators.keys():
+    for username in coordinators:
         # Invalidate user-specific cache entries
         await cache.invalidate(pattern=f":{username}")
 
@@ -116,7 +118,7 @@ async def invalidate_all_user_caches(hass: HomeAssistant) -> None:
             # Await refresh so fresh data is available before events fire
             try:
                 await daily_plan_coord.async_refresh()
-            except Exception as err:
+            except (TimeoutError, OSError) as err:
                 _LOGGER.warning(
                     "Failed to refresh coordinator for %s: %s", username, err
                 )
@@ -132,7 +134,7 @@ async def get_cached_or_fetch(
     hass: HomeAssistant,
     cache_key: str,
     ttl: int,
-    fetch_fn,
+    fetch_fn: Callable[[], Awaitable[dict[str, Any]]],
     *,
     force_refresh: bool = False,
 ) -> Any:

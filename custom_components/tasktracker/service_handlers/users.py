@@ -72,7 +72,7 @@ def get_available_users_handler_factory(
             # Use cache helper - config changes are rare
             cache_key = "available_users"
 
-            async def fetch_available_users():
+            async def fetch_available_users() -> dict[str, Any]:
                 current_config = get_current_config()
                 usernames = get_available_tasktracker_usernames(current_config)
 
@@ -115,14 +115,13 @@ def get_available_users_handler_factory(
                     },
                 }
 
-            result = await get_cached_or_fetch(
+            return await get_cached_or_fetch(
                 hass,
                 cache_key,
                 CACHE_TTL_AVAILABLE_USERS,
                 fetch_available_users,
             )
 
-            return result
         except Exception:
             _LOGGER.exception("Unexpected error in get_available_users_service")
             raise
