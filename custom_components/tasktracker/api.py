@@ -101,7 +101,8 @@ class TaskTrackerAPI:
         notes: str | None = None,
         completed_at: str | None = None,
     ) -> dict[str, Any]:
-        """Complete a task by ID.
+        """
+        Complete a task by ID.
 
         Args:
             task_id: The ID of the task to complete.
@@ -112,6 +113,7 @@ class TaskTrackerAPI:
 
         Returns:
             API response dictionary.
+
         """
         data: dict[str, Any] = {
             "task_id": task_id,

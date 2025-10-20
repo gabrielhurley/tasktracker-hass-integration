@@ -19,6 +19,7 @@ def get_entry_data(hass: HomeAssistant) -> dict[str, Any]:
 
     Returns:
         Dictionary with entry data including api, cache, coordinators
+
     """
     for entry_data in hass.data.get(DOMAIN, {}).values():
         if isinstance(entry_data, dict) and "api" in entry_data:
@@ -36,6 +37,7 @@ async def invalidate_user_cache(hass: HomeAssistant, username: str) -> None:
     Args:
         hass: Home Assistant instance
         username: Username whose cache should be invalidated
+
     """
     entry_data = get_entry_data(hass)
 
@@ -66,7 +68,9 @@ async def invalidate_user_cache(hass: HomeAssistant, username: str) -> None:
                 await daily_plan_coord.async_refresh()
                 _LOGGER.debug("Refreshed daily plan coordinator for: %s", username)
             except Exception as err:
-                _LOGGER.warning("Failed to refresh coordinator for %s: %s", username, err)
+                _LOGGER.warning(
+                    "Failed to refresh coordinator for %s: %s", username, err
+                )
 
 
 async def invalidate_all_user_caches(hass: HomeAssistant) -> None:
@@ -83,6 +87,7 @@ async def invalidate_all_user_caches(hass: HomeAssistant) -> None:
 
     Args:
         hass: Home Assistant instance
+
     """
     entry_data = get_entry_data(hass)
     cache = entry_data.get("cache")
@@ -112,11 +117,15 @@ async def invalidate_all_user_caches(hass: HomeAssistant) -> None:
             try:
                 await daily_plan_coord.async_refresh()
             except Exception as err:
-                _LOGGER.warning("Failed to refresh coordinator for %s: %s", username, err)
+                _LOGGER.warning(
+                    "Failed to refresh coordinator for %s: %s", username, err
+                )
                 # Continue with other users even if one fails
 
     user_count = len(coordinators)
-    _LOGGER.info("Invalidated caches and refreshed coordinators for all %d users", user_count)
+    _LOGGER.info(
+        "Invalidated caches and refreshed coordinators for all %d users", user_count
+    )
 
 
 async def get_cached_or_fetch(
@@ -139,6 +148,7 @@ async def get_cached_or_fetch(
 
     Returns:
         Cached or freshly fetched data
+
     """
     entry_data = get_entry_data(hass)
     cache = entry_data.get("cache")

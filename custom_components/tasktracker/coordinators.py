@@ -42,9 +42,7 @@ class TaskTrackerCoordinator(DataUpdateCoordinator):
 class DailyPlanCoordinator(TaskTrackerCoordinator):
     """Coordinator for daily plan data with background refresh."""
 
-    def __init__(
-        self, hass: HomeAssistant, api: TaskTrackerAPI, username: str
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, api: TaskTrackerAPI, username: str) -> None:
         """Initialize the daily plan coordinator."""
         super().__init__(
             hass,
@@ -65,9 +63,7 @@ class DailyPlanCoordinator(TaskTrackerCoordinator):
                 fair_weather=self.fair_weather,
             )
             if result and result.get("success"):
-                _LOGGER.debug(
-                    "Successfully updated daily plan for %s", self.username
-                )
+                _LOGGER.debug("Successfully updated daily plan for %s", self.username)
                 return result
             error_msg = f"API returned error: {result}"
             _LOGGER.warning(

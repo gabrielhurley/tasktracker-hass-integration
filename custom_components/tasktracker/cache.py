@@ -29,6 +29,7 @@ class TaskTrackerCache:
 
         Returns:
             Cached value if found and not expired, None otherwise
+
         """
         async with self._lock:
             if key in self._data:
@@ -36,11 +37,10 @@ class TaskTrackerCache:
                 if age < ttl:
                     _LOGGER.debug("Cache hit: %s (age: %.1fs)", key, age)
                     return self._data[key]
-                else:
-                    _LOGGER.debug("Cache expired: %s (age: %.1fs)", key, age)
-                    # Clean up expired entry
-                    del self._data[key]
-                    del self._timestamps[key]
+                _LOGGER.debug("Cache expired: %s (age: %.1fs)", key, age)
+                # Clean up expired entry
+                del self._data[key]
+                del self._timestamps[key]
             return None
 
     async def set(self, key: str, value: Any) -> None:
@@ -50,6 +50,7 @@ class TaskTrackerCache:
         Args:
             key: Cache key
             value: Value to cache
+
         """
         async with self._lock:
             self._data[key] = value
@@ -62,6 +63,7 @@ class TaskTrackerCache:
 
         Args:
             pattern: Pattern to match cache keys. If None, clears all cache.
+
         """
         async with self._lock:
             if pattern is None:
@@ -86,6 +88,7 @@ class TaskTrackerCache:
 
         Returns:
             Dictionary with cache statistics
+
         """
         async with self._lock:
             now = time.time()

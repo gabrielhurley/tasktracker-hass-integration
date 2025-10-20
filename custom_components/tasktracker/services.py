@@ -134,7 +134,9 @@ async def async_setup_services(  # noqa: PLR0915
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
         )
         get_available_tasks_service = get_available_tasks_handler_factory(hass, api)
-        get_recent_completions_service = get_recent_completions_handler_factory(hass, api)
+        get_recent_completions_service = get_recent_completions_handler_factory(
+            hass, api
+        )
         list_leftovers_service = list_leftovers_handler_factory(hass, api)
         get_all_tasks_service = get_all_tasks_handler_factory(hass, api)
         get_available_users_service = get_available_users_handler_factory(

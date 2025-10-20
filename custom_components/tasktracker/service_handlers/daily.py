@@ -94,7 +94,11 @@ def get_daily_plan_handler_factory(
 
             if username in coordinators and "daily_plan" in coordinators[username]:
                 coordinator = coordinators[username]["daily_plan"]
-                _LOGGER.debug("Found coordinator for %s, has data: %s", username, coordinator.data is not None)
+                _LOGGER.debug(
+                    "Found coordinator for %s, has data: %s",
+                    username,
+                    coordinator.data is not None,
+                )
 
                 # Check if coordinator data is from current logical day
                 logical_day_changed = False
@@ -105,28 +109,37 @@ def get_daily_plan_handler_factory(
                     try:
                         # Extract user timezone and reset time from cached data
                         user_context = coordinator.data.get("user_context", {})
-                        cached_logical_date_str = user_context.get("current_logical_date")
+                        cached_logical_date_str = user_context.get(
+                            "current_logical_date"
+                        )
                         user_tz_str = user_context.get("timezone", "UTC")
-                        reset_time_str = user_context.get("daily_reset_time", "05:00:00")
+                        reset_time_str = user_context.get(
+                            "daily_reset_time", "05:00:00"
+                        )
 
                         # DEFENSIVE: If no logical date in cached data, assume stale
                         if not cached_logical_date_str:
                             logical_day_changed = True
                             _LOGGER.info(
                                 "No logical date in coordinator data for %s - forcing refresh",
-                                username
+                                username,
                             )
                         else:
                             # Parse reset time (HH:MM:SS)
-                            reset_hour, reset_minute, reset_second = map(int, reset_time_str.split(':'))
+                            reset_hour, reset_minute, reset_second = map(
+                                int, reset_time_str.split(":")
+                            )
 
                             # Calculate current logical date
                             user_tz = ZoneInfo(user_tz_str)
                             now = datetime.now(user_tz)
 
                             # If before reset time, logical day is yesterday
-                            if now.hour < reset_hour or (now.hour == reset_hour and now.minute < reset_minute):
+                            if now.hour < reset_hour or (
+                                now.hour == reset_hour and now.minute < reset_minute
+                            ):
                                 from datetime import timedelta
+
                                 current_logical_date = (now - timedelta(days=1)).date()
                             else:
                                 current_logical_date = now.date()
@@ -140,7 +153,7 @@ def get_daily_plan_handler_factory(
                                     "Logical day changed for %s: cached=%s, current=%s - forcing refresh",
                                     username,
                                     cached_logical_date_str,
-                                    current_logical_date_str
+                                    current_logical_date_str,
                                 )
                     except Exception as err:
                         # DEFENSIVE: Force refresh on any error to avoid serving stale data
@@ -148,7 +161,7 @@ def get_daily_plan_handler_factory(
                         _LOGGER.warning(
                             "Failed to check logical day boundary for %s: %s - forcing refresh to be safe",
                             username,
-                            err
+                            err,
                         )
 
                 # Update coordinator parameters if they changed
@@ -160,11 +173,15 @@ def get_daily_plan_handler_factory(
                 # Force refresh if logical day changed or params changed
                 if logical_day_changed or params_changed:
                     if logical_day_changed:
-                        _LOGGER.debug("Logical day changed for %s - clearing stale data", username)
+                        _LOGGER.debug(
+                            "Logical day changed for %s - clearing stale data", username
+                        )
                         # Clear stale data
                         coordinator.data = None
                     if params_changed:
-                        _LOGGER.debug("Coordinator params changed for %s - refreshing", username)
+                        _LOGGER.debug(
+                            "Coordinator params changed for %s - refreshing", username
+                        )
 
                     coordinator.select_recommended = select_recommended
                     coordinator.fair_weather = fair_weather
@@ -172,10 +189,14 @@ def get_daily_plan_handler_factory(
 
                 # Return coordinator data if available
                 if coordinator.data:
-                    _LOGGER.debug("Returning daily plan from coordinator for %s", username)
+                    _LOGGER.debug(
+                        "Returning daily plan from coordinator for %s", username
+                    )
                     return coordinator.data
-                else:
-                    _LOGGER.warning("Coordinator for %s has no data after refresh - falling back to API", username)
+                _LOGGER.warning(
+                    "Coordinator for %s has no data after refresh - falling back to API",
+                    username,
+                )
 
             # Fallback to direct API call
             _LOGGER.debug("Using direct API call for %s daily plan", username)

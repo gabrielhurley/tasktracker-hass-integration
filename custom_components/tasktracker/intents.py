@@ -245,6 +245,7 @@ class CompleteTaskIntentHandler(BaseTaskTrackerIntentHandler):
             # Try to extract assigned_users from coordinator data
             assigned_users = []
             from .cache_utils import get_entry_data
+
             entry_data = get_entry_data(self.hass)
             coordinators = entry_data.get("coordinators", {})
             task_name_lower = task_name.lower()

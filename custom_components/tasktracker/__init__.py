@@ -134,9 +134,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Initialize coordinators for configured users
         coordinators = {}
         user_mappings = entry.data.get("users", [])
-        configured_usernames = {
-            user["tasktracker_username"] for user in user_mappings
-        }
+        configured_usernames = {user["tasktracker_username"] for user in user_mappings}
 
         for username in configured_usernames:
             coordinators[username] = {
@@ -241,7 +239,9 @@ async def handle_subscribe_tasktracker_events(
     def forward_event(event):
         """Forward events to websocket."""
         connection.send_message(
-            websocket_api.event_message(msg["id"], {"event_type": event.event_type, "data": event.data})
+            websocket_api.event_message(
+                msg["id"], {"event_type": event.event_type, "data": event.data}
+            )
         )
 
     # Register the listener

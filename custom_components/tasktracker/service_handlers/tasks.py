@@ -562,7 +562,9 @@ def get_available_tasks_handler_factory(
             upcoming_days = call.data.get("upcoming_days")
 
             # Use cache helper
-            cache_key = f"available_tasks:{username}:{available_minutes}:{upcoming_days}"
+            cache_key = (
+                f"available_tasks:{username}:{available_minutes}:{upcoming_days}"
+            )
 
             async def fetch_available_tasks():
                 return await api.get_available_tasks(
