@@ -314,12 +314,46 @@ export class TaskTrackerDateTime {
     }
 
     const context = this.parseUserContext(userContext);
+
+    // Convert the datetime to its logical date (respecting reset time)
+    const checkLogicalDate = this.getLogicalDateFromDateTime(dateISO, userContext);
+
+    return checkLogicalDate === context.current_logical_date;
+  }
+
+  /**
+   * Convert a datetime to its logical date based on daily reset time
+   * Matches backend logic from get_user_logical_date in time_utils.py
+   * @param {string} dateISO - Date in ISO format
+   * @param {Object} userContext - User context object
+   * @returns {string} Logical date in YYYY-MM-DD format
+   */
+  static getLogicalDateFromDateTime(dateISO, userContext) {
+    const context = this.parseUserContext(userContext);
     const date = new Date(dateISO);
 
-    // Get date portion directly in user's timezone (avoid double conversion)
-    const checkDate = date.toLocaleDateString("en-CA", { timeZone: context.timezone }); // YYYY-MM-DD format
+    // Get the calendar date and time in user's timezone
+    const calendarDate = date.toLocaleDateString("en-CA", { timeZone: context.timezone }); // YYYY-MM-DD
+    const timeString = date.toLocaleTimeString("en-US", {
+      timeZone: context.timezone,
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    }); // HH:MM format
 
-    return checkDate === context.current_logical_date;
+    // Parse the time to compare with reset time
+    const [hours, minutes] = timeString.split(':').map(num => parseInt(num, 10));
+    const timeMinutes = hours * 60 + minutes;
+    const resetMinutes = this.parseTimeToMinutes(context.daily_reset_time);
+
+    // If the datetime's time is before reset time, it belongs to the previous logical day
+    if (timeMinutes < resetMinutes) {
+      const dateObj = new Date(calendarDate + 'T00:00:00');
+      dateObj.setDate(dateObj.getDate() - 1);
+      return dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+
+    return calendarDate;
   }
 
   /**
@@ -335,12 +369,11 @@ export class TaskTrackerDateTime {
 
     try {
       const context = this.parseUserContext(userContext);
-      const date = new Date(dateISO);
 
-      // Get date portion directly in user's timezone (avoid double conversion)
-      const dateLogical = date.toLocaleDateString("en-CA", { timeZone: context.timezone }); // YYYY-MM-DD format
+      // Convert the datetime to its logical date (respecting reset time)
+      const dateLogical = this.getLogicalDateFromDateTime(dateISO, userContext);
 
-      // Calculate difference in logical days
+      // Calculate difference in logical days (date-only comparison)
       const currentDateObj = new Date(context.current_logical_date + 'T00:00:00');
       const dateObj = new Date(dateLogical + 'T00:00:00');
       const diffTime = currentDateObj.getTime() - dateObj.getTime();

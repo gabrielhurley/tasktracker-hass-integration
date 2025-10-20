@@ -334,7 +334,7 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
     this.setEventCleanups(cleanups);
   }
 
-  _shouldRefreshForUser(completedByUsername) {
+  _shouldRefreshForUser(assignedUsersOrUsername) {
     const currentUsername = this._getCurrentUsername();
 
     // If we're showing all users, refresh for any completion
@@ -344,7 +344,12 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
 
     // If we're filtering by user, only refresh if it matches our filter
     if (currentUsername) {
-      return completedByUsername === currentUsername;
+      // Handle both single username and array of usernames
+      if (Array.isArray(assignedUsersOrUsername)) {
+        return assignedUsersOrUsername.includes(currentUsername);
+      } else {
+        return assignedUsersOrUsername === currentUsername;
+      }
     }
 
     // Default to refreshing
