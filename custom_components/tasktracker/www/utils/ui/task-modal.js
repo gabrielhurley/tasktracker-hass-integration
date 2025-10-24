@@ -772,7 +772,14 @@ export function createTaskModal(
     });
   }
 
-  if (editButton && onEdit) { editButton.addEventListener('click', () => { closeModal(); setTimeout(() => { onEdit(task); }, 220); }); }
+  if (editButton && onEdit) {
+    editButton.addEventListener('click', () => {
+      closeModal();
+      setTimeout(() => {
+        onEdit(task);
+      }, 220);
+    });
+  }
 
   completeButton.addEventListener('click', async () => {
     const notesVal = completionNotesTextarea.value.trim();

@@ -425,7 +425,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         // Refresh the task list when new tasks are created
         setTimeout(() => {
           this._fetchAllTasks();
-        }, 500);
+        }, 100);
       }
     );
 
@@ -436,7 +436,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         // Refresh the task list when tasks are completed
         setTimeout(() => {
           this._fetchAllTasks();
-        }, 500);
+        }, 100);
       }
     );
 

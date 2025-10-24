@@ -303,7 +303,7 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
         if (shouldRefresh) {
           setTimeout(() => {
             this._fetchTimeSpentData();
-          }, 500);
+          }, 100);
         }
       }
     );
@@ -319,7 +319,7 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
         if (shouldRefresh) {
           setTimeout(() => {
             this._fetchTimeSpentData();
-          }, 500);
+          }, 100);
         }
       }
     );

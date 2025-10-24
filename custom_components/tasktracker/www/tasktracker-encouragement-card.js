@@ -163,7 +163,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
       if (shouldRefresh) {
         setTimeout(() => {
           this._fetchEncouragement();
-        }, 500);
+        }, 100);
       }
     });
 
@@ -173,7 +173,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
       if (!currentUsername || currentUsername === eventData.username) {
         setTimeout(() => {
           this._fetchEncouragement();
-        }, 500);
+        }, 100);
       }
     });
 
@@ -184,7 +184,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
       if (!username || username === evUsername) {
         setTimeout(() => {
           this._fetchEncouragement();
-        }, 500);
+        }, 100);
       }
     });
 
