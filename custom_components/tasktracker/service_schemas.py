@@ -112,6 +112,7 @@ TASK_NUDGE_SCHEMA = vol.Schema(
                 "time_of_day",
                 "after_due_delay",
                 "overdue_threshold",
+                "window_end",
             ]
         ),
         vol.Optional("trigger_config"): dict,

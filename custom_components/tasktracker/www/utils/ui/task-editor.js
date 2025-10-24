@@ -98,14 +98,16 @@ export class TaskTrackerTaskEditor {
         const updates = this.collectFormData(form, task);
         if (Object.keys(updates).length > 0) {
           await onSave(task, updates);
-          showSuccess('Task updated successfully');
+          // Success message is handled by the onSave callback (_saveTask)
+          closeModal();
         } else {
           showSuccess('No changes detected');
+          closeModal();
         }
-        closeModal();
       } catch (error) {
         console.error('Failed to save task:', error);
         showError(`Failed to save task: ${error.message}`);
+        // Don't close modal on error so user can fix the issue
       }
     };
 
@@ -335,7 +337,8 @@ export class TaskTrackerTaskEditor {
         { value: 'on_overdue', label: 'When task becomes overdue' },
         { value: 'time_of_day', label: 'At specific time of day' },
         { value: 'after_due_delay', label: 'After due with delay' },
-        { value: 'overdue_threshold', label: 'When overdue threshold reached' }
+        { value: 'overdue_threshold', label: 'When overdue threshold reached' },
+        { value: 'window_end', label: 'When time window ends without completion' }
       ]
     );
     fields.appendChild(triggerSelect);
@@ -380,6 +383,19 @@ export class TaskTrackerTaskEditor {
           365
         );
         configContainer.appendChild(daysField);
+      } else if (triggerType === 'window_end') {
+        const windowLabelField = this.createTextField(
+          `nudge_config_window_label_${index}`,
+          'Window Label (optional)',
+          nudge.trigger_config?.window_label || ''
+        );
+        const helpText = document.createElement('div');
+        helpText.className = 'tt-text-muted';
+        helpText.style.fontSize = '0.85em';
+        helpText.style.marginTop = '4px';
+        helpText.textContent = 'Leave empty to trigger for any window, or specify a window label (e.g., "Morning")';
+        windowLabelField.appendChild(helpText);
+        configContainer.appendChild(windowLabelField);
       }
     };
 
@@ -740,6 +756,11 @@ export class TaskTrackerTaskEditor {
         } else if (triggerType === 'overdue_threshold') {
           const days = parseInt(formData.get(`nudge_config_days_${index}`) || '1', 10);
           nudge.trigger_config.days = days;
+        } else if (triggerType === 'window_end') {
+          const windowLabel = formData.get(`nudge_config_window_label_${index}`);
+          if (windowLabel && windowLabel.trim()) {
+            nudge.trigger_config.window_label = windowLabel.trim();
+          }
         }
 
         return nudge;
