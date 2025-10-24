@@ -95,6 +95,7 @@ SERVICE_GET_DAILY_STATE: Final = "get_daily_state"
 SERVICE_SET_DAILY_STATE: Final = "set_daily_state"
 SERVICE_CREATE_TASK_FROM_DESCRIPTION: Final = "create_task_from_description"
 SERVICE_DELETE_TASK: Final = "delete_task"
+SERVICE_INVALIDATE_CACHE: Final = "invalidate_cache"
 
 # Event names
 EVENT_DAILY_PLAN: Final = "tasktracker_daily_plan"

@@ -46,16 +46,15 @@ async def invalidate_user_cache(hass: HomeAssistant, username: str) -> None:
     # Invalidate cache entries for this user
     cache = entry_data.get("cache")
     if cache:
-        # Invalidate user-specific cache entries
+        # Invalidate user-specific cache entries (matches keys like "recommended_tasks:username:...")
         await cache.invalidate(pattern=f":{username}")
         _LOGGER.debug("Invalidated user-specific cache for: %s", username)
 
         # Also invalidate shared/global caches that might include this user's data
-        # These are cached with username=None but still need to be refreshed
-        await cache.invalidate(pattern="available_tasks:None")
-        await cache.invalidate(pattern="all_tasks:None")
-        await cache.invalidate(pattern="recent_completions:None")
-        await cache.invalidate(pattern="leftovers:None")
+        await cache.invalidate(pattern="available_tasks:")
+        await cache.invalidate(pattern="all_tasks:")
+        await cache.invalidate(pattern="recent_completions:")
+        await cache.invalidate(pattern="leftovers:")
         _LOGGER.debug("Invalidated shared cache entries for user mutation")
 
     # Clear coordinator data and refresh (daily plan)
@@ -99,11 +98,14 @@ async def invalidate_all_user_caches(hass: HomeAssistant) -> None:
         _LOGGER.warning("Cache not available for invalidation")
         return
 
-    # Invalidate shared/global caches
-    await cache.invalidate(pattern="available_tasks:None")
-    await cache.invalidate(pattern="all_tasks:None")
-    await cache.invalidate(pattern="recent_completions:None")
-    await cache.invalidate(pattern="leftovers:None")
+    # Invalidate all task-related caches (use prefix patterns to match all variants)
+    await cache.invalidate(pattern="recommended_tasks:")
+    await cache.invalidate(pattern="available_tasks:")
+    await cache.invalidate(pattern="all_tasks:")
+    await cache.invalidate(pattern="recent_completions:")
+    await cache.invalidate(pattern="leftovers:")
+    await cache.invalidate(pattern="encouragement:")
+    await cache.invalidate(pattern="available_users")
     _LOGGER.debug("Invalidated all shared caches")
 
     # Invalidate per-user caches and coordinators for ALL configured users

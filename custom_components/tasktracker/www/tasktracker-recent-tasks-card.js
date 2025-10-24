@@ -97,7 +97,6 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
   }
 
   async onAutoRefresh() { await this._fetchRecentCompletions(); }
-  async onRefresh() { await this._fetchRecentCompletions(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
@@ -228,7 +227,7 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchRecentCompletions());
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this.onRefresh());
 
     // Add event listeners for edit buttons
     const editButtons = this.shadowRoot.querySelectorAll('.complete-btn[data-completion-id]');

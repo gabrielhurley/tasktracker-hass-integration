@@ -63,9 +63,8 @@ create_leftover:
       required: false
       example: ["john_doe", "jane_doe"]
       selector:
-        select:
+        text:
           multiple: true
-          custom_value: true
     shelf_life_days:
       required: false
       example: 3
@@ -92,9 +91,8 @@ create_adhoc_task:
       required: false
       example: ["john_doe", "jane_doe"]
       selector:
-        select:
+        text:
           multiple: true
-          custom_value: true
     duration_minutes:
       required: false
       example: 30
@@ -234,9 +232,8 @@ update_task:
       required: false
       example: ["john_doe", "jane_doe"]
       selector:
-        select:
+        text:
           multiple: true
-          custom_value: true
 
     # BaseTask fields
     name:

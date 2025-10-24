@@ -710,7 +710,7 @@ def get_recent_completions_handler_factory(
             # Use cache helper
             cache_key = f"recent_completions:{username}:{days}:{limit}"
 
-            async def fetch_recent_completions() -> dict[str, Any]  :
+            async def fetch_recent_completions() -> dict[str, Any]:
                 return await api.get_recent_completions(
                     username=username,
                     days=days,

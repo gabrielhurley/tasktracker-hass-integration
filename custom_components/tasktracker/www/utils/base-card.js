@@ -21,6 +21,7 @@ export class TaskTrackerBaseCard extends HTMLElement {
     this._refreshInterval = null;
     this._eventCleanup = null;
     this._structureRendered = false; // Track if structure has been rendered to prevent double-rendering
+    this._refreshing = false; // Track if refresh is in progress
   }
 
   // Subclasses should override to provide defaults
@@ -80,7 +81,29 @@ export class TaskTrackerBaseCard extends HTMLElement {
   onAutoRefresh() {}
 
   // Subclasses can override for header action
-  onRefresh() { this.onAutoRefresh(); }
+  async onRefresh() {
+    if (this._refreshing) return; // Prevent multiple simultaneous refreshes
+
+    try {
+      this._refreshing = true;
+      this._updateRefreshButtonState(true);
+
+      // Invalidate cache first (5th param = returnResponse)
+      await this._hass.callService('tasktracker', 'invalidate_cache', {}, {}, true, true);
+
+      // Then fetch fresh data
+      await this.onAutoRefresh();
+
+      // Show success feedback
+      TaskTrackerUtils.showSuccess('Data refreshed');
+    } catch (error) {
+      console.error('Refresh failed:', error);
+      TaskTrackerUtils.showError('Refresh failed');
+    } finally {
+      this._refreshing = false;
+      this._updateRefreshButtonState(false);
+    }
+  }
 
   _setupAutoRefreshHelper(callback, intervalSeconds) {
     if (!intervalSeconds) return;
@@ -99,7 +122,7 @@ export class TaskTrackerBaseCard extends HTMLElement {
         <h3 class="title">${title}</h3>
         <div class="header-actions">
           ${headerActions}
-          ${showRefresh ? '<button class="refresh-btn" title="Refresh"><ha-icon icon="mdi:refresh"></ha-icon></button>' : ''}
+          ${showRefresh ? '<button class="refresh-btn" title="Refresh"><ha-icon icon="mdi:refresh"></ha-icon><ha-icon class="refresh-spinner" icon="mdi:loading"></ha-icon></button>' : ''}
           ${headerStatus}
         </div>
       </div>
@@ -198,6 +221,17 @@ export class TaskTrackerBaseCard extends HTMLElement {
     if (updates.title) {
       button.title = updates.title;
     }
+  }
+
+  /**
+   * Update the refresh button state (loading/idle)
+   * @param {boolean} isRefreshing - Whether refresh is in progress
+   */
+  _updateRefreshButtonState(isRefreshing) {
+    this._updateHeaderButton('.refresh-btn', {
+      classes: [{ className: 'refreshing', add: isRefreshing }],
+      attributes: { disabled: isRefreshing ? '' : null }
+    });
   }
 
   // Aggregate and manage event listener cleanup functions

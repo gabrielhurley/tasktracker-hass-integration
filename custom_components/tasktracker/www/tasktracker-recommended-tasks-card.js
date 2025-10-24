@@ -290,7 +290,7 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchRecommendedTasks());
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this.onRefresh());
 
     if (hasValidUserConfig) {
     const slider = this.shadowRoot.querySelector('.tt-ds-range');
@@ -328,7 +328,6 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
     return this._refreshing ? '<div class="refreshing-indicator"></div>' : '';
   }
   async onAutoRefresh() { await this._fetchRecommendedTasks(); }
-  async onRefresh() { await this._fetchRecommendedTasks(); }
 
   _renderContent() {
     // Only show loading state on initial load

@@ -112,7 +112,6 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
 
   onHassFirstRun() { this._fetchAvailableTasks(); this._setupEventListeners(); }
   async onAutoRefresh() { await this._fetchAvailableTasks(); }
-  async onRefresh() { await this._fetchAvailableTasks(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
@@ -303,7 +302,7 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchAvailableTasks());
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this.onRefresh());
 
     if (hasValidUserConfig) {
       // Setup task click handlers using the base class helper
@@ -322,7 +321,6 @@ class TaskTrackerAvailableTasksCard extends TaskTrackerTasksBaseCard {
   getCardTitle() { return 'Available Tasks'; }
   getHeaderStatusHTML() { return this._refreshing ? '<div class="refreshing-indicator"></div>' : ''; }
   async onAutoRefresh() { await this._fetchAvailableTasks(); }
-  async onRefresh() { await this._fetchAvailableTasks(); }
 
   _renderContent() {
     // Only show loading state on initial load

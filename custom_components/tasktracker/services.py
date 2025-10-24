@@ -24,12 +24,14 @@ from .const import (
     SERVICE_GET_DAILY_STATE,
     SERVICE_GET_RECENT_COMPLETIONS,
     SERVICE_GET_RECOMMENDED_TASKS,
+    SERVICE_INVALIDATE_CACHE,
     SERVICE_LIST_LEFTOVERS,
     SERVICE_QUERY_TASK,
     SERVICE_SET_DAILY_STATE,
     SERVICE_UPDATE_COMPLETION,
     SERVICE_UPDATE_TASK,
 )
+from .service_handlers.cache import invalidate_cache_handler_factory
 from .service_handlers.completions import (
     delete_completion_handler_factory,
     update_completion_handler_factory,
@@ -77,6 +79,7 @@ from .service_schemas import (
     GET_DAILY_STATE_SCHEMA,
     GET_RECENT_COMPLETIONS_SCHEMA,
     GET_RECOMMENDED_TASKS_SCHEMA,
+    INVALIDATE_CACHE_SCHEMA,
     LIST_LEFTOVERS_SCHEMA,
     QUERY_TASK_SCHEMA,
     SET_DAILY_STATE_SCHEMA,
@@ -167,6 +170,7 @@ async def async_setup_services(  # noqa: PLR0915
         delete_task_service = delete_task_handler_factory(
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
         )
+        invalidate_cache_service = invalidate_cache_handler_factory()
 
         # Register services
         _LOGGER.debug("Registering individual services...")
@@ -347,6 +351,15 @@ async def async_setup_services(  # noqa: PLR0915
         )
         _LOGGER.debug("Registered service: %s", SERVICE_DELETE_TASK)
 
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_INVALIDATE_CACHE,
+            invalidate_cache_service,
+            schema=INVALIDATE_CACHE_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_INVALIDATE_CACHE)
+
         _LOGGER.info("TaskTracker services registered successfully")
 
     except Exception:
@@ -377,6 +390,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_SET_DAILY_STATE,
         SERVICE_CREATE_TASK_FROM_DESCRIPTION,
         SERVICE_DELETE_TASK,
+        SERVICE_INVALIDATE_CACHE,
     ]
 
     for service in services_to_remove:

@@ -245,3 +245,6 @@ DELETE_TASK_SCHEMA = vol.Schema(
         ),
     }
 )
+
+
+INVALIDATE_CACHE_SCHEMA = vol.Schema({})  # No parameters needed

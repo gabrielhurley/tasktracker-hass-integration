@@ -94,7 +94,6 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
   }
 
   async onAutoRefresh() { await this._fetchLeftovers(); }
-  async onRefresh() { await this._fetchLeftovers(); }
 
   _getCurrentUsername() {
     return TaskTrackerUtils.getCurrentUsername(this._config, this._hass, this._availableUsers);
@@ -333,7 +332,7 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
 
     // Add event listeners
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
-    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchLeftovers());
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this.onRefresh());
 
     if (hasValidUserConfig) {
       // Dispose button click handlers

@@ -456,10 +456,38 @@ export class TaskTrackerStyles {
         padding: 2px;
         cursor: pointer;
         color: var(--secondary-text-color);
+        position: relative;
       }
 
       .refresh-btn:hover {
         background: var(--secondary-background-color);
+      }
+
+      .refresh-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .refresh-btn ha-icon:first-child {
+        display: block;
+      }
+
+      .refresh-btn .refresh-spinner {
+        display: none;
+        animation: spin 1s linear infinite;
+      }
+
+      .refresh-btn.refreshing ha-icon:first-child {
+        display: none;
+      }
+
+      .refresh-btn.refreshing .refresh-spinner {
+        display: block;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
 
       /* Shared utilities and components */

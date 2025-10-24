@@ -643,7 +643,6 @@ class TaskTrackerDailyPlanCard extends TaskTrackerTasksBaseCard {
   }
 
   async onAutoRefresh() { await this._fetchPlan(); }
-  async onRefresh() { await this._fetchPlan(); }
 
   _renderPlanContent() {
     if (!this._plan) {
