@@ -428,17 +428,20 @@ export class TaskTrackerDateTime {
       }
 
       // Fallback to calendar day calculation for non-daily tasks or when no user context
+      // Use date-only comparison to avoid Math.ceil() bug that rounds up fractional days
       const dueDate = new Date(dueDateISO);
       const now = new Date();
-      const diffTime = dueDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Compare dates only (without time component)
+      const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffTime = dueDateOnly.getTime() - nowDateOnly.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
       const isOverdue = diffDays < 0;
 
       if (isOverdue) {
         const overdueDays = Math.abs(diffDays);
-        if (overdueDays === 0) {
-          return 'Today';
-        } else if (overdueDays === 1) {
+        if (overdueDays === 1) {
           return '1 day overdue';
         } else {
           return `${overdueDays} days overdue`;

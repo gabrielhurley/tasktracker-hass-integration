@@ -488,6 +488,38 @@ describe('TaskTrackerDateTime', () => {
       const formatted = TaskTrackerDateTime.formatDueDateLogical(now.toISOString(), null, task);
       expect(formatted).toBe('Today');
     });
+
+    test('REGRESSION: should show "Today" for weekly task due later today (Bug fix for Math.ceil)', () => {
+      // This is the specific bug reported by the user:
+      // A weekly task due at 9:53 PM today should show "Today", not "Tomorrow"
+      // The bug was caused by Math.ceil() rounding up fractional days
+
+      const task = {
+        frequency_unit: 'weeks',
+        frequency_value: 1
+      };
+
+      // Create a date for today at 9:53 PM (simulating the user's exact scenario)
+      const today = new Date();
+      today.setHours(21, 53, 50, 0); // 9:53:50 PM today
+
+      const formatted = TaskTrackerDateTime.formatDueDateLogical(today.toISOString(), null, task);
+      expect(formatted).toBe('Today');
+    });
+
+    test('REGRESSION: should show "Today" for weekly task due early morning today', () => {
+      // Additional edge case: task due in the early morning hours
+      const task = {
+        frequency_unit: 'weeks',
+        frequency_value: 1
+      };
+
+      const today = new Date();
+      today.setHours(2, 0, 0, 0); // 2:00 AM today
+
+      const formatted = TaskTrackerDateTime.formatDueDateLogical(today.toISOString(), null, task);
+      expect(formatted).toBe('Today');
+    });
   });
 
   describe('Error Handling', () => {
