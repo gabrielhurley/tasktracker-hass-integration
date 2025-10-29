@@ -9,12 +9,15 @@ from homeassistant.core import SupportsResponse
 
 from .const import (
     DOMAIN,
+    SERVICE_ASSOCIATE_TASK_WITH_GOAL,
     SERVICE_COMPLETE_TASK,
     SERVICE_COMPLETE_TASK_BY_NAME,
     SERVICE_CREATE_ADHOC_TASK,
+    SERVICE_CREATE_GOAL,
     SERVICE_CREATE_LEFTOVER,
     SERVICE_CREATE_TASK_FROM_DESCRIPTION,
     SERVICE_DELETE_COMPLETION,
+    SERVICE_DELETE_GOAL,
     SERVICE_DELETE_TASK,
     SERVICE_GET_ALL_TASKS,
     SERVICE_GET_AVAILABLE_TASKS,
@@ -25,10 +28,14 @@ from .const import (
     SERVICE_GET_RECENT_COMPLETIONS,
     SERVICE_GET_RECOMMENDED_TASKS,
     SERVICE_INVALIDATE_CACHE,
+    SERVICE_LIST_GOAL_TASKS,
+    SERVICE_LIST_GOALS,
     SERVICE_LIST_LEFTOVERS,
     SERVICE_QUERY_TASK,
+    SERVICE_REMOVE_TASK_FROM_GOAL,
     SERVICE_SET_DAILY_STATE,
     SERVICE_UPDATE_COMPLETION,
+    SERVICE_UPDATE_GOAL,
     SERVICE_UPDATE_TASK,
 )
 from .service_handlers.cache import invalidate_cache_handler_factory
@@ -41,6 +48,15 @@ from .service_handlers.daily import (
     get_daily_plan_handler_factory,
     get_daily_state_handler_factory,
     set_daily_state_handler_factory,
+)
+from .service_handlers.goals import (
+    associate_task_handler_factory,
+    create_goal_handler_factory,
+    delete_goal_handler_factory,
+    list_goal_tasks_handler_factory,
+    list_goals_handler_factory,
+    remove_task_handler_factory,
+    update_goal_handler_factory,
 )
 from .service_handlers.leftovers import (
     create_leftover_handler_factory,
@@ -65,12 +81,15 @@ from .service_handlers.users import (
 
 # Import schemas and handler factories (refactored into modules)
 from .service_schemas import (
+    ASSOCIATE_TASK_SCHEMA,
     COMPLETE_TASK_BY_NAME_SCHEMA,
     COMPLETE_TASK_SCHEMA,
     CREATE_ADHOC_TASK_SCHEMA,
+    CREATE_GOAL_SCHEMA,
     CREATE_LEFTOVER_SCHEMA,
     CREATE_TASK_FROM_DESCRIPTION_SCHEMA,
     DELETE_COMPLETION_SCHEMA,
+    DELETE_GOAL_SCHEMA,
     DELETE_TASK_SCHEMA,
     GET_ALL_TASKS_SCHEMA,
     GET_AVAILABLE_TASKS_SCHEMA,
@@ -80,10 +99,14 @@ from .service_schemas import (
     GET_RECENT_COMPLETIONS_SCHEMA,
     GET_RECOMMENDED_TASKS_SCHEMA,
     INVALIDATE_CACHE_SCHEMA,
+    LIST_GOAL_TASKS_SCHEMA,
+    LIST_GOALS_SCHEMA,
     LIST_LEFTOVERS_SCHEMA,
     QUERY_TASK_SCHEMA,
+    REMOVE_TASK_SCHEMA,
     SET_DAILY_STATE_SCHEMA,
     UPDATE_COMPLETION_SCHEMA,
+    UPDATE_GOAL_SCHEMA,
     UPDATE_TASK_SCHEMA,
 )
 from .utils import (
@@ -171,6 +194,27 @@ async def async_setup_services(  # noqa: PLR0915
             hass, api, get_current_config, get_tasktracker_username_for_ha_user
         )
         invalidate_cache_service = invalidate_cache_handler_factory()
+        list_goals_service = list_goals_handler_factory(
+            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        )
+        create_goal_service = create_goal_handler_factory(
+            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        )
+        update_goal_service = update_goal_handler_factory(
+            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        )
+        delete_goal_service = delete_goal_handler_factory(
+            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        )
+        list_goal_tasks_service = list_goal_tasks_handler_factory(
+            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        )
+        associate_task_service = associate_task_handler_factory(
+            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        )
+        remove_task_service = remove_task_handler_factory(
+            hass, api, get_current_config, get_tasktracker_username_for_ha_user
+        )
 
         # Register services
         _LOGGER.debug("Registering individual services...")
@@ -360,6 +404,69 @@ async def async_setup_services(  # noqa: PLR0915
         )
         _LOGGER.debug("Registered service: %s", SERVICE_INVALIDATE_CACHE)
 
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_LIST_GOALS,
+            list_goals_service,
+            schema=LIST_GOALS_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_LIST_GOALS)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_CREATE_GOAL,
+            create_goal_service,
+            schema=CREATE_GOAL_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_CREATE_GOAL)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_UPDATE_GOAL,
+            update_goal_service,
+            schema=UPDATE_GOAL_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_UPDATE_GOAL)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_DELETE_GOAL,
+            delete_goal_service,
+            schema=DELETE_GOAL_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_DELETE_GOAL)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_LIST_GOAL_TASKS,
+            list_goal_tasks_service,
+            schema=LIST_GOAL_TASKS_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_LIST_GOAL_TASKS)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_ASSOCIATE_TASK_WITH_GOAL,
+            associate_task_service,
+            schema=ASSOCIATE_TASK_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_ASSOCIATE_TASK_WITH_GOAL)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_REMOVE_TASK_FROM_GOAL,
+            remove_task_service,
+            schema=REMOVE_TASK_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        _LOGGER.debug("Registered service: %s", SERVICE_REMOVE_TASK_FROM_GOAL)
+
         _LOGGER.info("TaskTracker services registered successfully")
 
     except Exception:
@@ -391,6 +498,13 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_CREATE_TASK_FROM_DESCRIPTION,
         SERVICE_DELETE_TASK,
         SERVICE_INVALIDATE_CACHE,
+        SERVICE_LIST_GOALS,
+        SERVICE_CREATE_GOAL,
+        SERVICE_UPDATE_GOAL,
+        SERVICE_DELETE_GOAL,
+        SERVICE_LIST_GOAL_TASKS,
+        SERVICE_ASSOCIATE_TASK_WITH_GOAL,
+        SERVICE_REMOVE_TASK_FROM_GOAL,
     ]
 
     for service in services_to_remove:

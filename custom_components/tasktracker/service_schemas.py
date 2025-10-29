@@ -248,4 +248,60 @@ DELETE_TASK_SCHEMA = vol.Schema(
 )
 
 
+# Goal management schemas
+LIST_GOALS_SCHEMA = vol.Schema({})
+
+
+CREATE_GOAL_SCHEMA = vol.Schema(
+    {
+        vol.Required("name"): cv.string,
+        vol.Optional("description"): cv.string,
+        vol.Optional("is_active", default=True): cv.boolean,
+        vol.Optional("priority", default=2): vol.In([1, 2, 3]),
+    }
+)
+
+
+UPDATE_GOAL_SCHEMA = vol.Schema(
+    {
+        vol.Required("goal_id"): cv.positive_int,
+        vol.Optional("name"): cv.string,
+        vol.Optional("description"): cv.string,
+        vol.Optional("is_active"): cv.boolean,
+        vol.Optional("priority"): vol.In([1, 2, 3]),
+    }
+)
+
+
+DELETE_GOAL_SCHEMA = vol.Schema(
+    {
+        vol.Required("goal_id"): cv.positive_int,
+    }
+)
+
+
+LIST_GOAL_TASKS_SCHEMA = vol.Schema(
+    {
+        vol.Required("goal_id"): cv.positive_int,
+    }
+)
+
+
+ASSOCIATE_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("goal_id"): cv.positive_int,
+        vol.Required("task_type"): vol.In(["recurring", "selfcare", "adhoc"]),
+        vol.Required("task_id"): cv.positive_int,
+    }
+)
+
+
+REMOVE_TASK_SCHEMA = vol.Schema(
+    {
+        vol.Required("goal_id"): cv.positive_int,
+        vol.Required("association_id"): cv.positive_int,
+    }
+)
+
+
 INVALIDATE_CACHE_SCHEMA = vol.Schema({})  # No parameters needed

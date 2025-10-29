@@ -127,6 +127,8 @@ export class TaskTrackerStyles {
       .tt-form-row input[type="checkbox"] { align-self: flex-start; }
       /* Avoid extra spacing inside form rows where row gap manages spacing */
       .tt-form-row .tt-label { margin-bottom: 0; }
+      /* Add vertical padding to checkbox labels to match input height */
+      .tt-form-row .tt-label:has(> .tt-checkbox) { padding: 8px 0; }
       .tt-label { display: block; font-size: 0.85em; color: var(--secondary-text-color); font-weight: 500; margin-bottom: 4px; }
 
       /* Layout utilities */

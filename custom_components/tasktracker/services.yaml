@@ -486,3 +486,138 @@ set_daily_state:
       example: false
       selector:
         boolean:
+
+list_goals:
+  description: "List all goals for the authenticated user"
+  fields: {}
+
+create_goal:
+  description: "Create a new goal for the authenticated user"
+  fields:
+    name:
+      required: true
+      example: "Be More Healthy"
+      selector:
+        text:
+    description:
+      required: false
+      example: "Focus on physical and mental well-being"
+      selector:
+        text:
+          multiline: true
+    is_active:
+      required: false
+      example: true
+      selector:
+        boolean:
+    priority:
+      required: false
+      example: 2
+      selector:
+        select:
+          options:
+            - label: "High"
+              value: 1
+            - label: "Medium"
+              value: 2
+            - label: "Low"
+              value: 3
+
+update_goal:
+  description: "Update an existing goal"
+  fields:
+    goal_id:
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+    name:
+      required: false
+      example: "Be More Healthy"
+      selector:
+        text:
+    description:
+      required: false
+      example: "Updated description"
+      selector:
+        text:
+          multiline: true
+    is_active:
+      required: false
+      example: true
+      selector:
+        boolean:
+    priority:
+      required: false
+      example: 2
+      selector:
+        select:
+          options:
+            - label: "High"
+              value: 1
+            - label: "Medium"
+              value: 2
+            - label: "Low"
+              value: 3
+
+delete_goal:
+  description: "Delete a goal and all its task associations"
+  fields:
+    goal_id:
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+
+list_goal_tasks:
+  description: "List all tasks associated with a specific goal"
+  fields:
+    goal_id:
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+
+associate_task_with_goal:
+  description: "Associate a task with a goal"
+  fields:
+    goal_id:
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+    task_type:
+      required: true
+      example: "recurring"
+      selector:
+        select:
+          options:
+            - "recurring"
+            - "selfcare"
+            - "adhoc"
+    task_id:
+      required: true
+      example: 5
+      selector:
+        number:
+          min: 1
+
+remove_task_from_goal:
+  description: "Remove a task association from a goal"
+  fields:
+    goal_id:
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+    association_id:
+      required: true
+      example: 3
+      selector:
+        number:
+          min: 1

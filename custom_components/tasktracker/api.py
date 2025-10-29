@@ -20,6 +20,13 @@ from .const import (
     ENDPOINT_DAILY_STATE,
     ENDPOINT_DELETE_COMPLETION,
     ENDPOINT_DELETE_TASK,
+    ENDPOINT_GOALS_ASSOCIATE_TASK,
+    ENDPOINT_GOALS_CREATE,
+    ENDPOINT_GOALS_DELETE,
+    ENDPOINT_GOALS_LIST,
+    ENDPOINT_GOALS_LIST_TASKS,
+    ENDPOINT_GOALS_REMOVE_TASK,
+    ENDPOINT_GOALS_UPDATE,
     ENDPOINT_LIST_LEFTOVERS,
     ENDPOINT_QUERY_TASK,
     ENDPOINT_RECENT_COMPLETIONS,
@@ -405,3 +412,91 @@ class TaskTrackerAPI:
             data["is_sick"] = is_sick
 
         return await self._request("POST", ENDPOINT_DAILY_STATE, data=data)
+
+    # Goal management methods
+    async def list_goals(self, username: str) -> dict[str, Any]:
+        """List all goals for a specific user."""
+        params = {"username": username}
+        return await self._request("GET", ENDPOINT_GOALS_LIST, params=params)
+
+    async def create_goal(
+        self,
+        username: str,
+        name: str,
+        description: str | None = None,
+        is_active: bool = True,
+        priority: int = 2,
+    ) -> dict[str, Any]:
+        """Create a new goal."""
+        data: dict[str, Any] = {
+            "username": username,
+            "name": name,
+            "is_active": is_active,
+            "priority": priority,
+        }
+        if description:
+            data["description"] = description
+        return await self._request("POST", ENDPOINT_GOALS_CREATE, data=data)
+
+    async def update_goal(
+        self,
+        username: str,
+        goal_id: int,
+        name: str | None = None,
+        description: str | None = None,
+        is_active: bool | None = None,
+        priority: int | None = None,
+    ) -> dict[str, Any]:
+        """Update an existing goal."""
+        data: dict[str, Any] = {
+            "username": username,
+            "goal_id": goal_id,
+        }
+        if name is not None:
+            data["name"] = name
+        if description is not None:
+            data["description"] = description
+        if is_active is not None:
+            data["is_active"] = is_active
+        if priority is not None:
+            data["priority"] = priority
+
+        return await self._request("POST", ENDPOINT_GOALS_UPDATE, data=data)
+
+    async def delete_goal(self, username: str, goal_id: int) -> dict[str, Any]:
+        """Delete a goal."""
+        params = {"username": username, "goal_id": goal_id}
+        # Empty body required per schema
+        return await self._request("POST", ENDPOINT_GOALS_DELETE, data={}, params=params)
+
+    async def list_goal_tasks(self, username: str, goal_id: int) -> dict[str, Any]:
+        """List all tasks associated with a goal."""
+        params = {"username": username, "goal_id": goal_id}
+        return await self._request("GET", ENDPOINT_GOALS_LIST_TASKS, params=params)
+
+    async def associate_task_with_goal(
+        self,
+        username: str,
+        goal_id: int,
+        task_type: str,
+        task_id: int,
+    ) -> dict[str, Any]:
+        """Associate a task with a goal."""
+        data = {
+            "username": username,
+            "goal_id": goal_id,
+            "task_type": task_type,
+            "task_id": task_id,
+        }
+        return await self._request("POST", ENDPOINT_GOALS_ASSOCIATE_TASK, data=data)
+
+    async def remove_task_from_goal(
+        self,
+        username: str,
+        goal_id: int,
+        association_id: int,
+    ) -> dict[str, Any]:
+        """Remove a task association from a goal."""
+        params = {"username": username, "goal_id": goal_id, "association_id": association_id}
+        # Empty body required per schema
+        return await self._request("POST", ENDPOINT_GOALS_REMOVE_TASK, data={}, params=params)
