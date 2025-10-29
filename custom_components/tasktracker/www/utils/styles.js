@@ -127,6 +127,8 @@ export class TaskTrackerStyles {
       .tt-form-row input[type="checkbox"] { align-self: flex-start; }
       /* Avoid extra spacing inside form rows where row gap manages spacing */
       .tt-form-row .tt-label { margin-bottom: 0; }
+      /* Add vertical padding to checkbox labels to match input height */
+      .tt-form-row .tt-label:has(> .tt-checkbox) { padding: 8px 0; }
       .tt-label { display: block; font-size: 0.85em; color: var(--secondary-text-color); font-weight: 500; margin-bottom: 4px; }
 
       /* Layout utilities */
@@ -309,6 +311,126 @@ export class TaskTrackerStyles {
       .tt-nudge-editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--divider-color); }
       .tt-nudge-config { grid-column: 1 / -1; }
       .tt-flex-col { display: flex; flex-direction: column; }
+
+      /* Modal sections and details (for detail views in modals) */
+      .modal-section { margin-bottom: 20px; }
+      .modal-section:last-child { margin-bottom: 0; }
+      .modal-section-title {
+        font-weight: 600;
+        margin-bottom: 12px;
+        font-size: 14px;
+        color: var(--secondary-text-color);
+        text-transform: uppercase;
+      }
+      .detail-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+        align-items: flex-start;
+      }
+      .detail-label {
+        font-weight: 500;
+        color: var(--secondary-text-color);
+        min-width: 100px;
+        flex-shrink: 0;
+      }
+      .detail-value {
+        flex: 1;
+        color: var(--primary-text-color);
+      }
+
+      /* Priority border colors for task-items */
+      .task-item.priority-high { border-left-color: var(--error-color, #db4437); }
+      .task-item.priority-medium { border-left-color: var(--warning-color, #ffa600); }
+      .task-item.priority-low { border-left-color: var(--info-color, #4285f4); }
+      .task-item.inactive { opacity: 0.6; }
+
+      /* Badge colors for priorities and task types */
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .badge--high {
+        background-color: var(--error-color, #db4437);
+        color: white;
+      }
+      .badge--medium {
+        background-color: var(--warning-color, #ffa600);
+        color: white;
+      }
+      .badge--low {
+        background-color: var(--info-color, #4285f4);
+        color: white;
+      }
+      .badge--recurring {
+        background-color: var(--primary-color);
+        color: white;
+      }
+      .badge--selfcare {
+        background-color: var(--accent-color, #ff9800);
+        color: white;
+      }
+      .badge--adhoc {
+        background-color: var(--info-color, #4285f4);
+        color: white;
+      }
+      .badge--associated {
+        background-color: var(--success-color, #0f9d58);
+        color: white;
+        margin-left: 4px;
+      }
+
+      /* Task picker for modals */
+      .task-picker-tasks {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .task-group-header {
+        font-weight: 600;
+        padding: 12px;
+        background-color: var(--secondary-background-color);
+        border-bottom: 1px solid var(--divider-color);
+        margin-top: 8px;
+      }
+      .task-group-header:first-child {
+        margin-top: 0;
+      }
+      .task-picker-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px;
+        border-bottom: 1px solid var(--divider-color);
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+      }
+      .task-picker-item:hover {
+        background-color: var(--secondary-background-color);
+      }
+      .task-picker-item--disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: var(--secondary-background-color);
+      }
+      .task-picker-item--disabled:hover {
+        background-color: var(--secondary-background-color);
+      }
+      .task-picker-item .task-name {
+        font-weight: 500;
+        color: var(--primary-text-color);
+      }
+      .task-picker-item .task-metadata {
+        font-size: 0.85em;
+        color: var(--secondary-text-color);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
     `;
   }
   static ensureGlobal() {

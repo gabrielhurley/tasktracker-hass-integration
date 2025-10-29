@@ -65,6 +65,11 @@ JSMODULES = [
         "filename": "tasktracker-create-task-card.js",
         "version": VERSION,
     },
+    {
+        "name": "TaskTracker Goals Card",
+        "filename": "tasktracker-goals-card.js",
+        "version": VERSION,
+    },
 ]
 
 # Configuration keys
@@ -96,6 +101,13 @@ SERVICE_SET_DAILY_STATE: Final = "set_daily_state"
 SERVICE_CREATE_TASK_FROM_DESCRIPTION: Final = "create_task_from_description"
 SERVICE_DELETE_TASK: Final = "delete_task"
 SERVICE_INVALIDATE_CACHE: Final = "invalidate_cache"
+SERVICE_LIST_GOALS: Final = "list_goals"
+SERVICE_CREATE_GOAL: Final = "create_goal"
+SERVICE_UPDATE_GOAL: Final = "update_goal"
+SERVICE_DELETE_GOAL: Final = "delete_goal"
+SERVICE_LIST_GOAL_TASKS: Final = "list_goal_tasks"
+SERVICE_ASSOCIATE_TASK_WITH_GOAL: Final = "associate_task_with_goal"
+SERVICE_REMOVE_TASK_FROM_GOAL: Final = "remove_task_from_goal"
 
 # Event names
 EVENT_DAILY_PLAN: Final = "tasktracker_daily_plan"
@@ -108,6 +120,9 @@ EVENT_LEFTOVER_CREATED: Final = "tasktracker_leftover_created"
 EVENT_LEFTOVER_DISPOSED: Final = "tasktracker_leftover_disposed"
 EVENT_COMPLETION_DELETED: Final = "tasktracker_completion_deleted"
 EVENT_COMPLETION_UPDATED: Final = "tasktracker_completion_updated"
+EVENT_GOAL_CREATED: Final = "tasktracker_goal_created"
+EVENT_GOAL_UPDATED: Final = "tasktracker_goal_updated"
+EVENT_GOAL_DELETED: Final = "tasktracker_goal_deleted"
 
 # All events that should be accessible to non-admin users
 TASKTRACKER_EVENTS: Final = [
@@ -121,6 +136,9 @@ TASKTRACKER_EVENTS: Final = [
     EVENT_LEFTOVER_DISPOSED,
     EVENT_COMPLETION_DELETED,
     EVENT_COMPLETION_UPDATED,
+    EVENT_GOAL_CREATED,
+    EVENT_GOAL_UPDATED,
+    EVENT_GOAL_DELETED,
 ]
 
 # API endpoints
@@ -147,6 +165,16 @@ ENDPOINT_CREATE_TASK_FROM_DESCRIPTION: Final = (
 )
 ENDPOINT_DELETE_TASK: Final = "/api/tasks/delete-task/"
 
+# Goal endpoints
+ENDPOINT_GOALS_LIST: Final = "/api/goals/list-goals/"
+ENDPOINT_GOALS_CREATE: Final = "/api/goals/create-goal/"
+ENDPOINT_GOALS_GET: Final = "/api/goals/get-goal/"
+ENDPOINT_GOALS_UPDATE: Final = "/api/goals/update-goal/"
+ENDPOINT_GOALS_DELETE: Final = "/api/goals/delete-goal/"
+ENDPOINT_GOALS_LIST_TASKS: Final = "/api/goals/list-goal-tasks/"
+ENDPOINT_GOALS_ASSOCIATE_TASK: Final = "/api/goals/associate-task/"
+ENDPOINT_GOALS_REMOVE_TASK: Final = "/api/goals/remove-task-association/"
+
 # Default values
 DEFAULT_SCAN_INTERVAL: Final = 300  # 5 minutes
 
@@ -164,3 +192,4 @@ COORDINATOR_UPDATE_INTERVAL_DAILY_PLAN: Final = 180  # 3 minutes
 # Additional cache TTLs
 CACHE_TTL_AVAILABLE_USERS: Final = 600  # 10 minutes - config changes are rare
 CACHE_TTL_DAILY_STATE: Final = 300  # 5 minutes
+CACHE_TTL_GOALS: Final = 300  # 5 minutes
