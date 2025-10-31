@@ -973,11 +973,6 @@ class TaskTrackerGoalsCard extends TaskTrackerBaseCard {
       }
 
       this._allTasks = tasks;
-      console.log('[Goals Card] Loaded', tasks.length, 'tasks:', {
-        recurring: tasks.filter(t => t.type === 'recurring').length,
-        selfcare: tasks.filter(t => t.type === 'selfcare').length,
-        adhoc: tasks.filter(t => t.type === 'adhoc').length
-      });
     } catch (error) {
       console.error('[Goals Card] Failed to fetch all tasks:', error);
       this._allTasks = [];
