@@ -543,3 +543,43 @@ class TestTaskTrackerAPI:
         result = await api_client.get_available_tasks(username="testuser")
 
         assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_adhoc_task_sends_required_assigned_to_field(
+        self, api_client: TaskTrackerAPI
+    ) -> None:
+        """Test that create_adhoc_task sends both assigned_to (required) and assigned_users."""
+        mock_response = AsyncMock()
+        mock_response.status = 201
+        mock_response.json.return_value = {
+            "success": True,
+            "spoken_response": "Task created successfully",
+            "data": {"task": {"id": 789, "name": "test task"}},
+        }
+
+        api_client.session.request.return_value.__aenter__.return_value = mock_response
+
+        result = await api_client.create_adhoc_task(
+            name="test task",
+            assigned_users=["testuser"],
+            duration_minutes=45,
+            priority=1,
+        )
+
+        assert result["success"] is True
+
+        # Verify the request was made with BOTH assigned_to and assigned_users
+        # The server requires assigned_to as a mandatory field per CreateAdHocTaskSerializer
+        api_client.session.request.assert_called_once()
+        call_args = api_client.session.request.call_args
+
+        # Extract the json data parameter
+        json_data = call_args.kwargs["json"]
+
+        # Server requires 'assigned_to' field (single user, required by serializer)
+        assert "assigned_to" in json_data, "assigned_to field is required by server but not sent"
+        assert json_data["assigned_to"] == "testuser", "assigned_to should be the first user"
+
+        # Server accepts 'assigned_users' field (list, optional for multi-user support)
+        assert "assigned_users" in json_data, "assigned_users should be sent for multi-user support"
+        assert json_data["assigned_users"] == ["testuser"], "assigned_users should match input"

@@ -182,6 +182,7 @@ class TaskTrackerAPI:
         """Create a new ad-hoc task."""
         data: dict[str, Any] = {
             "name": name,
+            "assigned_to": assigned_users[0],  # Server requires assigned_to as primary user
             "assigned_users": assigned_users,
         }
         if duration_minutes is not None:
