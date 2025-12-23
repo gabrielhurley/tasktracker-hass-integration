@@ -378,7 +378,7 @@ class TaskTrackerRecentTasksCard extends TaskTrackerBaseCard {
       this._config,
       async () => {
         // Delete/undo completion
-        await TaskTrackerUtils.deleteCompletion(this._hass, completionId);
+        await TaskTrackerUtils.deleteCompletion(this._hass, completionId, completion.task_type);
         this._fetchRecentCompletions();
       },
       async (updates) => {

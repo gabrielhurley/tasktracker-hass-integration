@@ -33,6 +33,7 @@ def delete_completion_handler_factory(
 
     The returned handler expects the following service data:
         - completion_id (str): The ID of the completion record to delete.
+        - task_type (str, optional): The type of task ('RecurringTask', 'SelfCareTask', 'AdHocTask', 'Leftover')
 
     The handler will:
         - Delete the completion record via the API
@@ -47,7 +48,7 @@ def delete_completion_handler_factory(
         Delete a completion record.
 
         Args:
-            call: The Home Assistant service call containing the completion_id.
+            call: The Home Assistant service call containing the completion_id and optional task_type.
 
         Returns:
             The API response from the delete operation.
@@ -60,6 +61,7 @@ def delete_completion_handler_factory(
         try:
             result = await api.delete_completion(
                 completion_id=call.data["completion_id"],
+                task_type=call.data.get("task_type"),
             )
             if result.get("success"):
                 # Aggressively invalidate all user caches

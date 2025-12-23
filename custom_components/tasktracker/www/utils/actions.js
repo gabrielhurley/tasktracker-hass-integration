@@ -19,9 +19,13 @@ export async function completeTask(hass, taskId, taskType, username, notes, comp
   }
 }
 
-export async function deleteCompletion(hass, completionId) {
+export async function deleteCompletion(hass, completionId, taskType = null) {
   try {
-    const response = await hass.callService('tasktracker', 'delete_completion', { completion_id: completionId }, {}, true, true);
+    const params = { completion_id: completionId };
+    if (taskType) {
+      params.task_type = taskType;
+    }
+    const response = await hass.callService('tasktracker', 'delete_completion', params, {}, true, true);
     const data = ensureServiceSuccess(response);
     showSuccess('Completion deleted successfully');
     return data;

@@ -323,9 +323,11 @@ class TaskTrackerAPI:
         return await self._request("GET", ENDPOINT_ALL_TASKS, params=params)
 
     # Completion editing methods
-    async def delete_completion(self, completion_id: int) -> dict[str, Any]:
+    async def delete_completion(self, completion_id: int, task_type: str | None = None) -> dict[str, Any]:
         """Delete/undo a completion record."""
         data = {"completion_id": completion_id}
+        if task_type:
+            data["task_type"] = task_type
         return await self._request("POST", ENDPOINT_DELETE_COMPLETION, data=data)
 
     async def update_completion(
