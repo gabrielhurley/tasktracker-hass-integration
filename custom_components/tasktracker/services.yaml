@@ -493,6 +493,7 @@ list_goals:
 
 create_goal:
   description: "Create a new goal for the authenticated user"
+  target: {}
   fields:
     name:
       required: true
@@ -517,14 +518,15 @@ create_goal:
         select:
           options:
             - label: "High"
-              value: 1
+              value: "1"
             - label: "Medium"
-              value: 2
+              value: "2"
             - label: "Low"
-              value: 3
+              value: "3"
 
 update_goal:
   description: "Update an existing goal"
+  target: {}
   fields:
     goal_id:
       required: true
@@ -555,11 +557,11 @@ update_goal:
         select:
           options:
             - label: "High"
-              value: 1
+              value: "1"
             - label: "Medium"
-              value: 2
+              value: "2"
             - label: "Low"
-              value: 3
+              value: "3"
 
 delete_goal:
   description: "Delete a goal and all its task associations"

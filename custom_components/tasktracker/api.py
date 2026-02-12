@@ -182,7 +182,9 @@ class TaskTrackerAPI:
         """Create a new ad-hoc task."""
         data: dict[str, Any] = {
             "name": name,
-            "assigned_to": assigned_users[0],  # Server requires assigned_to as primary user
+            "assigned_to": assigned_users[
+                0
+            ],  # Server requires assigned_to as primary user
             "assigned_users": assigned_users,
         }
         if duration_minutes is not None:
@@ -323,7 +325,9 @@ class TaskTrackerAPI:
         return await self._request("GET", ENDPOINT_ALL_TASKS, params=params)
 
     # Completion editing methods
-    async def delete_completion(self, completion_id: int, task_type: str | None = None) -> dict[str, Any]:
+    async def delete_completion(
+        self, completion_id: int, task_type: str | None = None
+    ) -> dict[str, Any]:
         """Delete/undo a completion record."""
         data = {"completion_id": completion_id}
         if task_type:
@@ -499,5 +503,9 @@ class TaskTrackerAPI:
         association_id: int,
     ) -> dict[str, Any]:
         """Remove a task association from a goal."""
-        data = {"username": username, "goal_id": goal_id, "association_id": association_id}
+        data = {
+            "username": username,
+            "goal_id": goal_id,
+            "association_id": association_id,
+        }
         return await self._request("POST", ENDPOINT_GOALS_REMOVE_TASK, data=data)

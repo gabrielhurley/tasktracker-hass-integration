@@ -51,9 +51,14 @@ def list_goals_handler_factory(
             user_id = call.context.user_id if call.context else None
             current_config = get_current_config()
             if not current_config:
-                return {"success": False, "spoken_response": "Integration not configured"}
+                return {
+                    "success": False,
+                    "spoken_response": "Integration not configured",
+                }
 
-            username = get_tasktracker_username_for_ha_user(hass, user_id, current_config)
+            username = get_tasktracker_username_for_ha_user(
+                hass, user_id, current_config
+            )
             if not username:
                 return {"success": False, "spoken_response": "Unable to determine user"}
 
