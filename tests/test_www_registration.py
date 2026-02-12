@@ -147,3 +147,107 @@ class TestJSModuleRegistration:
         ]
         assert "2" in deleted_ids
         assert "3" in deleted_ids
+
+    async def test_async_register_with_storage_mode(self):
+        """Test async_register correctly checks resource_mode for storage mode."""
+        mock_hass = Mock()
+        mock_lovelace = Mock()
+        mock_lovelace.resource_mode = "storage"
+        mock_lovelace.resources = Mock()
+        mock_lovelace.resources.loaded = True
+        mock_hass.data = {"lovelace": mock_lovelace}
+        mock_hass.http = Mock()
+        mock_hass.http.async_register_static_paths = Mock()
+
+        registration = JSModuleRegistration(mock_hass)
+        registration.lovelace = mock_lovelace
+
+        # Mock the async_register_path to avoid actual registration
+        with patch.object(registration, "_async_register_path"):
+            with patch.object(registration, "_async_wait_for_lovelace_resources") as mock_wait:
+                await registration.async_register()
+                # Should call _async_wait_for_lovelace_resources for storage mode
+                mock_wait.assert_called_once()
+
+    async def test_async_register_with_yaml_mode(self):
+        """Test async_register skips resource waiting for yaml mode."""
+        mock_hass = Mock()
+        mock_lovelace = Mock()
+        mock_lovelace.resource_mode = "yaml"
+        mock_hass.data = {"lovelace": mock_lovelace}
+        mock_hass.http = Mock()
+        mock_hass.http.async_register_static_paths = Mock()
+
+        registration = JSModuleRegistration(mock_hass)
+        registration.lovelace = mock_lovelace
+
+        # Mock the async_register_path to avoid actual registration
+        with patch.object(registration, "_async_register_path"):
+            with patch.object(registration, "_async_wait_for_lovelace_resources") as mock_wait:
+                await registration.async_register()
+                # Should NOT call _async_wait_for_lovelace_resources for yaml mode
+                mock_wait.assert_not_called()
+
+    async def test_async_unregister_with_storage_mode(self):
+        """Test async_unregister correctly checks resource_mode for storage mode."""
+        mock_hass = Mock()
+        mock_lovelace = Mock()
+        mock_lovelace.resource_mode = "storage"
+        mock_lovelace.resources = Mock()
+        mock_lovelace.resources.async_items = Mock(return_value=[])
+        mock_hass.data = {"lovelace": mock_lovelace}
+
+        registration = JSModuleRegistration(mock_hass)
+        registration.lovelace = mock_lovelace
+
+        # Should call async_items when in storage mode
+        await registration.async_unregister()
+        mock_lovelace.resources.async_items.assert_called()
+
+    async def test_async_unregister_with_yaml_mode(self):
+        """Test async_unregister skips cleanup for yaml mode."""
+        mock_hass = Mock()
+        mock_lovelace = Mock()
+        mock_lovelace.resource_mode = "yaml"
+        mock_lovelace.resources = Mock()
+        mock_lovelace.resources.async_items = Mock(return_value=[])
+        mock_hass.data = {"lovelace": mock_lovelace}
+
+        registration = JSModuleRegistration(mock_hass)
+        registration.lovelace = mock_lovelace
+
+        # Should NOT call async_items when in yaml mode
+        await registration.async_unregister()
+        mock_lovelace.resources.async_items.assert_not_called()
+
+    async def test_remove_stale_resources_with_storage_mode(self):
+        """Test stale resource removal only happens in storage mode."""
+        mock_hass = Mock()
+        mock_lovelace = Mock()
+        mock_lovelace.resource_mode = "storage"
+        mock_lovelace.resources = Mock()
+        mock_lovelace.resources.async_items = Mock(return_value=[])
+        mock_hass.data = {"lovelace": mock_lovelace}
+
+        registration = JSModuleRegistration(mock_hass)
+        registration.lovelace = mock_lovelace
+
+        # Should process resources in storage mode
+        await registration._async_remove_stale_resources()
+        mock_lovelace.resources.async_items.assert_called()
+
+    async def test_remove_stale_resources_with_yaml_mode(self):
+        """Test stale resource removal is skipped in yaml mode."""
+        mock_hass = Mock()
+        mock_lovelace = Mock()
+        mock_lovelace.resource_mode = "yaml"
+        mock_lovelace.resources = Mock()
+        mock_lovelace.resources.async_items = Mock(return_value=[])
+        mock_hass.data = {"lovelace": mock_lovelace}
+
+        registration = JSModuleRegistration(mock_hass)
+        registration.lovelace = mock_lovelace
+
+        # Should return early and NOT process resources in yaml mode
+        await registration._async_remove_stale_resources()
+        mock_lovelace.resources.async_items.assert_not_called()

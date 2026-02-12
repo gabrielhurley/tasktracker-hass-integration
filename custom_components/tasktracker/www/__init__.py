@@ -35,7 +35,7 @@ class JSModuleRegistration:
     async def async_register(self) -> None:
         """Register view_assist path."""
         await self._async_register_path()
-        if self.lovelace.mode == "storage":
+        if self.lovelace.resource_mode == "storage":
             await self._async_wait_for_lovelace_resources()
 
     # install card resources
@@ -160,7 +160,7 @@ class JSModuleRegistration:
 
     async def async_unregister(self) -> None:
         """Unload lovelace module resource."""
-        if self.lovelace.mode == "storage":
+        if self.lovelace.resource_mode == "storage":
             for module in JSMODULES:
                 url = f"{URL_BASE}/{module.get('filename')}"
                 tasktracker_resources = [
@@ -269,7 +269,7 @@ class JSModuleRegistration:
 
     async def _async_remove_stale_resources(self) -> None:
         """Remove TaskTracker resources that are no longer in JSMODULES."""
-        if self.lovelace.mode != "storage":
+        if self.lovelace.resource_mode != "storage":
             return
 
         allowed_paths = {f"{URL_BASE}/{m.get('filename')}" for m in JSMODULES}
