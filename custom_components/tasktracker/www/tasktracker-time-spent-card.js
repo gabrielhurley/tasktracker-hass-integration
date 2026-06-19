@@ -222,7 +222,7 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
         ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
-      <div class="card">
+      <ha-card class="card">
         ${this._config.show_header ? `
           <div class="header">
             <h3 class="title">Time Spent${username ? ` - ${TaskTrackerUtils.capitalize(username)}` : ''}</h3>
@@ -238,7 +238,7 @@ class TaskTrackerTimeSpentCard extends HTMLElement {
             No user configured. Please set user in card configuration.
           </div>
         ` : this._renderContent()}
-      </div>
+      </ha-card>
     `;
 
     // Add event listeners

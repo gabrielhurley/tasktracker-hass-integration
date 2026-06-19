@@ -298,7 +298,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         ${TaskTrackerStyles.getCompleteTaskCardStyles()}
       </style>
 
-      <div class="tasktracker-complete-task-card card">
+      <ha-card class="tasktracker-complete-task-card card">
         ${this._config.show_header ? `
           <div class="header">
             <h3 class="title">Complete Task</h3>
@@ -306,7 +306,7 @@ class TaskTrackerCompleteTaskCard extends HTMLElement {
         ` : ''}
 
         ${this._renderContent()}
-      </div>
+      </ha-card>
     `;
 
     // Add event listeners

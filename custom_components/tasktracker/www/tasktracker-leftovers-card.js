@@ -319,7 +319,7 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
         ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
-      <div class="card">
+      <ha-card class="card">
         ${this._renderHeader()}
 
         ${!hasValidUserConfig ? `
@@ -327,7 +327,7 @@ class TaskTrackerLeftoversCard extends TaskTrackerBaseCard {
             No user configured. Please set user in card configuration.
           </div>
         ` : this._renderContent()}
-      </div>
+      </ha-card>
     `;
 
     // Add event listeners

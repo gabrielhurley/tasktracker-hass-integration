@@ -208,7 +208,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
         ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
-      <div class="card">
+      <ha-card class="card">
         ${this._config.show_header ? `
           <div class="header">
             <h3 class="title">Encouragement ${username ? `- ${TaskTrackerUtils.capitalize(username)}` : ''}</h3>
@@ -221,7 +221,7 @@ class TaskTrackerEncouragementCard extends HTMLElement {
         <div class="content-container">
           ${this._renderContent()}
         </div>
-      </div>
+      </ha-card>
     `;
 
     // Add event listeners

@@ -145,12 +145,12 @@ export class TaskTrackerBaseCard extends HTMLElement {
           ${TaskTrackerStyles.getCommonCardStyles()}
           ${this.getCardStyles ? this.getCardStyles() : ''}
         </style>
-        <div class="card">
+        <ha-card class="card">
           ${this._renderHeader()}
           <div class="content-container">
             ${this._renderContent()}
           </div>
-        </div>
+        </ha-card>
       `;
 
       // Attach header event listeners once - they will persist

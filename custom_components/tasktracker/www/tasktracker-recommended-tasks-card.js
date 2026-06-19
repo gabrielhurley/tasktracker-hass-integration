@@ -260,7 +260,7 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
         ${TaskTrackerStyles.getCommonCardStyles()}
       </style>
 
-      <div class="card">
+      <ha-card class="card">
         ${this._renderHeader()}
 
         ${!hasValidUserConfig ? `
@@ -285,7 +285,7 @@ class TaskTrackerRecommendedTasksCard extends TaskTrackerTasksBaseCard {
 
           ${this._renderContent()}
         `}
-      </div>
+      </ha-card>
     `;
 
     // Add event listeners

@@ -264,7 +264,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
         ${TaskTrackerStyles.getCompleteTaskCardStyles()}
       </style>
 
-      <div class="card">
+      <ha-card class="card">
         ${this._config.show_header ? `
           <div class="header">
             <h3 class="title">Daily Check-in${this._getUsername() ? ` - ${TaskTrackerUtils.capitalize(this._getUsername())}` : ''}</h3>
@@ -275,7 +275,7 @@ class TaskTrackerDailyStateCard extends HTMLElement {
         ${this._loading ? '<div class="loading">Loading…</div>' :
           this._error ? `<div class="error">${this._error}</div>` :
           '<div class="tt-ds-mount"></div>'}
-      </div>
+      </ha-card>
     `;
 
     this._attachEventListeners();
