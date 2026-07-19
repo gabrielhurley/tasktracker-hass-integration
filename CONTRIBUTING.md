@@ -42,15 +42,77 @@ Report a bug by [opening a new issue](../../issues/new/choose); it's that easy!
 
 People *love* thorough bug reports. I'm not even kidding.
 
-## Test your code modification
+## Local development
 
-This custom component is based on [integration_blueprint template](https://github.com/ludeeus/integration_blueprint).
+Local development runs Home Assistant with the official
+[Home Assistant Container](https://www.home-assistant.io/installation/#advanced-installation-methods)
+image via Docker Compose (see [`compose.yaml`](./compose.yaml)), with this
+repo's `custom_components/tasktracker` bind-mounted into it. The old
+bare-`hass` workflow relied on the Core (venv) installation method, which
+Home Assistant deprecated in 2025.
 
-It comes with development environment in a container, easy to launch
-if you use Visual Studio Code. With this container you will have a stand alone
-Home Assistant instance running and already configured with the included
-[`configuration.yaml`](./config/configuration.yaml)
-file.
+### Prerequisites
+
+- Docker Desktop (or another Docker Compose-capable runtime)
+- [uv](https://docs.astral.sh/uv/) for the test/lint venv
+
+### Running
+
+1. Start the TaskTracker backend in `tasktracker-server`:
+
+   ```sh
+   docker compose -f docker-compose.dev.yml up -d
+   ```
+
+2. Start Home Assistant here:
+
+   ```sh
+   scripts/develop
+   ```
+
+   The UI is at <http://localhost:8123>, configured from the included
+   [`configuration.yaml`](./config/configuration.yaml) with debug logging for
+   `custom_components.tasktracker`.
+
+3. Point the TaskTracker integration at the backend. From inside the
+   container the backend is `http://host.docker.internal:8000` — set this as
+   the Host in the integration's options (Settings → Devices & Services →
+   TaskTracker → Configure). `localhost` will not resolve to your machine
+   from inside the container.
+
+After changing integration Python code, run `scripts/restart` — reloading the
+config entry from the UI does not reload Python modules.
+
+For step-through debugging, uncomment the `debugpy:` block in
+`config/configuration.yaml` and the `5678` port mapping in `compose.yaml`,
+restart, and attach VS Code to `localhost:5678`.
+
+### Tests and linting
+
+`scripts/setup` creates `.venv` and installs test/lint dependencies. Then:
+
+```sh
+.venv/bin/python run_tests.py   # or: .venv/bin/python -m pytest
+scripts/lint
+```
+
+The pinned `pytest-homeassistant-custom-component` version tracks the HA
+release pinned in `compose.yaml`; bump them together. Its `requires-python`
+also tracks HA (2026.7 → Python 3.14), so `scripts/setup` pins the venv
+Python — keep that in sync too.
+
+### Troubleshooting
+
+- **`scripts/setup` can't resolve dependencies / installs an alpha Python**:
+  your uv is too old to know the required Python release. Run
+  `uv self update`, delete `.venv`, and re-run `scripts/setup`.
+- **Backend container fails with `No module named 'django'`**: the backend
+  compose reuses a stale anonymous `/app/.venv` volume after image rebuilds.
+  In `tasktracker-server` run
+  `docker compose -f docker-compose.dev.yml up -d -V --force-recreate web`.
+- **Integration logs `Cannot connect to host 127.0.0.1:8000`**: the config
+  entry host must be `http://host.docker.internal:8000`, not
+  `localhost`/`127.0.0.1` (see step 3 above).
 
 ## License
 

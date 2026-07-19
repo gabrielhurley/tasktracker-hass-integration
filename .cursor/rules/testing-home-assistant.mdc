@@ -11,7 +11,11 @@ These rules standardize how to execute *all* automated tests so you never need t
 
 1. Ensure you are in the `tasktracker-hass-integration` directory.
 
-2. In the `tasktracker-hass-integration` directory run `source .venv/bin/activate` to activate the virtualenv.
+2. If `.venv` does not exist, create it with `scripts/setup` (uses uv; the
+   Python version is pinned there to match the HA release in `compose.yaml`,
+   currently Python 3.14 for HA 2026.7). Never create the venv by hand.
+
+3. In the `tasktracker-hass-integration` directory run `source .venv/bin/activate` to activate the virtualenv.
    (Re-activating is harmless if you are already inside the venv.)
 
 ## 2. Run Tests

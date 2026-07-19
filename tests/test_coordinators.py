@@ -138,3 +138,6 @@ async def test_coordinator_manual_refresh(hass):
 
     # Verify refresh was requested (call count may vary due to async nature)
     assert api.get_daily_plan.call_count >= 1
+
+    # Cancel the request-refresh debouncer so no timer outlives the test.
+    await coordinator.async_shutdown()

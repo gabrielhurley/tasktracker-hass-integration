@@ -4,4 +4,15 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-python3 -m pip install --requirement requirements.txt
+# Provision the local venv used for tests and linting. Home Assistant itself
+# runs in a container (see compose.yaml / scripts/develop) and is not
+# installed here.
+# Python version must satisfy pytest-homeassistant-custom-component, which
+# tracks the HA release pinned in compose.yaml (HA 2026.7 -> Python 3.14).
+if [[ ! -d .venv ]]; then
+    uv venv --python 3.14 .venv
+fi
+
+uv pip install --python .venv/bin/python \
+    --requirement requirements.txt \
+    --requirement requirements-test.txt

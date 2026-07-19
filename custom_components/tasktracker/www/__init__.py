@@ -35,6 +35,11 @@ class JSModuleRegistration:
     async def async_register(self) -> None:
         """Register view_assist path."""
         await self._async_register_path()
+        # Lovelace is absent in headless/test setups; static path registration
+        # is still useful, but there are no resources to manage.
+        if self.lovelace is None:
+            _LOGGER.debug("Lovelace not loaded; skipping resource registration")
+            return
         if self.lovelace.resource_mode == "storage":
             await self._async_wait_for_lovelace_resources()
 
@@ -160,6 +165,8 @@ class JSModuleRegistration:
 
     async def async_unregister(self) -> None:
         """Unload lovelace module resource."""
+        if self.lovelace is None:
+            return
         if self.lovelace.resource_mode == "storage":
             for module in JSMODULES:
                 url = f"{URL_BASE}/{module.get('filename')}"

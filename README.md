@@ -86,3 +86,9 @@ All services support voice commands through Home Assistant's voice assistant, en
 - **Requirements**: aiohttp>=3.8.0
 - **Home Assistant**: Requires 2025.5.0+
 - **HACS Compatible**: Version 2.0.1+
+
+## Development
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the local development workflow
+(Home Assistant runs via Docker Compose with this repo's integration
+bind-mounted) and for running tests.

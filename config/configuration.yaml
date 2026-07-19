@@ -12,3 +12,10 @@ logger:
     custom_components.tasktracker: debug
 
 automation: !include automations.yaml
+
+# Remote debugging: uncomment this block and the 5678 port mapping in
+# compose.yaml, restart, then attach VS Code to localhost:5678.
+# https://www.home-assistant.io/integrations/debugpy/
+# debugpy:
+#   start: true
+#   wait: false

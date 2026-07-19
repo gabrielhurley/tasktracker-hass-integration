@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# Restart Home Assistant to pick up integration code changes. Reloading the
+# config entry from the UI does not reload Python modules; a restart does.
+docker compose restart homeassistant

@@ -1,0 +1,20 @@
+# Local development Home Assistant instance for the TaskTracker integration.
+# Usage: scripts/develop (or `docker compose up`). UI at http://localhost:8123.
+# The TaskTracker backend must be reachable from inside the container as
+# http://host.docker.internal:8000 (start it via docker-compose.dev.yml in
+# tasktracker-server).
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:2026.7
+    container_name: tasktracker-hass-dev
+    ports:
+      - "8123:8123"
+      # - "5678:5678"  # uncomment together with `debugpy:` in config/configuration.yaml
+    environment:
+      - TZ=America/Los_Angeles
+    volumes:
+      - ./config:/config
+      # Mount only the tasktracker subdir so anything else installed into
+      # /config/custom_components (e.g. via HACS) is left alone.
+      - ./custom_components/tasktracker:/config/custom_components/tasktracker
+    restart: unless-stopped
