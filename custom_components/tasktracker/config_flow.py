@@ -52,8 +52,8 @@ class TaskTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
             try:
-                # Test API connection by getting tasks
-                await api.get_all_tasks(thin=True)
+                # Validate the host and API key; works before users are mapped.
+                await api.verify_connection()
                 self._api_data = user_input
                 return await self.async_step_users()
             except Exception:

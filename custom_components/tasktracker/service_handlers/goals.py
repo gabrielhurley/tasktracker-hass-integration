@@ -62,16 +62,15 @@ def list_goals_handler_factory(
             if not username:
                 return {"success": False, "spoken_response": "Unable to determine user"}
 
-            result = await get_cached_or_fetch(
+            # API already returns standardized response: {success, data, user_context}
+            return await get_cached_or_fetch(
                 hass=hass,
                 cache_key=f"goals:{username}",
                 ttl=CACHE_TTL_GOALS,
                 fetch_fn=lambda: api.list_goals(username),
             )
-            # API already returns standardized response: {success, data, user_context}
-            return result
         except TaskTrackerAPIError as err:
-            _LOGGER.error("Failed to list goals: %s", err)
+            _LOGGER.exception("Failed to list goals")
             return {"success": False, "spoken_response": str(err)}
 
     return handler
@@ -142,7 +141,7 @@ def create_goal_handler_factory(
             # API already returns standardized response: {success, data, user_context}
             return result
         except TaskTrackerAPIError as err:
-            _LOGGER.error("Failed to create goal: %s", err)
+            _LOGGER.exception("Failed to create goal")
             return {"success": False, "spoken_response": str(err)}
 
     return handler
@@ -215,7 +214,7 @@ def update_goal_handler_factory(
             # API already returns standardized response: {success, data, user_context}
             return result
         except TaskTrackerAPIError as err:
-            _LOGGER.error("Failed to update goal %s: %s", goal_id, err)
+            _LOGGER.exception("Failed to update goal %s", goal_id)
             return {"success": False, "spoken_response": str(err)}
 
     return handler
@@ -273,7 +272,7 @@ def delete_goal_handler_factory(
             # API already returns standardized response: {success, data, user_context}
             return result
         except TaskTrackerAPIError as err:
-            _LOGGER.error("Failed to delete goal %s: %s", goal_id, err)
+            _LOGGER.exception("Failed to delete goal %s", goal_id)
             return {"success": False, "spoken_response": str(err)}
 
     return handler
@@ -314,16 +313,15 @@ def list_goal_tasks_handler_factory(
         goal_id = call.data["goal_id"]
 
         try:
-            result = await get_cached_or_fetch(
+            # API already returns standardized response: {success, data, user_context}
+            return await get_cached_or_fetch(
                 hass=hass,
                 cache_key=f"goal_tasks:{username}:{goal_id}",
                 ttl=CACHE_TTL_GOALS,
                 fetch_fn=lambda: api.list_goal_tasks(username, goal_id),
             )
-            # API already returns standardized response: {success, data, user_context}
-            return result
         except TaskTrackerAPIError as err:
-            _LOGGER.error("Failed to list tasks for goal %s: %s", goal_id, err)
+            _LOGGER.exception("Failed to list tasks for goal %s", goal_id)
             return {"success": False, "spoken_response": str(err)}
 
     return handler
@@ -391,12 +389,11 @@ def associate_task_handler_factory(
             # API already returns standardized response: {success, data, user_context}
             return result
         except TaskTrackerAPIError as err:
-            _LOGGER.error(
-                "Failed to associate task %s:%s with goal %s: %s",
+            _LOGGER.exception(
+                "Failed to associate task %s:%s with goal %s",
                 task_type,
                 task_id,
                 goal_id,
-                err,
             )
             return {"success": False, "spoken_response": str(err)}
 
@@ -462,11 +459,10 @@ def remove_task_handler_factory(
             # API already returns standardized response: {success, data, user_context}
             return result
         except TaskTrackerAPIError as err:
-            _LOGGER.error(
-                "Failed to remove task association %s from goal %s: %s",
+            _LOGGER.exception(
+                "Failed to remove task association %s from goal %s",
                 association_id,
                 goal_id,
-                err,
             )
             return {"success": False, "spoken_response": str(err)}
 

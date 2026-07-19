@@ -141,39 +141,20 @@ TASKTRACKER_EVENTS: Final = [
     EVENT_GOAL_DELETED,
 ]
 
-# API endpoints
-ENDPOINT_COMPLETE_TASK: Final = "/api/completions/complete_task/"
-ENDPOINT_COMPLETE_TASK_BY_NAME: Final = "/api/completions/complete_task_by_name/"
-ENDPOINT_CREATE_LEFTOVER: Final = "/api/leftovers/create-leftover/"
-ENDPOINT_CREATE_ADHOC_TASK: Final = "/api/tasks/create-adhoc-task/"
-ENDPOINT_QUERY_TASK: Final = "/api/tasks/task-query/"
-ENDPOINT_RECOMMENDED_TASKS: Final = "/api/recommendations/recommended-tasks/"
-ENDPOINT_AVAILABLE_TASKS: Final = "/api/tasks/available-tasks/"
-ENDPOINT_RECENT_COMPLETIONS: Final = "/api/completions/recent_completions/"
-ENDPOINT_LIST_LEFTOVERS: Final = "/api/leftovers/list-leftovers/"
-ENDPOINT_ALL_TASKS: Final = "/api/tasks/all-tasks/"
-ENDPOINT_UPDATE_TASK: Final = "/api/tasks/update-task/"
-ENDPOINT_DELETE_COMPLETION: Final = "/api/completions/delete_completion/"
-ENDPOINT_UPDATE_COMPLETION: Final = "/api/completions/update_completion/"
-
-# New API endpoints
-ENDPOINT_DAILY_PLAN: Final = "/api/daily-plan/"
-ENDPOINT_DAILY_PLAN_ENCOURAGEMENT: Final = "/api/daily-plan/encouragement/"
-ENDPOINT_DAILY_STATE: Final = "/api/daily-state/"
-ENDPOINT_CREATE_TASK_FROM_DESCRIPTION: Final = (
-    "/api/tasks/create-task-from-description/"
-)
-ENDPOINT_DELETE_TASK: Final = "/api/tasks/delete-task/"
-
-# Goal endpoints
-ENDPOINT_GOALS_LIST: Final = "/api/goals/list-goals/"
-ENDPOINT_GOALS_CREATE: Final = "/api/goals/create-goal/"
-ENDPOINT_GOALS_GET: Final = "/api/goals/get-goal/"
-ENDPOINT_GOALS_UPDATE: Final = "/api/goals/update-goal/"
-ENDPOINT_GOALS_DELETE: Final = "/api/goals/delete-goal/"
-ENDPOINT_GOALS_LIST_TASKS: Final = "/api/goals/list-goal-tasks/"
-ENDPOINT_GOALS_ASSOCIATE_TASK: Final = "/api/goals/associate-task/"
-ENDPOINT_GOALS_REMOVE_TASK: Final = "/api/goals/remove-task-association/"
+# API endpoints (unified v2 API). Detail routes (e.g. tasks/<type>/<id>/) are
+# built in api.py from these bases.
+ENDPOINT_AUTH_VERIFY: Final = "/api/v2/auth/verify/"
+ENDPOINT_COMPLETIONS: Final = "/api/v2/completions/"
+ENDPOINT_COMPLETIONS_BY_NAME: Final = "/api/v2/completions/by-name/"
+ENDPOINT_TASKS: Final = "/api/v2/tasks/"
+ENDPOINT_TASKS_QUERY: Final = "/api/v2/tasks/query/"
+ENDPOINT_TASKS_FROM_DESCRIPTION: Final = "/api/v2/tasks/from-description/"
+ENDPOINT_LEFTOVERS: Final = "/api/v2/leftovers/"
+ENDPOINT_RECOMMENDATIONS: Final = "/api/v2/recommendations/"
+ENDPOINT_DAILY_PLAN: Final = "/api/v2/daily-plan/"
+ENDPOINT_DAILY_PLAN_ENCOURAGEMENT: Final = "/api/v2/daily-plan/encouragement/"
+ENDPOINT_DAILY_STATE: Final = "/api/v2/daily-state/"
+ENDPOINT_GOALS: Final = "/api/v2/goals/"
 
 # Default values
 DEFAULT_SCAN_INTERVAL: Final = 300  # 5 minutes

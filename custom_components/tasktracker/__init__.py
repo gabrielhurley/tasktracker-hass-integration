@@ -123,8 +123,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         # Store API client in hass.data
         session = async_get_clientsession(hass)
+        # The household API key must act on behalf of a member on every call;
+        # the first mapped user is the fallback for calls with no user context.
+        users = entry.data.get("users", [])
+        default_username = users[0]["tasktracker_username"] if users else None
         api = TaskTrackerAPI(
-            session=session, host=entry.data["host"], api_key=entry.data["api_key"]
+            session=session,
+            host=entry.data["host"],
+            api_key=entry.data["api_key"],
+            default_username=default_username,
         )
 
         # Initialize cache
