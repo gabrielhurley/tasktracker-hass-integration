@@ -16,57 +16,57 @@ DOMAIN: Final = "tasktracker"
 URL_BASE = "/tasktracker"
 JSMODULES = [
     {
-        "name": "TaskTracker Recommended Tasks Card",
+        "name": "Today Maybe Recommended Tasks Card",
         "filename": "tasktracker-recommended-tasks-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Leftovers Card",
+        "name": "Today Maybe Leftovers Card",
         "filename": "tasktracker-leftovers-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Recent Tasks Card",
+        "name": "Today Maybe Recent Tasks Card",
         "filename": "tasktracker-recent-tasks-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Available Tasks Card",
+        "name": "Today Maybe Available Tasks Card",
         "filename": "tasktracker-available-tasks-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Complete Task Card",
+        "name": "Today Maybe Complete Task Card",
         "filename": "tasktracker-complete-task-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Time Spent Card",
+        "name": "Today Maybe Time Spent Card",
         "filename": "tasktracker-time-spent-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Daily Plan Card",
+        "name": "Today Maybe Daily Plan Card",
         "filename": "tasktracker-daily-plan-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Daily State Card",
+        "name": "Today Maybe Daily State Card",
         "filename": "tasktracker-daily-state-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Daily Encouragement Card",
+        "name": "Today Maybe Daily Encouragement Card",
         "filename": "tasktracker-encouragement-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Create Task Card",
+        "name": "Today Maybe Create Task Card",
         "filename": "tasktracker-create-task-card.js",
         "version": VERSION,
     },
     {
-        "name": "TaskTracker Goals Card",
+        "name": "Today Maybe Goals Card",
         "filename": "tasktracker-goals-card.js",
         "version": VERSION,
     },

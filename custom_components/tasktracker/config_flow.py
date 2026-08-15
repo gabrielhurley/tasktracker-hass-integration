@@ -113,7 +113,7 @@ class TaskTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:  # noqa: RET505
                     # Create the entry
                     return self.async_create_entry(
-                        title="TaskTracker",
+                        title="Today Maybe",
                         data={
                             **self._api_data,
                             CONF_USERS: self._users,

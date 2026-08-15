@@ -1,10 +1,10 @@
 {
-    "title": "TaskTracker",
+    "title": "Today Maybe",
     "config": {
         "step": {
             "user": {
-                "title": "TaskTracker API Configuration",
-                "description": "Configure your TaskTracker API connection",
+                "title": "Today Maybe API Configuration",
+                "description": "Configure your Today Maybe API connection",
                 "data": {
                     "host": "Host URL",
                     "api_key": "API Key"
@@ -12,29 +12,29 @@
             },
             "users": {
                 "title": "User Mapping Configuration",
-                "description": "Map Home Assistant users to TaskTracker usernames\n\nCurrently configured users:\n{configured_users}",
+                "description": "Map Home Assistant users to Today Maybe usernames\n\nCurrently configured users:\n{configured_users}",
                 "data": {
                     "ha_user_selection": "Home Assistant User",
                     "ha_user_id": "Home Assistant User ID",
-                    "tasktracker_username": "TaskTracker Username",
+                    "tasktracker_username": "Today Maybe Username",
                     "add_another_user": "Add another user mapping"
                 }
             }
         },
         "error": {
-            "cannot_connect": "Failed to connect to TaskTracker API",
+            "cannot_connect": "Failed to connect to Today Maybe API",
             "missing_ha_user_id": "Please select a Home Assistant user or enter a manual user ID",
-            "missing_tasktracker_username": "TaskTracker username is required"
+            "missing_tasktracker_username": "Today Maybe username is required"
         },
         "abort": {
-            "already_configured": "TaskTracker is already configured"
+            "already_configured": "Today Maybe is already configured"
         }
     },
     "options": {
         "step": {
             "init": {
-                "title": "TaskTracker Configuration",
-                "description": "Configure your TaskTracker integration settings.\n\nCurrent user mappings:\n{current_users}\n\nNote: API key is redacted for security. Leave unchanged to keep current key, or enter a new key to update.",
+                "title": "Today Maybe Configuration",
+                "description": "Configure your Today Maybe integration settings.\n\nCurrent user mappings:\n{current_users}\n\nNote: API key is redacted for security. Leave unchanged to keep current key, or enter a new key to update.",
                 "data": {
                     "host": "Host URL",
                     "api_key": "API Key",
@@ -43,7 +43,7 @@
             },
             "manage_users": {
                 "title": "Manage User Mappings",
-                "description": "Add or remove mappings between Home Assistant users and TaskTracker usernames.",
+                "description": "Add or remove mappings between Home Assistant users and Today Maybe usernames.",
                 "data": {
                     "current_mappings": "Current User Mappings",
                     "action": "User Management Action"
@@ -51,10 +51,10 @@
             },
             "add_user": {
                 "title": "Add User Mapping",
-                "description": "Map a Home Assistant user to a TaskTracker username.",
+                "description": "Map a Home Assistant user to a Today Maybe username.",
                 "data": {
                     "ha_user_id": "Home Assistant User",
-                    "tasktracker_username": "TaskTracker Username"
+                    "tasktracker_username": "Today Maybe Username"
                 }
             },
             "remove_user": {
@@ -66,8 +66,8 @@
             }
         },
         "error": {
-            "ha_user_already_mapped": "This Home Assistant user is already mapped to a TaskTracker username",
-            "tasktracker_user_already_mapped": "This TaskTracker username is already mapped to a Home Assistant user"
+            "ha_user_already_mapped": "This Home Assistant user is already mapped to a Today Maybe username",
+            "tasktracker_user_already_mapped": "This Today Maybe username is already mapped to a Home Assistant user"
         }
     },
     "services": {
@@ -81,7 +81,7 @@
                 },
                 "username": {
                     "name": "Assigned To",
-                    "description": "TaskTracker username. If not provided, will attempt to determine from user context."
+                    "description": "Today Maybe username. If not provided, will attempt to determine from user context."
                 },
                 "notes": {
                     "name": "Completion Notes",
@@ -103,7 +103,7 @@
                 },
                 "username": {
                     "name": "Assigned To",
-                    "description": "TaskTracker username. If not provided, will attempt to determine from user context."
+                    "description": "Today Maybe username. If not provided, will attempt to determine from user context."
                 },
                 "notes": {
                     "name": "Completion Notes",
@@ -147,7 +147,7 @@
                 },
                 "username": {
                     "name": "Assigned To",
-                    "description": "TaskTracker username. If not provided, will attempt to determine from user context."
+                    "description": "Today Maybe username. If not provided, will attempt to determine from user context."
                 },
                 "duration_minutes": {
                     "name": "Duration (Minutes)",
@@ -179,7 +179,7 @@
             "fields": {
                 "username": {
                     "name": "Assigned To",
-                    "description": "TaskTracker username. If not provided, will attempt to determine from user context."
+                    "description": "Today Maybe username. If not provided, will attempt to determine from user context."
                 },
                 "available_minutes": {
                     "name": "Available Time (Minutes)",
@@ -243,7 +243,7 @@
         },
         "get_available_users": {
             "name": "Get Available Users",
-            "description": "Get list of available TaskTracker usernames from configuration."
+            "description": "Get list of available Today Maybe usernames from configuration."
         }
     }
 }
