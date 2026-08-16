@@ -82,7 +82,7 @@ class TestTaskTrackerConfigFlow:
 
             # Check if it's a create entry or form (depends on config flow implementation) # noqa: E501
             if result.get("type") == FlowResultType.CREATE_ENTRY:
-                assert result.get("title") == "TaskTracker"
+                assert result.get("title") == "Today Maybe"
                 assert result.get("data", {}).get("host") == "https://test.example.com"
                 assert result.get("data", {}).get("api_key") == "test-api-key"
             elif result.get("type") == FlowResultType.FORM:
@@ -807,7 +807,7 @@ class TestTaskTrackerConfigFlow:
 
                 # Should create entry successfully
                 assert result.get("type") == FlowResultType.CREATE_ENTRY
-                assert result.get("title") == "TaskTracker"
+                assert result.get("title") == "Today Maybe"
 
                 # Verify user mapping was correctly stored with extracted user ID
                 users = result.get("data", {}).get("users", [])
