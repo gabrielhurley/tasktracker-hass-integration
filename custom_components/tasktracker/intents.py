@@ -231,6 +231,7 @@ class CompleteTaskIntentHandler(BaseTaskTrackerIntentHandler):
         result = await api.complete_task_by_name(
             name=task_name,
             completed_by=task_completed_by,
+            source="ha_voice",
         )
 
         if not result.get("success"):

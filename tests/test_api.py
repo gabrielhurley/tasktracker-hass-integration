@@ -92,6 +92,7 @@ class TestTaskTrackerAPI:
             "task_id": 123,
             "task_type": "recurring",
             "notes": "Test completion",
+            "source": "ha_automation",
         }
 
     @pytest.mark.asyncio
@@ -120,7 +121,19 @@ class TestTaskTrackerAPI:
         assert method == "POST"
         assert url == "https://test.example.com/api/v2/completions/by-name/"
         assert params["acting_user"] == "testuser"
-        assert json_data == {"name": "trash"}
+        assert json_data == {"name": "trash", "source": "ha_automation"}
+
+    @pytest.mark.asyncio
+    async def test_voice_completion_source_is_sent(self, api_client: TaskTrackerAPI) -> None:
+        """Voice callers can override the automation default explicitly."""
+        mock_v2_response(api_client, {"completion": {"name": "trash"}}, status=201)
+
+        await api_client.complete_task_by_name(
+            name="trash", completed_by="testuser", source="ha_voice"
+        )
+
+        _, _, _, json_data = last_request(api_client)
+        assert json_data["source"] == "ha_voice"
 
     @pytest.mark.asyncio
     async def test_create_leftover_success(self, api_client: TaskTrackerAPI) -> None:

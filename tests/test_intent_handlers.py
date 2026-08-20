@@ -195,6 +195,7 @@ class TestSpecificIntentHandlers:
         api_mock.complete_task_by_name.assert_called_once_with(
             name="vacuum",
             completed_by="sarah",
+            source="ha_voice",
         )
         speech_text = get_speech_text(response)
         assert "Task vacuum completed successfully" in speech_text
@@ -390,6 +391,7 @@ class TestSpecificIntentHandlers:
         api_mock.complete_task_by_name.assert_called_once_with(
             name="test task",
             completed_by="context_user",
+            source="ha_voice",
         )
         mock_get_user_context.assert_called_once_with(mock_hass, "test_user")
 

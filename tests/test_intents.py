@@ -139,6 +139,7 @@ class TestIntentHandlers:
         api_mock.complete_task_by_name.assert_called_once_with(
             name="clean kitchen",
             completed_by="jane",
+            source="ha_voice",
         )
         speech_text = get_speech_text(response)
         assert "Task clean kitchen completed successfully" in speech_text
@@ -359,6 +360,7 @@ class TestIntentHandlers:
         api_mock.complete_task_by_name.assert_called_once_with(
             name="test task",
             completed_by="Anonymous",
+            source="ha_voice",
         )
 
         speech_text = get_speech_text(response)

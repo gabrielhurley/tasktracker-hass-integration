@@ -174,6 +174,7 @@ class TaskTrackerAPI:
         completed_by: str,
         notes: str | None = None,
         completed_at: str | None = None,
+        source: str = "ha_automation",
     ) -> dict[str, Any]:
         """
         Complete a task by ID.
@@ -184,6 +185,7 @@ class TaskTrackerAPI:
             completed_by: Username of the person completing the task.
             notes: Optional notes about the completion.
             completed_at: Optional ISO timestamp of when the task was completed.
+            source: Completion origin recorded by Today Maybe.
 
         Returns:
             API response dictionary.
@@ -197,6 +199,7 @@ class TaskTrackerAPI:
             data["notes"] = notes
         if completed_at:
             data["completed_at"] = completed_at
+        data["source"] = source
 
         return await self._request(
             "POST", ENDPOINT_COMPLETIONS, data=data, acting_user=completed_by
@@ -208,6 +211,7 @@ class TaskTrackerAPI:
         completed_by: str,
         notes: str | None = None,
         completed_at: str | None = None,
+        source: str = "ha_automation",
     ) -> dict[str, Any]:
         """Complete a task by name (supports fuzzy matching across all task types)."""
         data: dict[str, Any] = {"name": name}
@@ -215,6 +219,7 @@ class TaskTrackerAPI:
             data["notes"] = notes
         if completed_at:
             data["completed_at"] = completed_at
+        data["source"] = source
 
         return await self._request(
             "POST", ENDPOINT_COMPLETIONS_BY_NAME, data=data, acting_user=completed_by
