@@ -167,7 +167,7 @@ class TaskTrackerAPI:
         return await self._request("GET", ENDPOINT_AUTH_VERIFY, wrap=False)
 
     # Task completion methods
-    async def complete_task(
+    async def complete_task(  # noqa: PLR0913
         self,
         task_id: int,
         task_type: str,
